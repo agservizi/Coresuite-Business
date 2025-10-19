@@ -96,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$errors) {
                     </ul>
                 </div>
                 <div class="login-meta">
-                    &copy; <?php echo date('Y'); ?> Coresuite Business · Via Plinio 72 · support@coresuitebusiness.com
+                    &copy; <?php echo date('Y'); ?> Coresuite Business
                 </div>
             </div>
             <div class="col-md-7 login-form-area">
