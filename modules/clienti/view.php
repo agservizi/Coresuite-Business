@@ -22,9 +22,9 @@ if (!$client) {
 }
 
 $serviceSummaryQuery = "SELECT 'Entrate' AS tipo, COUNT(*) AS totale, COALESCE(SUM(importo), 0) AS importo
-    FROM pagamenti WHERE cliente_id = ? AND tipo_movimento = 'Entrata'
+    FROM entrate_uscite WHERE cliente_id = ? AND tipo_movimento = 'Entrata'
     UNION ALL
-    SELECT 'Uscite', COUNT(*), COALESCE(SUM(importo * -1), 0) FROM pagamenti WHERE cliente_id = ? AND tipo_movimento = 'Uscita'
+    SELECT 'Uscite', COUNT(*), COALESCE(SUM(importo * -1), 0) FROM entrate_uscite WHERE cliente_id = ? AND tipo_movimento = 'Uscita'
     UNION ALL
     SELECT 'Ricariche', COUNT(*), COALESCE(SUM(importo), 0) FROM servizi_ricariche WHERE cliente_id = ?
     UNION ALL
@@ -41,7 +41,7 @@ $summary = $summaryStmt->fetchAll();
 $latestPracticesStmt = $pdo->prepare("(
     SELECT CASE WHEN tipo_movimento = 'Entrata' THEN 'Entrata' ELSE 'Uscita' END AS categoria,
         descrizione AS riferimento, stato, COALESCE(data_pagamento, data_scadenza, updated_at) AS data
-    FROM pagamenti WHERE cliente_id = ?
+    FROM entrate_uscite WHERE cliente_id = ?
     ) UNION ALL (
         SELECT 'Ricarica' AS categoria, operatore AS riferimento, stato, data_operazione AS data
         FROM servizi_ricariche WHERE cliente_id = ?

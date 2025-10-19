@@ -12,7 +12,7 @@ if ($id <= 0) {
 	exit;
 }
 
-$stmt = $pdo->prepare('SELECT * FROM pagamenti WHERE id = :id');
+$stmt = $pdo->prepare('SELECT * FROM entrate_uscite WHERE id = :id');
 $stmt->execute([':id' => $id]);
 $pagamento = $stmt->fetch();
 
@@ -110,7 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	}
 
 	if (!$errors) {
-		$stmt = $pdo->prepare('UPDATE pagamenti SET
+		$stmt = $pdo->prepare('UPDATE entrate_uscite SET
 			cliente_id = :cliente_id,
 			descrizione = :descrizione,
 			riferimento = :riferimento,

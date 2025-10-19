@@ -12,7 +12,7 @@ if ($id <= 0) {
 	exit;
 }
 
-$stmt = $pdo->prepare('SELECT p.*, c.nome, c.cognome, c.ragione_sociale FROM pagamenti p LEFT JOIN clienti c ON c.id = p.cliente_id WHERE p.id = :id');
+$stmt = $pdo->prepare('SELECT p.*, c.nome, c.cognome, c.ragione_sociale FROM entrate_uscite p LEFT JOIN clienti c ON c.id = p.cliente_id WHERE p.id = :id');
 $stmt->execute([':id' => $id]);
 $pagamento = $stmt->fetch();
 

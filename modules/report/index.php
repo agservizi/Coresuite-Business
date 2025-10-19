@@ -18,7 +18,7 @@ $format = $_GET['export'] ?? '';
 $filters = [':from' => $from, ':to' => $to];
 $serviceMap = [
     'entrate-uscite' => [
-        'table' => 'pagamenti',
+        'table' => 'entrate_uscite',
         'columns' => ['tipo_movimento', 'descrizione', 'riferimento', 'metodo', 'stato', 'importo', 'data_scadenza', 'data_pagamento'],
         'date_column' => 'created_at',
         'label' => 'Entrate/Uscite',
@@ -73,7 +73,7 @@ $summary = [
 $revenueStmt = $pdo->prepare("SELECT COALESCE(SUM(importo),0) FROM (
     SELECT CASE WHEN tipo_movimento = 'Entrata' THEN importo ELSE -importo END AS importo,
            COALESCE(data_pagamento, data_scadenza, created_at) AS data_riferimento
-    FROM pagamenti WHERE stato = 'Completato'
+    FROM entrate_uscite WHERE stato = 'Completato'
     UNION ALL
     SELECT importo, data_operazione AS data_riferimento FROM servizi_ricariche
 ) AS revenues WHERE data_riferimento BETWEEN :from AND :to");
@@ -89,7 +89,7 @@ if ($format === 'csv' && $current) {
         $dataRow = [$row['id']];
         foreach ($current['columns'] as $col) {
             $value = $row[$col] ?? '';
-            if ($current['table'] === 'pagamenti' && $col === 'importo') {
+            if ($current['table'] === 'entrate_uscite' && $col === 'importo') {
                 $sign = (($row['tipo_movimento'] ?? 'Entrata') === 'Uscita') ? -1 : 1;
                 $value = number_format(((float) $value) * $sign, 2, '.', '');
             }
@@ -210,7 +210,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                                 $rawValue = $row[$col] ?? null;
                                                 if ($col === 'importo') {
                                                     $factor = 1;
-                                                    if ($current['table'] === 'pagamenti') {
+                                                    if ($current['table'] === 'entrate_uscite') {
                                                         $factor = (($row['tipo_movimento'] ?? 'Entrata') === 'Uscita') ? -1 : 1;
                                                     }
                                                     $displayValue = format_currency(((float) $rawValue) * $factor);

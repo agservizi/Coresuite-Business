@@ -23,7 +23,7 @@ $filters = [
 
 $params = [];
 $sql = "SELECT p.*, c.nome, c.cognome, c.ragione_sociale
-	FROM pagamenti p
+	FROM entrate_uscite p
 	LEFT JOIN clienti c ON p.cliente_id = c.id
 	WHERE 1 = 1";
 

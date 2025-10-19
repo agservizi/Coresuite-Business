@@ -97,7 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	}
 
 	if (!$errors) {
-		$stmt = $pdo->prepare('INSERT INTO pagamenti (
+		$stmt = $pdo->prepare('INSERT INTO entrate_uscite (
 			cliente_id,
 			descrizione,
 			riferimento,

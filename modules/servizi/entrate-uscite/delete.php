@@ -18,7 +18,7 @@ if ($id <= 0) {
 	exit;
 }
 
-$stmt = $pdo->prepare('SELECT allegato_path FROM pagamenti WHERE id = :id');
+$stmt = $pdo->prepare('SELECT allegato_path FROM entrate_uscite WHERE id = :id');
 $stmt->execute([':id' => $id]);
 $pagamento = $stmt->fetch();
 
@@ -30,7 +30,7 @@ if (!$pagamento) {
 $pdo->beginTransaction();
 
 try {
-	$deleteStmt = $pdo->prepare('DELETE FROM pagamenti WHERE id = :id');
+	$deleteStmt = $pdo->prepare('DELETE FROM entrate_uscite WHERE id = :id');
 	$deleteStmt->execute([':id' => $id]);
 
 	if (!empty($pagamento['allegato_path'])) {

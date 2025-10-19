@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS clienti (
     INDEX idx_clienti_ragione (ragione_sociale)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS pagamenti (
+CREATE TABLE IF NOT EXISTS entrate_uscite (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     cliente_id INT UNSIGNED NOT NULL,
     tipo_movimento ENUM('Entrata','Uscita') NOT NULL DEFAULT 'Entrata',
@@ -78,12 +78,12 @@ CREATE TABLE IF NOT EXISTS pagamenti (
     allegato_hash CHAR(64) NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_pagamenti_cliente (cliente_id),
-    INDEX idx_pagamenti_stato (stato),
-    INDEX idx_pagamenti_scadenza (data_scadenza),
-    INDEX idx_pagamenti_pagamento (data_pagamento),
-    INDEX idx_pagamenti_cliente_stato (cliente_id, stato),
-    INDEX idx_pagamenti_tipo (tipo_movimento),
+    INDEX idx_entrate_uscite_cliente (cliente_id),
+    INDEX idx_entrate_uscite_stato (stato),
+    INDEX idx_entrate_uscite_scadenza (data_scadenza),
+    INDEX idx_entrate_uscite_pagamento (data_pagamento),
+    INDEX idx_entrate_uscite_cliente_stato (cliente_id, stato),
+    INDEX idx_entrate_uscite_tipo (tipo_movimento),
     FOREIGN KEY (cliente_id) REFERENCES clienti(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
