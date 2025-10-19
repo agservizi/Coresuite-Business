@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../../includes/auth.php';
 require_once __DIR__ . '/../../../includes/db_connect.php';
 require_once __DIR__ . '/../../../includes/helpers.php';
+require_once __DIR__ . '/../../../includes/mailer.php';
 
 require_role('Admin', 'Operatore');
 $pageTitle = 'Nuovo appuntamento';
@@ -72,6 +73,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ':stato' => $data['stato'],
             ':note' => $data['note'] !== '' ? $data['note'] : null,
         ]);
+
+        $clientStmt = $pdo->prepare('SELECT nome, cognome, email FROM clienti WHERE id = :id LIMIT 1');
+        $clientStmt->execute([':id' => (int) $data['cliente_id']]);
+        $client = $clientStmt->fetch();
+
+        if ($client && isset($client['email']) && filter_var($client['email'], FILTER_VALIDATE_EMAIL)) {
+            $clientName = trim((string) (($client['nome'] ?? '') . ' ' . ($client['cognome'] ?? '')));
+            if ($clientName === '') {
+                $clientName = 'Cliente';
+            }
+
+            $startText = format_datetime_locale($start->format('Y-m-d H:i:s'));
+            $endText = $end ? format_datetime_locale($end->format('Y-m-d H:i:s')) : '';
+
+            $content = '<p>Gentile ' . sanitize_output($clientName) . ',</p>';
+            $content .= '<p>abbiamo pianificato un nuovo appuntamento con i seguenti dettagli:</p>';
+            $content .= '<ul style="list-style: none; padding: 0;">';
+            $content .= '<li><strong>Titolo:</strong> ' . sanitize_output($data['titolo']) . '</li>';
+            $content .= '<li><strong>Tipologia:</strong> ' . sanitize_output($data['tipo_servizio']) . '</li>';
+            if ($data['responsabile'] !== '') {
+                $content .= '<li><strong>Responsabile:</strong> ' . sanitize_output($data['responsabile']) . '</li>';
+            }
+            $content .= '<li><strong>Data inizio:</strong> ' . sanitize_output($startText) . '</li>';
+            if ($endText !== '') {
+                $content .= '<li><strong>Data fine:</strong> ' . sanitize_output($endText) . '</li>';
+            }
+            if ($data['luogo'] !== '') {
+                $content .= '<li><strong>Luogo:</strong> ' . sanitize_output($data['luogo']) . '</li>';
+            }
+            $content .= '</ul>';
+
+            if ($data['note'] !== '') {
+                $content .= '<p><strong>Note:</strong><br>' . nl2br(sanitize_output($data['note'])) . '</p>';
+            }
+
+            $content .= '<p>Per ulteriori informazioni puoi rispondere direttamente a questa email.</p>';
+
+            $mailSubject = 'Nuovo appuntamento: ' . $data['titolo'];
+            $mailBody = render_mail_template($mailSubject, $content);
+            $mailSent = send_system_mail($client['email'], $mailSubject, $mailBody);
+
+            if (!$mailSent) {
+                add_flash('warning', 'Appuntamento creato ma invio email al cliente non riuscito.');
+            }
+        } else {
+            add_flash('warning', 'Appuntamento creato ma il cliente non dispone di un indirizzo email valido.');
+        }
 
         header('Location: index.php?created=1');
         exit;
