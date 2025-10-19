@@ -11,14 +11,14 @@ $clients = $pdo->query('SELECT id, nome, cognome FROM clienti ORDER BY cognome, 
 $titleOptions = ['Apertura SPID', 'Registrazione PEC', 'Richiesta Firma Digitale/CNS'];
 $serviceTypes = ['Consulenza', 'Sopralluogo', 'Supporto tecnico', 'Rinnovo servizio'];
 $statuses = ['Programmato', 'In corso', 'Completato', 'Annullato'];
-$responsabili = $pdo->query("SELECT username FROM users WHERE ruolo IN ('Admin', 'Manager', 'Operatore') ORDER BY username")->fetchAll(PDO::FETCH_COLUMN);
+$responsabileOptions = ['Carmine', 'Valentina'];
 
 $data = [
     'cliente_id' => '',
     'titolo' => $titleOptions[0],
     'tipo_servizio' => $serviceTypes[0],
     'responsabile' => '',
-    'luogo' => '',
+    'luogo' => 'Via Plinio il Vecchio 72 Castellammare di Stabia',
     'data_inizio' => date('Y-m-d\TH:i'),
     'data_fine' => '',
     'stato' => $statuses[0],
@@ -32,7 +32,14 @@ $csrfToken = csrf_token();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_valid_csrf();
     foreach ($data as $field => $_) {
+        if ($field === 'luogo') {
+            continue;
+        }
         $data[$field] = trim($_POST[$field] ?? '');
+    }
+
+    if ($data['responsabile'] !== '' && !in_array($data['responsabile'], $responsabileOptions, true)) {
+        $data['responsabile'] = '';
     }
 
     $titleChoice = trim($_POST['title_choice'] ?? $titleOptions[0]);
@@ -199,18 +206,16 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         </div>
                         <div class="col-md-4">
                             <label class="form-label" for="responsabile">Responsabile</label>
-                            <input class="form-control" id="responsabile" name="responsabile" list="responsabileOptions" value="<?php echo sanitize_output($data['responsabile']); ?>">
-                            <?php if ($responsabili): ?>
-                                <datalist id="responsabileOptions">
-                                    <?php foreach ($responsabili as $responsabile): ?>
-                                        <option value="<?php echo sanitize_output($responsabile); ?>"></option>
-                                    <?php endforeach; ?>
-                                </datalist>
-                            <?php endif; ?>
+                            <select class="form-select" id="responsabile" name="responsabile">
+                                <option value="">Nessun responsabile</option>
+                                <?php foreach ($responsabileOptions as $option): ?>
+                                    <option value="<?php echo sanitize_output($option); ?>" <?php echo $data['responsabile'] === $option ? 'selected' : ''; ?>><?php echo sanitize_output($option); ?></option>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label" for="luogo">Luogo</label>
-                            <input class="form-control" id="luogo" name="luogo" value="<?php echo sanitize_output($data['luogo']); ?>" placeholder="Sede, indirizzo o meeting online">
+                            <input class="form-control" id="luogo" name="luogo" value="<?php echo sanitize_output($data['luogo']); ?>" readonly>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label" for="data_inizio">Inizio</label>
