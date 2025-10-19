@@ -249,8 +249,91 @@ body.login-body {
     justify-content: flex-end;
 }
 
-.topbar-actions .btn,
-.topbar-actions .dropdown-toggle {
+
+/* Pill buttons for the translucent topbar */
+.topbar-btn {
+    --bs-btn-padding-x: 1rem;
+    --bs-btn-padding-y: 0.55rem;
+    --bs-btn-font-size: 0.9rem;
+    --bs-btn-font-weight: 500;
+    --bs-btn-line-height: 1;
+    --bs-btn-border-radius: 0.85rem;
+    --bs-btn-border-width: 1px;
+    --bs-btn-color: var(--ag-accent);
+    --bs-btn-bg: rgba(11, 47, 107, 0.08);
+    --bs-btn-border-color: rgba(11, 47, 107, 0.16);
+    --bs-btn-hover-bg: rgba(11, 47, 107, 0.16);
+    --bs-btn-hover-border-color: rgba(11, 47, 107, 0.28);
+    --bs-btn-hover-color: var(--ag-accent-strong);
+    --bs-btn-active-bg: rgba(11, 47, 107, 0.2);
+    --bs-btn-active-border-color: rgba(11, 47, 107, 0.32);
+    --bs-btn-active-color: var(--ag-accent-strong);
+    --bs-btn-focus-shadow-rgb: 11, 47, 107;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: 1px solid var(--bs-btn-border-color);
+    border-radius: var(--bs-btn-border-radius);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 12px 28px rgba(8, 28, 60, 0.14);
+    text-decoration: none;
+    transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.topbar-btn:hover,
+.topbar-btn:focus {
+    transform: translateY(-1px);
+    box-shadow: 0 16px 36px rgba(8, 28, 60, 0.18);
+}
+
+.topbar-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 10px 20px rgba(8, 28, 60, 0.18);
+}
+
+.topbar-btn:focus-visible {
+    outline: 2px solid rgba(11, 47, 107, 0.35);
+    outline-offset: 2px;
+}
+
+.topbar-btn-icon {
+    --bs-btn-padding-x: 0.75rem;
+    --bs-btn-padding-y: 0.75rem;
+    width: 2.75rem;
+    height: 2.75rem;
+    justify-content: center;
+    border-radius: 999px;
+}
+
+.topbar-btn-icon i {
+    font-size: 1.05rem;
+}
+
+.topbar-btn-action {
+    --bs-btn-padding-x: 1.05rem;
+}
+
+.topbar-btn-user {
+    --bs-btn-padding-x: 1rem;
+}
+
+.topbar-btn.dropdown-toggle::after {
+    margin-left: 0.5rem;
+    border-top-color: currentColor;
+}
+
+.topbar-btn-icon-lead {
+    font-size: 1.05rem;
+}
+
+.topbar-btn-label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+}
+
+.topbar-actions .topbar-btn {
     white-space: nowrap;
 }
 
@@ -260,10 +343,8 @@ body.login-body {
     gap: 0.5rem;
 }
 
-.topbar-quick-actions .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
+.topbar-quick-actions .topbar-btn {
+    gap: 0.4rem;
 }
 
 main.content-wrapper {
