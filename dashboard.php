@@ -188,51 +188,46 @@ require_once __DIR__ . '/includes/sidebar.php';
                 <button class="btn btn-sm btn-outline-warning ms-auto" type="button" id="dashboardRetry" hidden>Riprova</button>
             </div>
 
-            <div class="row g-4 mb-4">
-                <div class="col-sm-6 col-xl-3">
-                    <div class="card ag-card metric-card h-100">
-                        <div class="card-body">
-                            <div class="metric-icon metric-icon-clients"><i class="fa-solid fa-users"></i></div>
-                            <div>
-                                <div class="metric-label">Clienti attivi</div>
-                                <div class="metric-value" data-dashboard-stat="totalClients" data-format="number"><?php echo number_format($stats['totalClients']); ?></div>
-                                <div class="metric-footnote">Anagrafica aggiornata</div>
+            <div class="card ag-card mb-4">
+                <div class="card-header bg-transparent border-0 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div>
+                        <h5 class="card-title mb-0">Indicatori principali</h5>
+                        <small class="text-muted">Visione rapida delle metriche chiave</small>
+                    </div>
+                    <span class="badge ag-badge text-uppercase">Agg. ogni 60s</span>
+                </div>
+                <div class="card-body">
+                    <div class="dashboard-summary-grid">
+                        <div class="summary-tile">
+                            <div class="summary-icon summary-icon-clients"><i class="fa-solid fa-users"></i></div>
+                            <div class="summary-content">
+                                <p class="summary-label mb-1">Clienti attivi</p>
+                                <div class="summary-value" data-dashboard-stat="totalClients" data-format="number"><?php echo number_format($stats['totalClients']); ?></div>
+                                <small class="text-muted">Anagrafica aggiornata</small>
                             </div>
                         </div>
-                    </div>
-                </div>
-                <div class="col-sm-6 col-xl-3">
-                    <div class="card ag-card metric-card h-100">
-                        <div class="card-body">
-                            <div class="metric-icon metric-icon-services"><i class="fa-solid fa-diagram-project"></i></div>
-                            <div>
-                                <div class="metric-label">Servizi in corso</div>
-                                <div class="metric-value" data-dashboard-stat="servicesInProgress" data-format="number"><?php echo number_format($stats['servicesInProgress']); ?></div>
-                                <div class="metric-footnote">Workflow attivi</div>
+                        <div class="summary-tile">
+                            <div class="summary-icon summary-icon-services"><i class="fa-solid fa-diagram-project"></i></div>
+                            <div class="summary-content">
+                                <p class="summary-label mb-1">Servizi in corso</p>
+                                <div class="summary-value" data-dashboard-stat="servicesInProgress" data-format="number"><?php echo number_format($stats['servicesInProgress']); ?></div>
+                                <small class="text-muted">Workflow attivi</small>
                             </div>
                         </div>
-                    </div>
-                </div>
-                <div class="col-sm-6 col-xl-3">
-                    <div class="card ag-card metric-card h-100">
-                        <div class="card-body">
-                            <div class="metric-icon metric-icon-revenue"><i class="fa-solid fa-euro-sign"></i></div>
-                            <div>
-                                <div class="metric-label">Saldo odierno</div>
-                                <div class="metric-value" data-dashboard-stat="dailyRevenue" data-format="currency"><?php echo sanitize_output(format_currency($stats['dailyRevenue'])); ?></div>
-                                <div class="metric-footnote">Entrate - Uscite del giorno</div>
+                        <div class="summary-tile">
+                            <div class="summary-icon summary-icon-revenue"><i class="fa-solid fa-euro-sign"></i></div>
+                            <div class="summary-content">
+                                <p class="summary-label mb-1">Saldo odierno</p>
+                                <div class="summary-value" data-dashboard-stat="dailyRevenue" data-format="currency"><?php echo sanitize_output(format_currency($stats['dailyRevenue'])); ?></div>
+                                <small class="text-muted">Entrate - Uscite del giorno</small>
                             </div>
                         </div>
-                    </div>
-                </div>
-                <div class="col-sm-6 col-xl-3">
-                    <div class="card ag-card metric-card h-100">
-                        <div class="card-body">
-                            <div class="metric-icon metric-icon-tickets"><i class="fa-solid fa-life-ring"></i></div>
-                            <div>
-                                <div class="metric-label">Ticket recenti</div>
-                                <div class="metric-value" data-dashboard-stat="openTickets" data-format="number"><?php echo count($stats['openTickets']); ?></div>
-                                <div class="metric-footnote">Ultimi 5 registrati</div>
+                        <div class="summary-tile">
+                            <div class="summary-icon summary-icon-tickets"><i class="fa-solid fa-life-ring"></i></div>
+                            <div class="summary-content">
+                                <p class="summary-label mb-1">Ticket recenti</p>
+                                <div class="summary-value" data-dashboard-stat="openTickets" data-format="number"><?php echo count($stats['openTickets']); ?></div>
+                                <small class="text-muted">Ultimi 5 registrati</small>
                             </div>
                         </div>
                     </div>
@@ -240,34 +235,35 @@ require_once __DIR__ . '/includes/sidebar.php';
             </div>
 
             <div class="row g-4 mb-4">
-                <div class="col-12 col-xl-7">
+                <div class="col-12 col-xxl-8">
                     <div class="card ag-card h-100">
                         <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
                             <h5 class="card-title mb-0">Trend Entrate/Uscite</h5>
                             <span class="text-muted small">Ultimi 6 mesi</span>
                         </div>
                         <div class="card-body">
-                            <canvas id="chartRevenue" height="220"></canvas>
+                            <canvas id="chartRevenue" height="240"></canvas>
                         </div>
                     </div>
                 </div>
-                <div class="col-12 col-xl-7">
+                <div class="col-12 col-xxl-4">
                     <div class="card ag-card h-100">
-                    </div>
-                            <h5 class="card-title mb-0">Volume Servizi</h5>
+                        <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">Ripartizione servizi</h5>
+                            <span class="text-muted small">Pratiche per tipologia</span>
                         </div>
                         <div class="card-body">
-                            <canvas id="chartServices" height="220"></canvas>
+                            <canvas id="chartServices" height="240"></canvas>
                         </div>
                     </div>
                 </div>
             </div>
 
             <div class="row g-4">
-                <div class="col-12 col-xl-7">
+                <div class="col-12 col-xxl-7">
                     <div class="card ag-card h-100">
-                    </div>
-                </div>
+                        <div class="card-header bg-transparent border-0 d-flex align-items-center justify-content-between">
+                            <h5 class="card-title mb-0">Ticket in evidenza</h5>
                             <a class="btn btn-sm btn-outline-warning" href="modules/ticket/index.php">Vedi tutti</a>
                         </div>
                         <div class="card-body p-0">
@@ -302,10 +298,13 @@ require_once __DIR__ . '/includes/sidebar.php';
                         </div>
                     </div>
                 </div>
-                <div class="col-12 col-xl-6">
+                <div class="col-12 col-xxl-5">
                     <div class="card ag-card h-100">
-                        <div class="card-header bg-transparent border-0">
-                            <h5 class="card-title mb-0">Promemoria</h5>
+                        <div class="card-header bg-transparent border-0 d-flex align-items-center justify-content-between">
+                            <h5 class="card-title mb-0">Promemoria rapidi</h5>
+                            <a class="btn btn-sm btn-link text-decoration-none" href="modules/servizi/entrate-uscite/index.php">
+                                <i class="fa-solid fa-list-check me-1"></i>Gestisci attività
+                            </a>
                         </div>
                         <div class="card-body">
                             <ul class="list-unstyled mb-0 reminder-list" id="dashboardReminders">
