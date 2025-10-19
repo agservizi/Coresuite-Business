@@ -1,0 +1,9 @@
+.env
+backups/
+assets/uploads/*
+!assets/uploads/.gitkeep
+vendor/
+node_modules/
+.idea/
+.vscode/
+.DS_Store

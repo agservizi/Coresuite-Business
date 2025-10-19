@@ -1,0 +1,148 @@
+<?php
+require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/db_connect.php';
+require_once __DIR__ . '/../includes/helpers.php';
+
+header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+
+$response = [
+    'stats' => [
+        'totalClients' => 0,
+        'servicesInProgress' => 0,
+        'dailyRevenue' => 0.0,
+        'openTickets' => 0,
+    ],
+    'charts' => [
+        'revenue' => [
+            'labels' => [],
+            'values' => [],
+        ],
+        'services' => [
+            'labels' => ['Pagamenti', 'Ricariche', 'Digitali', 'Telefonia', 'Logistici'],
+            'values' => [0, 0, 0, 0, 0],
+        ],
+    ],
+    'tickets' => [],
+    'reminders' => [],
+];
+
+try {
+    $response['stats']['totalClients'] = (int) $pdo->query('SELECT COUNT(*) FROM clienti')->fetchColumn();
+
+    $servicesInProgressStmt = $pdo->query("SELECT COUNT(*) FROM (
+        SELECT id FROM pagamenti WHERE stato IN ('In lavorazione', 'In attesa')
+        UNION ALL
+        SELECT id FROM servizi_ricariche WHERE stato IN ('In corso', 'Aperto')
+        UNION ALL
+        SELECT id FROM servizi_digitali WHERE stato IN ('In corso', 'Aperto')
+        UNION ALL
+        SELECT id FROM telefonia WHERE stato IN ('In corso', 'Aperto')
+        UNION ALL
+        SELECT id FROM spedizioni WHERE stato IN ('In corso', 'Aperto')
+    ) AS in_progress");
+    $response['stats']['servicesInProgress'] = (int) $servicesInProgressStmt->fetchColumn();
+
+    $dailyRevenueStmt = $pdo->prepare("SELECT COALESCE(SUM(importo), 0) FROM (
+        SELECT importo FROM pagamenti WHERE stato = 'Completato' AND DATE(COALESCE(data_pagamento, updated_at)) = CURRENT_DATE
+        UNION ALL
+        SELECT importo FROM servizi_ricariche WHERE DATE(data_operazione) = CURRENT_DATE
+    ) AS revenues");
+    $dailyRevenueStmt->execute();
+    $response['stats']['dailyRevenue'] = (float) $dailyRevenueStmt->fetchColumn();
+
+    $ticketStmt = $pdo->prepare('SELECT id, titolo, stato, created_at FROM ticket ORDER BY created_at DESC LIMIT 5');
+    $ticketStmt->execute();
+    $tickets = $ticketStmt->fetchAll();
+    $response['tickets'] = array_map(static function ($ticket) {
+        return [
+            'id' => (int) $ticket['id'],
+            'title' => $ticket['titolo'],
+            'status' => $ticket['stato'],
+            'createdAt' => $ticket['created_at'],
+        ];
+    }, $tickets);
+    $response['stats']['openTickets'] = count($tickets);
+
+    $revenueChartStmt = $pdo->prepare("SELECT DATE_FORMAT(data_operazione, '%b %Y') AS label, SUM(importo) AS totale
+        FROM (
+            SELECT COALESCE(data_pagamento, data_scadenza, created_at) AS data_operazione, importo FROM pagamenti WHERE stato = 'Completato'
+            UNION ALL
+            SELECT data_operazione, importo FROM servizi_ricariche
+        ) AS unified
+        WHERE data_operazione >= DATE_SUB(CURRENT_DATE, INTERVAL 5 MONTH)
+        GROUP BY DATE_FORMAT(data_operazione, '%Y-%m')
+        ORDER BY MIN(data_operazione)");
+    $revenueChartStmt->execute();
+
+    while ($row = $revenueChartStmt->fetch()) {
+        $response['charts']['revenue']['labels'][] = $row['label'];
+        $response['charts']['revenue']['values'][] = (float) $row['totale'];
+    }
+
+    $serviceTotals = [
+        'pagamenti' => 0,
+        'servizi_ricariche' => 0,
+        'servizi_digitali' => 0,
+        'telefonia' => 0,
+        'spedizioni' => 0,
+    ];
+
+    foreach ($serviceTotals as $table => &$value) {
+        $stmt = $pdo->query("SELECT COUNT(*) FROM {$table}");
+        $value = (int) $stmt->fetchColumn();
+    }
+    unset($value);
+    $response['charts']['services']['values'] = array_values($serviceTotals);
+
+    $reminders = [];
+
+    $pendingDocumentsStmt = $pdo->query("SELECT id, titolo, updated_at FROM documents WHERE stato <> 'Archiviato' ORDER BY updated_at ASC LIMIT 1");
+    if ($pendingDoc = $pendingDocumentsStmt->fetch()) {
+        $reminders[] = [
+            'icon' => 'fa-folder-open',
+            'title' => 'Documento da aggiornare',
+            'detail' => sprintf('Aggiorna %s: ultima revisione il %s.', $pendingDoc['titolo'], format_datetime($pendingDoc['updated_at'] ?? '')),
+            'url' => base_url('modules/documenti/view.php?id=' . $pendingDoc['id']),
+        ];
+    }
+
+    $oldestTicketStmt = $pdo->prepare("SELECT id, titolo, created_at FROM ticket WHERE stato IN ('Aperto', 'In corso') ORDER BY created_at ASC LIMIT 1");
+    $oldestTicketStmt->execute();
+    if ($oldestTicket = $oldestTicketStmt->fetch()) {
+        $reminders[] = [
+            'icon' => 'fa-life-ring',
+            'title' => 'Ticket da prendere in carico',
+            'detail' => sprintf('Ticket #%d aperto il %s.', $oldestTicket['id'], format_datetime($oldestTicket['created_at'] ?? '')),
+            'url' => base_url('modules/ticket/view.php?id=' . $oldestTicket['id']),
+        ];
+    }
+
+    $pendingPagamentiStmt = $pdo->prepare("SELECT id, descrizione, stato, data_scadenza, updated_at FROM pagamenti WHERE stato IN ('In lavorazione', 'In attesa') ORDER BY COALESCE(data_scadenza, updated_at) ASC LIMIT 1");
+    $pendingPagamentiStmt->execute();
+    if ($pendingPagamento = $pendingPagamentiStmt->fetch()) {
+        $reminders[] = [
+            'icon' => 'fa-credit-card',
+            'title' => 'Pagamento da completare',
+            'detail' => sprintf('%s in stato %s. Scadenza %s.',
+                $pendingPagamento['descrizione'] ?: ('Pagamento #' . $pendingPagamento['id']),
+                strtoupper($pendingPagamento['stato'] ?? ''),
+                $pendingPagamento['data_scadenza'] ? format_datetime($pendingPagamento['data_scadenza'], 'd/m/Y') : 'N/D'
+            ),
+            'url' => base_url('modules/servizi/pagamenti/view.php?id=' . $pendingPagamento['id']),
+        ];
+    }
+
+    $response['reminders'] = $reminders;
+
+    echo json_encode($response, JSON_THROW_ON_ERROR);
+} catch (Throwable $e) {
+    error_log('Dashboard API failed: ' . $e->getMessage());
+    http_response_code(500);
+    try {
+        echo json_encode(['error' => 'Impossibile aggiornare la dashboard in questo momento.'], JSON_THROW_ON_ERROR);
+    } catch (JsonException $jsonException) {
+        echo '{"error":"Dashboard offline"}';
+    }
+}
