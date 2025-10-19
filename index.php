@@ -78,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$errors) {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Coresuite Business - Login</title>
     <link href="<?php echo asset('assets/vendor/bootstrap/css/bootstrap.min.css'); ?>" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" integrity="sha512-yddCLT9gs7nE466+vWXTjhBMWrMUR3pvN8MPv+2MvmXrKE+g6u40qCMgfHdCqkfNNpJBWlAbIYW/W4v6dngc8g==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" referrerpolicy="no-referrer" />
     <link href="<?php echo asset('assets/css/custom.css'); ?>" rel="stylesheet">
 </head>
 <body class="login-body" data-bs-theme="light">
