@@ -3,7 +3,7 @@ require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/db_connect.php';
 require_once __DIR__ . '/../../includes/helpers.php';
 
-require_role('Admin', 'Operatore');
+require_role('Admin', 'Operatore', 'Manager');
 $pageTitle = 'Ticket di assistenza';
 
 $sql = "SELECT t.id, t.titolo, t.stato, t.created_at, c.nome, c.cognome

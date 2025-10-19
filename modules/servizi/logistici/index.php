@@ -3,7 +3,7 @@ require_once __DIR__ . '/../../../includes/auth.php';
 require_once __DIR__ . '/../../../includes/db_connect.php';
 require_once __DIR__ . '/../../../includes/helpers.php';
 
-require_role('Admin', 'Operatore');
+require_role('Admin', 'Operatore', 'Manager');
 $pageTitle = 'Servizi Logistici';
 
 $sql = "SELECT s.id, s.tipo_spedizione, s.mittente, s.destinatario, s.tracking_number, s.stato, s.created_at, c.nome, c.cognome

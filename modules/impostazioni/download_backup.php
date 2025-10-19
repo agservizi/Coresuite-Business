@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/../../includes/auth.php';
-require_role('Admin');
+require_role('Admin', 'Manager');
 
 $filename = $_GET['file'] ?? '';
 if ($filename === '' || basename($filename) !== $filename) {

@@ -3,7 +3,7 @@ require_once __DIR__ . '/../../../includes/auth.php';
 require_once __DIR__ . '/../../../includes/db_connect.php';
 require_once __DIR__ . '/../../../includes/helpers.php';
 
-require_role('Admin', 'Operatore', 'Viewer');
+require_role('Admin', 'Operatore', 'Manager', 'Viewer');
 $pageTitle = 'Entrate/Uscite';
 
 $stati = ['In lavorazione', 'In attesa', 'Completato', 'Annullato'];
