@@ -35,10 +35,10 @@ $serviziItems = [
         'href' => base_url('modules/servizi/ricariche/index.php'),
     ],
     [
-        'needle' => 'modules/servizi/digitali',
-        'label' => 'Servizi Digitali',
-        'icon' => 'fa-solid fa-globe',
-        'href' => base_url('modules/servizi/digitali/index.php'),
+        'needle' => 'modules/servizi/fedelta',
+        'label' => 'Programma Fedeltà',
+        'icon' => 'fa-solid fa-gift',
+        'href' => base_url('modules/servizi/fedelta/index.php'),
     ],
     [
         'needle' => 'modules/servizi/telefonia',
