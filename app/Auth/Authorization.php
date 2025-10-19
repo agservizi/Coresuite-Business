@@ -7,9 +7,18 @@ final class Authorization
 {
     private const ROLE_CAPABILITIES = [
         'Admin' => [
+            'settings.view',
             'settings.manage',
             'users.manage',
             'backup.create',
+            'clients.manage',
+            'documents.manage',
+            'services.manage',
+            'tickets.manage',
+            'reports.view',
+        ],
+        'Manager' => [
+            'settings.view',
             'clients.manage',
             'documents.manage',
             'services.manage',
