@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../../includes/auth.php';
 require_once __DIR__ . '/../../../includes/db_connect.php';
+require_once __DIR__ . '/../../../includes/helpers.php';
 
 require_role('Admin');
 
@@ -9,6 +10,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+require_valid_csrf();
+
 $id = (int) ($_POST['id'] ?? 0);
 if ($id <= 0) {
     header('Location: index.php?error=1');
@@ -16,11 +19,11 @@ if ($id <= 0) {
 }
 
 try {
-    $stmt = $pdo->prepare('DELETE FROM servizi_ricariche WHERE id = :id');
+    $stmt = $pdo->prepare('DELETE FROM servizi_appuntamenti WHERE id = :id');
     $stmt->execute([':id' => $id]);
     header('Location: index.php?deleted=1');
 } catch (PDOException $e) {
-    error_log('Delete top-up failed: ' . $e->getMessage());
+    error_log('Delete appointment failed: ' . $e->getMessage());
     header('Location: index.php?error=1');
 }
 exit;

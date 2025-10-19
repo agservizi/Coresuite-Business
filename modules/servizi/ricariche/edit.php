@@ -4,7 +4,7 @@ require_once __DIR__ . '/../../../includes/db_connect.php';
 require_once __DIR__ . '/../../../includes/helpers.php';
 
 require_role('Admin', 'Operatore');
-$pageTitle = 'Modifica ricarica';
+$pageTitle = 'Modifica appuntamento';
 
 $id = (int) ($_GET['id'] ?? 0);
 if ($id <= 0) {
@@ -12,7 +12,7 @@ if ($id <= 0) {
     exit;
 }
 
-$stmt = $pdo->prepare('SELECT * FROM servizi_ricariche WHERE id = :id');
+$stmt = $pdo->prepare('SELECT * FROM servizi_appuntamenti WHERE id = :id');
 $stmt->execute([':id' => $id]);
 $record = $stmt->fetch();
 if (!$record) {
@@ -21,45 +21,82 @@ if (!$record) {
 }
 
 $clients = $pdo->query('SELECT id, nome, cognome FROM clienti ORDER BY cognome, nome')->fetchAll();
-$types = ['Telefonica', 'Tecnologica'];
-$operators = ['WindTre', 'Fastweb', 'Iliad', 'Vodafone', 'TIM', 'PosteMobile'];
-$statuses = ['Aperto', 'In corso', 'Completato', 'Errore'];
+$serviceTypes = ['Consulenza', 'Sopralluogo', 'Supporto tecnico', 'Rinnovo servizio'];
+$statuses = ['Programmato', 'In corso', 'Completato', 'Annullato'];
+$responsabili = $pdo->query("SELECT username FROM users WHERE ruolo IN ('Admin', 'Manager', 'Operatore') ORDER BY username")->fetchAll(PDO::FETCH_COLUMN);
 
-$data = $record;
+$toDateTimeLocal = static function (?string $value): string {
+    if ($value === null || $value === '') {
+        return '';
+    }
+    try {
+        $date = new DateTimeImmutable($value);
+    } catch (Exception $e) {
+        return '';
+    }
+    return $date->format('Y-m-d\TH:i');
+};
+
+$data = [
+    'cliente_id' => (string) ($record['cliente_id'] ?? ''),
+    'titolo' => (string) ($record['titolo'] ?? ''),
+    'tipo_servizio' => (string) ($record['tipo_servizio'] ?? ($serviceTypes[0] ?? '')),
+    'responsabile' => (string) ($record['responsabile'] ?? ''),
+    'luogo' => (string) ($record['luogo'] ?? ''),
+    'data_inizio' => $toDateTimeLocal($record['data_inizio'] ?? null),
+    'data_fine' => $toDateTimeLocal($record['data_fine'] ?? null),
+    'stato' => (string) ($record['stato'] ?? ($statuses[0] ?? '')),
+    'note' => (string) ($record['note'] ?? ''),
+];
 $errors = [];
+$csrfToken = csrf_token();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $fields = ['cliente_id', 'tipo', 'operatore', 'numero_riferimento', 'importo', 'stato', 'data_operazione'];
-    foreach ($fields as $field) {
+    require_valid_csrf();
+    foreach ($data as $field => $_) {
         $data[$field] = trim($_POST[$field] ?? '');
     }
 
     if ((int) $data['cliente_id'] <= 0) {
         $errors[] = 'Seleziona un cliente valido.';
     }
-    if (!in_array($data['tipo'], $types, true)) {
-        $errors[] = 'Tipo non valido.';
+    if ($data['titolo'] === '') {
+        $errors[] = 'Inserisci un titolo per l\'appuntamento.';
     }
-    if ($data['operatore'] === '') {
-        $errors[] = 'Seleziona un operatore.';
+    if (!in_array($data['tipo_servizio'], $serviceTypes, true)) {
+        $errors[] = 'Tipologia selezionata non valida.';
     }
-    if ($data['numero_riferimento'] === '') {
-        $errors[] = 'Inserisci numero o codice da ricaricare.';
+    if (!in_array($data['stato'], $statuses, true)) {
+        $errors[] = 'Stato selezionato non valido.';
     }
-    if (!is_numeric($data['importo'])) {
-        $errors[] = 'Importo non valido.';
+
+    $start = DateTimeImmutable::createFromFormat('Y-m-d\TH:i', $data['data_inizio']) ?: DateTimeImmutable::createFromFormat('Y-m-d\TH:i:s', $data['data_inizio']);
+    if (!$start) {
+        $errors[] = 'Data e ora di inizio non valide.';
+    }
+
+    $end = null;
+    if ($data['data_fine'] !== '') {
+        $end = DateTimeImmutable::createFromFormat('Y-m-d\TH:i', $data['data_fine']) ?: DateTimeImmutable::createFromFormat('Y-m-d\TH:i:s', $data['data_fine']);
+        if (!$end) {
+            $errors[] = 'Data e ora di fine non valide.';
+        } elseif ($start && $end < $start) {
+            $errors[] = 'La data di fine non può precedere l\'inizio.';
+        }
     }
 
     if (!$errors) {
-        $update = $pdo->prepare('UPDATE servizi_ricariche SET cliente_id = :cliente_id, tipo = :tipo, operatore = :operatore, numero_riferimento = :numero_riferimento, importo = :importo, stato = :stato, data_operazione = :data_operazione WHERE id = :id');
+        $update = $pdo->prepare('UPDATE servizi_appuntamenti SET cliente_id = :cliente_id, titolo = :titolo, tipo_servizio = :tipo_servizio, responsabile = :responsabile, luogo = :luogo, data_inizio = :data_inizio, data_fine = :data_fine, stato = :stato, note = :note WHERE id = :id');
         $update->execute([
             ':cliente_id' => (int) $data['cliente_id'],
-            ':tipo' => $data['tipo'],
-            ':operatore' => $data['operatore'],
-            ':numero_riferimento' => $data['numero_riferimento'],
-            ':importo' => (float) $data['importo'],
+            ':titolo' => $data['titolo'],
+            ':tipo_servizio' => $data['tipo_servizio'],
+            ':responsabile' => $data['responsabile'] !== '' ? $data['responsabile'] : null,
+            ':luogo' => $data['luogo'] !== '' ? $data['luogo'] : null,
+            ':data_inizio' => $start->format('Y-m-d H:i:s'),
+            ':data_fine' => $end ? $end->format('Y-m-d H:i:s') : null,
             ':stato' => $data['stato'],
-            ':data_operazione' => $data['data_operazione'],
+            ':note' => $data['note'] !== '' ? $data['note'] : null,
             ':id' => $id,
         ]);
         header('Location: view.php?id=' . $id . '&updated=1');
@@ -74,17 +111,18 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
     <?php require_once __DIR__ . '/../../../includes/topbar.php'; ?>
     <main class="content-wrapper">
         <div class="mb-4">
-            <a class="btn btn-outline-warning" href="view.php?id=<?php echo $id; ?>"><i class="fa-solid fa-arrow-left"></i> Dettaglio ricarica</a>
+            <a class="btn btn-outline-warning" href="view.php?id=<?php echo $id; ?>"><i class="fa-solid fa-arrow-left"></i> Dettaglio appuntamento</a>
         </div>
         <div class="card ag-card">
             <div class="card-header bg-transparent border-0">
-                <h1 class="h4 mb-0">Modifica ricarica</h1>
+                <h1 class="h4 mb-0">Modifica appuntamento</h1>
             </div>
             <div class="card-body">
                 <?php if ($errors): ?>
                     <div class="alert alert-warning"><?php echo implode('<br>', array_map('sanitize_output', $errors)); ?></div>
                 <?php endif; ?>
                 <form method="post" novalidate>
+                    <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
                     <div class="row g-4">
                         <div class="col-md-6">
                             <label class="form-label" for="cliente_id">Cliente</label>
@@ -96,44 +134,52 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label" for="tipo">Tipo</label>
-                            <select class="form-select" id="tipo" name="tipo">
-                                <?php foreach ($types as $type): ?>
-                                    <option value="<?php echo $type; ?>" <?php echo $data['tipo'] === $type ? 'selected' : ''; ?>><?php echo $type; ?></option>
-                                <?php endforeach; ?>
-                            </select>
+                        <div class="col-md-6">
+                            <label class="form-label" for="titolo">Titolo</label>
+                            <input class="form-control" id="titolo" name="titolo" value="<?php echo sanitize_output($data['titolo']); ?>" required>
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label" for="operatore">Operatore</label>
-                            <select class="form-select" id="operatore" name="operatore">
-                                <?php foreach ($operators as $operator): ?>
-                                    <option value="<?php echo $operator; ?>" <?php echo $data['operatore'] === $operator ? 'selected' : ''; ?>><?php echo $operator; ?></option>
+                        <div class="col-md-4">
+                            <label class="form-label" for="tipo_servizio">Tipologia</label>
+                            <select class="form-select" id="tipo_servizio" name="tipo_servizio">
+                                <?php foreach ($serviceTypes as $type): ?>
+                                    <option value="<?php echo sanitize_output($type); ?>" <?php echo $data['tipo_servizio'] === $type ? 'selected' : ''; ?>><?php echo sanitize_output($type); ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label" for="numero_riferimento">Numero / Codice</label>
-                            <input class="form-control" id="numero_riferimento" name="numero_riferimento" value="<?php echo sanitize_output($data['numero_riferimento']); ?>">
+                            <label class="form-label" for="responsabile">Responsabile</label>
+                            <input class="form-control" id="responsabile" name="responsabile" list="responsabileOptions" value="<?php echo sanitize_output($data['responsabile']); ?>">
+                            <?php if ($responsabili): ?>
+                                <datalist id="responsabileOptions">
+                                    <?php foreach ($responsabili as $responsabile): ?>
+                                        <option value="<?php echo sanitize_output($responsabile); ?>"></option>
+                                    <?php endforeach; ?>
+                                </datalist>
+                            <?php endif; ?>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label" for="importo">Importo</label>
-                            <div class="input-group">
-                                <span class="input-group-text">€</span>
-                                <input class="form-control" id="importo" name="importo" type="number" step="0.01" value="<?php echo sanitize_output($data['importo']); ?>">
-                            </div>
+                            <label class="form-label" for="luogo">Luogo</label>
+                            <input class="form-control" id="luogo" name="luogo" value="<?php echo sanitize_output($data['luogo']); ?>">
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label" for="data_operazione">Data</label>
-                            <input class="form-control" id="data_operazione" type="date" name="data_operazione" value="<?php echo sanitize_output(date('Y-m-d', strtotime($data['data_operazione']))); ?>">
+                            <label class="form-label" for="data_inizio">Inizio</label>
+                            <input class="form-control" id="data_inizio" type="datetime-local" name="data_inizio" value="<?php echo sanitize_output($data['data_inizio']); ?>" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="data_fine">Fine</label>
+                            <input class="form-control" id="data_fine" type="datetime-local" name="data_fine" value="<?php echo sanitize_output($data['data_fine']); ?>">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label" for="stato">Stato</label>
                             <select class="form-select" id="stato" name="stato">
                                 <?php foreach ($statuses as $status): ?>
-                                    <option value="<?php echo $status; ?>" <?php echo $data['stato'] === $status ? 'selected' : ''; ?>><?php echo $status; ?></option>
+                                    <option value="<?php echo sanitize_output($status); ?>" <?php echo $data['stato'] === $status ? 'selected' : ''; ?>><?php echo sanitize_output($status); ?></option>
                                 <?php endforeach; ?>
                             </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="note">Note interne</label>
+                            <textarea class="form-control" id="note" name="note" rows="4"><?php echo sanitize_output($data['note']); ?></textarea>
                         </div>
                     </div>
                     <div class="d-flex justify-content-end gap-2 mt-4">

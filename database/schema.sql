@@ -87,18 +87,23 @@ CREATE TABLE IF NOT EXISTS entrate_uscite (
     FOREIGN KEY (cliente_id) REFERENCES clienti(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS servizi_ricariche (
+CREATE TABLE IF NOT EXISTS servizi_appuntamenti (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     cliente_id INT UNSIGNED NOT NULL,
-    tipo VARCHAR(40) NOT NULL,
-    operatore VARCHAR(60) NOT NULL,
-    numero_riferimento VARCHAR(80) NOT NULL,
-    importo DECIMAL(10,2) NOT NULL DEFAULT 0,
-    stato VARCHAR(40) NOT NULL,
-    data_operazione DATE NOT NULL,
+    titolo VARCHAR(160) NOT NULL,
+    tipo_servizio VARCHAR(80) NOT NULL,
+    responsabile VARCHAR(120) NULL,
+    luogo VARCHAR(160) NULL,
+    stato VARCHAR(40) NOT NULL DEFAULT 'Programmato',
+    data_inizio DATETIME NOT NULL,
+    data_fine DATETIME NULL,
+    note TEXT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_ricariche_cliente (cliente_id),
+    INDEX idx_appuntamenti_cliente (cliente_id),
+    INDEX idx_appuntamenti_stato (stato),
+    INDEX idx_appuntamenti_responsabile (responsabile),
+    INDEX idx_appuntamenti_inizio (data_inizio),
     FOREIGN KEY (cliente_id) REFERENCES clienti(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

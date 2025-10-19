@@ -19,7 +19,7 @@ $charts = [
         'values' => [],
     ],
     'services' => [
-        'labels' => ['Entrate/Uscite', 'Ricariche', 'Digitali', 'Telefonia', 'Logistici'],
+        'labels' => ['Entrate/Uscite', 'Appuntamenti', 'Digitali', 'Telefonia', 'Logistici'],
         'values' => [0, 0, 0, 0, 0],
     ],
 ];
@@ -33,7 +33,7 @@ try {
     $servicesInProgressStmt = $pdo->query("SELECT COUNT(*) FROM (
         SELECT id FROM entrate_uscite WHERE stato IN ('In lavorazione', 'In attesa')
         UNION ALL
-        SELECT id FROM servizi_ricariche WHERE stato IN ('In corso', 'Aperto')
+    SELECT id FROM servizi_appuntamenti WHERE stato IN ('Programmato', 'In corso')
         UNION ALL
         SELECT id FROM servizi_digitali WHERE stato IN ('In corso', 'Aperto')
         UNION ALL
@@ -47,8 +47,6 @@ try {
         SELECT CASE WHEN tipo_movimento = 'Entrata' THEN importo ELSE -importo END AS importo
         FROM entrate_uscite
         WHERE stato = 'Completato' AND DATE(COALESCE(data_pagamento, updated_at)) = CURRENT_DATE
-        UNION ALL
-        SELECT importo FROM servizi_ricariche WHERE DATE(data_operazione) = CURRENT_DATE
     ) AS revenues");
     $dailyRevenueStmt->execute();
     $stats['dailyRevenue'] = (float) $dailyRevenueStmt->fetchColumn();
@@ -62,8 +60,6 @@ try {
          SELECT COALESCE(data_pagamento, data_scadenza, created_at) AS data_operazione,
              CASE WHEN tipo_movimento = 'Entrata' THEN importo ELSE -importo END AS importo
          FROM entrate_uscite WHERE stato = 'Completato'
-            UNION ALL
-            SELECT data_operazione, importo FROM servizi_ricariche
         ) AS unified
         WHERE data_operazione >= DATE_SUB(CURRENT_DATE, INTERVAL 5 MONTH)
         GROUP BY DATE_FORMAT(data_operazione, '%Y-%m')
@@ -77,7 +73,7 @@ try {
 
     $serviceTotals = [
         'entrate_uscite' => 0,
-        'servizi_ricariche' => 0,
+        'servizi_appuntamenti' => 0,
         'servizi_digitali' => 0,
         'telefonia' => 0,
         'spedizioni' => 0,

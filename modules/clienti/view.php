@@ -26,7 +26,7 @@ $serviceSummaryQuery = "SELECT 'Entrate' AS tipo, COUNT(*) AS totale, COALESCE(S
     UNION ALL
     SELECT 'Uscite', COUNT(*), COALESCE(SUM(importo * -1), 0) FROM entrate_uscite WHERE cliente_id = ? AND tipo_movimento = 'Uscita'
     UNION ALL
-    SELECT 'Ricariche', COUNT(*), COALESCE(SUM(importo), 0) FROM servizi_ricariche WHERE cliente_id = ?
+    SELECT 'Appuntamenti', COUNT(*), 0 FROM servizi_appuntamenti WHERE cliente_id = ?
     UNION ALL
     SELECT 'Digitali', COUNT(*), 0 FROM servizi_digitali WHERE cliente_id = ?
     UNION ALL
@@ -43,8 +43,8 @@ $latestPracticesStmt = $pdo->prepare("(
         descrizione AS riferimento, stato, COALESCE(data_pagamento, data_scadenza, updated_at) AS data
     FROM entrate_uscite WHERE cliente_id = ?
     ) UNION ALL (
-        SELECT 'Ricarica' AS categoria, operatore AS riferimento, stato, data_operazione AS data
-        FROM servizi_ricariche WHERE cliente_id = ?
+    SELECT 'Appuntamento' AS categoria, titolo AS riferimento, stato, data_inizio AS data
+    FROM servizi_appuntamenti WHERE cliente_id = ?
     ) UNION ALL (
         SELECT 'Digitale' AS categoria, tipo AS riferimento, stato, created_at AS data
         FROM servizi_digitali WHERE cliente_id = ?

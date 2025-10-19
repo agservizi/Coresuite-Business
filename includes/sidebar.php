@@ -30,8 +30,8 @@ $serviziItems = [
     ],
     [
         'needle' => 'modules/servizi/ricariche',
-        'label' => 'Ricariche',
-        'icon' => 'fa-solid fa-bolt-lightning',
+        'label' => 'Appuntamenti',
+        'icon' => 'fa-solid fa-calendar-check',
         'href' => base_url('modules/servizi/ricariche/index.php'),
     ],
     [

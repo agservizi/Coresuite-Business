@@ -42,7 +42,7 @@ if (!function_exists('db_column_exists')) {
     }
 }
 
-$moduleOptions = ['Entrate/Uscite', 'Ricariche', 'Servizi Digitali', 'Telefonia', 'Logistici', 'Ticket', 'Altro'];
+$moduleOptions = ['Entrate/Uscite', 'Appuntamenti', 'Servizi Digitali', 'Telefonia', 'Logistici', 'Ticket', 'Altro'];
 $statuses = ['Bozza', 'Pubblicato', 'Archiviato'];
 
 $hasClientCompanyName = db_column_exists($pdo, 'clienti', 'ragione_sociale');

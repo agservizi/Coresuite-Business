@@ -12,7 +12,7 @@ $service = $_GET['service'] ?? 'all';
 if ($service === 'pagamenti') {
     $service = 'entrate-uscite';
 }
-$operator = $_GET['operator'] ?? '';
+$owner = trim($_GET['responsabile'] ?? ($_GET['operator'] ?? ''));
 $format = $_GET['export'] ?? '';
 
 $filters = [':from' => $from, ':to' => $to];
@@ -23,11 +23,11 @@ $serviceMap = [
         'date_column' => 'created_at',
         'label' => 'Entrate/Uscite',
     ],
-    'ricariche' => [
-        'table' => 'servizi_ricariche',
-        'columns' => ['tipo', 'operatore', 'importo', 'stato', 'data_operazione'],
-        'date_column' => 'data_operazione',
-        'label' => 'Ricariche',
+    'appuntamenti' => [
+        'table' => 'servizi_appuntamenti',
+        'columns' => ['titolo', 'tipo_servizio', 'responsabile', 'stato', 'data_inizio', 'data_fine', 'luogo'],
+        'date_column' => 'data_inizio',
+        'label' => 'Appuntamenti',
     ],
     'digitali' => [
         'table' => 'servizi_digitali',
@@ -54,9 +54,9 @@ $current = $serviceMap[$service] ?? null;
 $dataset = [];
 if ($current) {
     $query = "SELECT * FROM {$current['table']} WHERE {$current['date_column']} BETWEEN :from AND :to";
-    if ($service === 'ricariche' && $operator !== '') {
-        $query .= ' AND operatore = :operator';
-        $filters[':operator'] = $operator;
+    if ($service === 'appuntamenti' && $owner !== '') {
+        $query .= ' AND responsabile = :responsabile';
+        $filters[':responsabile'] = $owner;
     }
     $query .= ' ORDER BY ' . $current['date_column'] . ' DESC';
     $stmt = $pdo->prepare($query);
@@ -74,8 +74,6 @@ $revenueStmt = $pdo->prepare("SELECT COALESCE(SUM(importo),0) FROM (
     SELECT CASE WHEN tipo_movimento = 'Entrata' THEN importo ELSE -importo END AS importo,
            COALESCE(data_pagamento, data_scadenza, created_at) AS data_riferimento
     FROM entrate_uscite WHERE stato = 'Completato'
-    UNION ALL
-    SELECT importo, data_operazione AS data_riferimento FROM servizi_ricariche
 ) AS revenues WHERE data_riferimento BETWEEN :from AND :to");
 $revenueStmt->execute([':from' => $from, ':to' => $to]);
 $summary['revenue'] = (float) $revenueStmt->fetchColumn();
@@ -102,7 +100,7 @@ if ($format === 'csv' && $current) {
     exit;
 }
 
-$operators = $pdo->query('SELECT DISTINCT operatore FROM servizi_ricariche ORDER BY operatore')->fetchAll(PDO::FETCH_COLUMN);
+$owners = $pdo->query("SELECT DISTINCT responsabile FROM servizi_appuntamenti WHERE responsabile IS NOT NULL AND responsabile <> '' ORDER BY responsabile")->fetchAll(PDO::FETCH_COLUMN);
 
 require_once __DIR__ . '/../../includes/header.php';
 require_once __DIR__ . '/../../includes/sidebar.php';
@@ -160,13 +158,13 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <?php if ($service === 'ricariche'): ?>
+                    <?php if ($service === 'appuntamenti'): ?>
                         <div class="col-md-3">
-                            <label class="form-label" for="operator">Operatore</label>
-                            <select class="form-select" id="operator" name="operator">
+                            <label class="form-label" for="responsabile">Responsabile</label>
+                            <select class="form-select" id="responsabile" name="responsabile">
                                 <option value="">Tutti</option>
-                                <?php foreach ($operators as $op): ?>
-                                    <option value="<?php echo sanitize_output($op); ?>" <?php echo $operator === $op ? 'selected' : ''; ?>><?php echo sanitize_output($op); ?></option>
+                                <?php foreach ($owners as $responsabile): ?>
+                                    <option value="<?php echo sanitize_output($responsabile); ?>" <?php echo $owner === $responsabile ? 'selected' : ''; ?>><?php echo sanitize_output($responsabile); ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -214,8 +212,12 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                                         $factor = (($row['tipo_movimento'] ?? 'Entrata') === 'Uscita') ? -1 : 1;
                                                     }
                                                     $displayValue = format_currency(((float) $rawValue) * $factor);
-                                                } elseif ($col === 'data_scadenza' || $col === 'data_pagamento' || $col === 'data_operazione' || $col === 'created_at') {
-                                                    $displayValue = $rawValue ? date('d/m/Y', strtotime((string) $rawValue)) : '—';
+                                                } elseif (in_array($col, ['data_scadenza', 'data_pagamento'], true)) {
+                                                    $displayValue = $rawValue ? format_date_locale((string) $rawValue) : '—';
+                                                } elseif (in_array($col, ['data_operazione', 'created_at'], true)) {
+                                                    $displayValue = $rawValue ? format_date_locale((string) $rawValue) : '—';
+                                                } elseif (in_array($col, ['data_inizio', 'data_fine'], true)) {
+                                                    $displayValue = $rawValue ? format_datetime_locale((string) $rawValue) : '—';
                                                 } else {
                                                     $displayValue = (string) ($rawValue ?? '');
                                                     if ($displayValue === '') {
@@ -225,7 +227,19 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                             ?>
                                             <td><?php echo sanitize_output($displayValue); ?></td>
                                         <?php endforeach; ?>
-                                        <td><?php echo sanitize_output(date('d/m/Y', strtotime($row[$current['date_column']] ?? 'now'))); ?></td>
+                                        <?php
+                                            $dateValue = $row[$current['date_column']] ?? null;
+                                            if ($dateValue) {
+                                                if (in_array($current['date_column'], ['data_inizio', 'data_fine'], true)) {
+                                                    $formattedDate = format_datetime_locale((string) $dateValue);
+                                                } else {
+                                                    $formattedDate = format_date_locale((string) $dateValue);
+                                                }
+                                            } else {
+                                                $formattedDate = '—';
+                                            }
+                                        ?>
+                                        <td><?php echo sanitize_output($formattedDate); ?></td>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>
