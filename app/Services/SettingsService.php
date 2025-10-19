@@ -10,6 +10,7 @@ use Throwable;
 
 class SettingsService
 {
+    private const MOVEMENT_DESCRIPTIONS_KEY = 'entrate_uscite_descrizioni';
     private PDO $pdo;
     private string $rootPath;
     private string $backupPath;
@@ -70,6 +71,76 @@ class SettingsService
         }
 
         return $recent;
+    }
+
+    public function getMovementDescriptions(): array
+    {
+        $defaults = [
+            'entrate' => [],
+            'uscite' => [],
+        ];
+
+        try {
+            $stmt = $this->pdo->prepare('SELECT valore FROM configurazioni WHERE chiave = :chiave LIMIT 1');
+            $stmt->execute([':chiave' => self::MOVEMENT_DESCRIPTIONS_KEY]);
+            $value = $stmt->fetchColumn();
+            if ($value) {
+                $decoded = json_decode((string) $value, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                    $defaults['entrate'] = $this->sanitizeDescriptions($decoded['entrate'] ?? []);
+                    $defaults['uscite'] = $this->sanitizeDescriptions($decoded['uscite'] ?? []);
+                }
+            }
+        } catch (Throwable $e) {
+            error_log('Movement descriptions fetch failed: ' . $e->getMessage());
+        }
+
+        return $defaults;
+    }
+
+    public function saveMovementDescriptions(array $entrate, array $uscite, int $userId): array
+    {
+        $entrate = $this->sanitizeDescriptions($entrate);
+        $uscite = $this->sanitizeDescriptions($uscite);
+
+        $invalid = array_merge(
+            $this->validateDescriptions($entrate),
+            $this->validateDescriptions($uscite)
+        );
+        $invalid = array_values(array_filter($invalid));
+
+        if ($invalid) {
+            return ['success' => false, 'errors' => $invalid];
+        }
+
+        $payload = json_encode([
+            'entrate' => array_values($entrate),
+            'uscite' => array_values($uscite),
+        ], JSON_UNESCAPED_UNICODE);
+        if ($payload === false) {
+            return ['success' => false, 'errors' => ['Impossibile serializzare le descrizioni dei movimenti.']];
+        }
+
+        try {
+            $stmt = $this->pdo->prepare(
+                'INSERT INTO configurazioni (chiave, valore) VALUES (:chiave, :valore)
+                 ON DUPLICATE KEY UPDATE valore = VALUES(valore)'
+            );
+            $stmt->execute([
+                ':chiave' => self::MOVEMENT_DESCRIPTIONS_KEY,
+                ':valore' => $payload,
+            ]);
+
+            $this->logActivity($userId, 'Aggiornamento descrizioni movimenti', [
+                'entrate' => $entrate,
+                'uscite' => $uscite,
+            ]);
+
+            return ['success' => true, 'errors' => []];
+        } catch (Throwable $e) {
+            error_log('Movement descriptions save failed: ' . $e->getMessage());
+            return ['success' => false, 'errors' => ['Impossibile salvare le descrizioni dei movimenti.']];
+        }
     }
 
     public function updateCompanySettings(
@@ -376,6 +447,36 @@ class SettingsService
         if (strpos($candidate, $absoluteRoot) === 0 && is_file($candidate)) {
             @unlink($candidate);
         }
+    }
+
+    private function sanitizeDescriptions(array $values): array
+    {
+        $clean = [];
+        foreach ($values as $value) {
+            if (!is_string($value)) {
+                continue;
+            }
+            $trimmed = trim($value);
+            if ($trimmed === '') {
+                continue;
+            }
+            $clean[$trimmed] = $trimmed;
+        }
+
+        return array_values($clean);
+    }
+
+    private function validateDescriptions(array $values): array
+    {
+        $errors = [];
+        foreach ($values as $value) {
+            if (mb_strlen($value) > 180) {
+                $errors[] = 'Le descrizioni non possono superare i 180 caratteri.';
+                break;
+            }
+        }
+
+        return $errors;
     }
 
     private function logActivity(int $userId, string $action, array $payload): void

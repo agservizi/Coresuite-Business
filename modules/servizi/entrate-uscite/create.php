@@ -1,4 +1,5 @@
 <?php
+use App\Services\SettingsService;
 require_once __DIR__ . '/../../../includes/auth.php';
 require_once __DIR__ . '/../../../includes/db_connect.php';
 require_once __DIR__ . '/../../../includes/helpers.php';
@@ -10,9 +11,28 @@ $stati = ['In lavorazione', 'In attesa', 'Completato', 'Annullato'];
 $metodi = ['Bonifico', 'Carta di credito', 'Carta di debito', 'Contanti', 'RID', 'Altro'];
 $tipiMovimento = ['Entrata', 'Uscita'];
 
+$projectRoot = realpath(__DIR__ . '/../../../') ?: __DIR__ . '/../../../';
+$settingsService = new SettingsService($pdo, $projectRoot);
+$storedDescriptions = $settingsService->getMovementDescriptions();
+$fallbackDescriptions = [
+	'Entrata' => ['Incasso giornaliero', 'Vendita servizi', 'Rimborso spese'],
+	'Uscita' => ['Pagamento fornitori', 'Spese operative', 'Stipendi e compensi'],
+];
+
+$movementPresets = [
+	'Entrata' => !empty($storedDescriptions['entrate']) ? $storedDescriptions['entrate'] : $fallbackDescriptions['Entrata'],
+	'Uscita' => !empty($storedDescriptions['uscite']) ? $storedDescriptions['uscite'] : $fallbackDescriptions['Uscita'],
+];
+
+foreach ($movementPresets as $key => $values) {
+	$movementPresets[$key] = array_values(array_unique(array_map('trim', $values)));
+}
+
 $errors = [];
 $data = [
 	'descrizione' => '',
+	'descrizione_option' => '',
+	'descrizione_custom' => '',
 	'riferimento' => '',
 	'metodo' => 'Bonifico',
 	'stato' => 'In lavorazione',
@@ -24,19 +44,55 @@ $data = [
 ];
 $clienteId = null;
 
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+	$initialType = $data['tipo_movimento'];
+	$defaultDescription = $movementPresets[$initialType][0] ?? '';
+	if ($defaultDescription !== '') {
+		$data['descrizione'] = $defaultDescription;
+		$data['descrizione_option'] = $defaultDescription;
+	}
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	require_valid_csrf();
 
-	foreach (array_keys($data) as $field) {
+	$fields = ['riferimento', 'metodo', 'stato', 'tipo_movimento', 'importo', 'data_scadenza', 'data_pagamento', 'note'];
+	foreach ($fields as $field) {
 		$data[$field] = trim($_POST[$field] ?? '');
 	}
 
-	if ($data['descrizione'] === '') {
-		$errors[] = 'Inserisci una descrizione del movimento.';
+	$selectedDescription = trim($_POST['descrizione_select'] ?? '');
+	$customDescription = trim($_POST['descrizione_custom'] ?? '');
+	$data['descrizione_option'] = $selectedDescription;
+	$data['descrizione_custom'] = $customDescription;
+
+	if ($selectedDescription === '__custom__') {
+		$data['descrizione'] = $customDescription;
+	} elseif ($selectedDescription !== '') {
+		$data['descrizione'] = $selectedDescription;
+	} else {
+		$data['descrizione'] = $customDescription !== '' ? $customDescription : '';
+		if ($customDescription !== '') {
+			$data['descrizione_option'] = '__custom__';
+		}
 	}
+
+	$data['descrizione'] = trim($data['descrizione']);
 
 	if (!in_array($data['tipo_movimento'], $tipiMovimento, true)) {
 		$data['tipo_movimento'] = 'Entrata';
+	}
+
+	$currentOptions = $movementPresets[$data['tipo_movimento']] ?? [];
+	if ($data['descrizione'] !== '' && in_array($data['descrizione'], $currentOptions, true) && $data['descrizione_option'] === '__custom__') {
+		$data['descrizione_option'] = $data['descrizione'];
+		$data['descrizione_custom'] = '';
+	}
+
+	if ($data['descrizione'] === '') {
+		$errors[] = 'Seleziona o inserisci una descrizione del movimento.';
+	} elseif (mb_strlen($data['descrizione']) > 180) {
+		$errors[] = 'La descrizione del movimento non può superare 180 caratteri.';
 	}
 
 	if (!in_array($data['metodo'], $metodi, true)) {
@@ -184,9 +240,22 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 							Movimento interno all'azienda (nessun cliente associato).
 						</div>
 					</div>
+					<?php
+						$currentOptions = $movementPresets[$data['tipo_movimento']] ?? [];
+						$selectedOption = $data['descrizione_option'] ?: (in_array($data['descrizione'], $currentOptions, true) ? $data['descrizione'] : ($data['descrizione'] !== '' ? '__custom__' : ''));
+						$showCustomInput = $selectedOption === '__custom__' || (!in_array($data['descrizione'], $currentOptions, true) && $data['descrizione'] !== '');
+					?>
 					<div class="col-md-6">
-						<label class="form-label" for="descrizione">Descrizione</label>
-						<input class="form-control" id="descrizione" name="descrizione" value="<?php echo sanitize_output($data['descrizione']); ?>" maxlength="180" required>
+						<label class="form-label" for="descrizione_select">Descrizione</label>
+						<select class="form-select" id="descrizione_select" name="descrizione_select" required>
+							<option value="">Seleziona descrizione</option>
+							<?php foreach ($currentOptions as $option): ?>
+								<option value="<?php echo sanitize_output($option); ?>" <?php echo $selectedOption === $option ? 'selected' : ''; ?>><?php echo sanitize_output($option); ?></option>
+							<?php endforeach; ?>
+							<option value="__custom__" <?php echo $selectedOption === '__custom__' ? 'selected' : ''; ?>>Descrizione personalizzata…</option>
+						</select>
+						<input class="form-control mt-2<?php echo $showCustomInput ? '' : ' d-none'; ?>" id="descrizione_custom" name="descrizione_custom" value="<?php echo sanitize_output($data['descrizione_custom'] ?: ($showCustomInput ? $data['descrizione'] : '')); ?>" maxlength="180" placeholder="Inserisci descrizione personalizzata" <?php echo $showCustomInput ? 'required' : ''; ?>>
+						<small class="text-muted">Configura le opzioni in Impostazioni &gt; Descrizioni movimenti.</small>
 					</div>
 					<div class="col-md-4">
 						<label class="form-label" for="tipo_movimento">Tipo movimento</label>
@@ -250,4 +319,90 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 		</div>
 	</main>
 </div>
+<?php $movementPresetsJson = json_encode($movementPresets, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+	const movementDescriptions = <?php echo $movementPresetsJson ?: '{}'; ?>;
+	const tipoSelect = document.getElementById('tipo_movimento');
+	const descrSelect = document.getElementById('descrizione_select');
+	const descrCustom = document.getElementById('descrizione_custom');
+
+	if (!tipoSelect || !descrSelect || !descrCustom) {
+		return;
+	}
+
+	let lastCustomValue = descrCustom.value;
+
+	const applyCustomVisibility = () => {
+		const isCustom = descrSelect.value === '__custom__';
+		if (isCustom) {
+			descrCustom.classList.remove('d-none');
+			descrCustom.required = true;
+			if (!descrCustom.value) {
+				descrCustom.value = lastCustomValue;
+			}
+		} else {
+			lastCustomValue = descrCustom.value;
+			descrCustom.required = false;
+			descrCustom.classList.add('d-none');
+			descrCustom.value = '';
+		}
+	};
+
+	const populateOptions = (type) => {
+		const preservedValue = descrSelect.value;
+		const options = movementDescriptions[type] || [];
+
+		descrSelect.innerHTML = '';
+
+		const placeholder = document.createElement('option');
+		placeholder.value = '';
+		placeholder.textContent = 'Seleziona descrizione';
+		descrSelect.appendChild(placeholder);
+
+		options.forEach((label) => {
+			const option = document.createElement('option');
+			option.value = label;
+			option.textContent = label;
+			descrSelect.appendChild(option);
+		});
+
+		const customOption = document.createElement('option');
+		customOption.value = '__custom__';
+		customOption.textContent = 'Descrizione personalizzata…';
+		descrSelect.appendChild(customOption);
+
+		let valueToSelect = preservedValue;
+		if (valueToSelect && valueToSelect !== '__custom__' && !options.includes(valueToSelect)) {
+			valueToSelect = options[0] || (lastCustomValue ? '__custom__' : '');
+		}
+
+		if (!valueToSelect) {
+			valueToSelect = options[0] || '';
+		}
+
+		descrSelect.value = valueToSelect;
+
+		if (descrSelect.value === '__custom__') {
+			descrCustom.value = lastCustomValue;
+		}
+
+		applyCustomVisibility();
+	};
+
+	tipoSelect.addEventListener('change', () => {
+		populateOptions(tipoSelect.value);
+	});
+
+	descrSelect.addEventListener('change', () => {
+		applyCustomVisibility();
+	});
+
+	descrCustom.addEventListener('input', () => {
+		lastCustomValue = descrCustom.value;
+	});
+
+	populateOptions(tipoSelect.value);
+});
+</script>
 <?php require_once __DIR__ . '/../../../includes/footer.php'; ?>

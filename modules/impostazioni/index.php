@@ -64,6 +64,7 @@ $settingsService = new SettingsService($pdo, $projectRoot);
 
 $companyConfig = $settingsService->fetchCompanySettings($companyDefaults);
 $availableBackups = $settingsService->recentBackups();
+$movementDescriptions = $settingsService->getMovementDescriptions();
 
 $alerts = [];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -118,6 +119,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $alerts[] = ['type' => 'danger', 'text' => $result['error'] ?? 'Errore durante la generazione del backup.'];
+    }
+
+    if ($action === 'movements') {
+        $entrateRaw = (string) ($_POST['descrizioni_entrata'] ?? '');
+        $usciteRaw = (string) ($_POST['descrizioni_uscita'] ?? '');
+
+        $entrateList = array_filter(array_map('trim', preg_split('/\r?\n/', $entrateRaw) ?: []));
+        $usciteList = array_filter(array_map('trim', preg_split('/\r?\n/', $usciteRaw) ?: []));
+
+        $result = $settingsService->saveMovementDescriptions($entrateList, $usciteList, (int) ($_SESSION['user_id'] ?? 0));
+        if ($result['success']) {
+            add_flash('success', 'Descrizioni movimenti aggiornate con successo.');
+            header('Location: index.php#movement-descriptions');
+            exit;
+        }
+
+        foreach ($result['errors'] as $error) {
+            $alerts[] = ['type' => 'danger', 'text' => $error];
+        }
+
+        $movementDescriptions = [
+            'entrate' => $entrateList,
+            'uscite' => $usciteList,
+        ];
     }
 
     $availableBackups = $settingsService->recentBackups();
@@ -297,6 +322,51 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                         <?php else: ?>
                             <p class="text-muted mb-0">Non sono ancora presenti backup. Generane uno per iniziare la cronologia.</p>
                         <?php endif; ?>
+                    </div>
+                </div>
+                <div class="card ag-card mt-4" id="movement-descriptions">
+                    <div class="card-header bg-transparent border-0">
+                        <h5 class="card-title mb-0">Descrizioni movimenti</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">Imposta le descrizioni predefinite per entrate e uscite. Verranno proposte nel modulo Entrate/Uscite.</p>
+                        <form method="post" novalidate>
+                            <input type="hidden" name="action" value="movements">
+                            <input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
+                            <div class="accordion" id="movementDescriptionsAccordion">
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="headingEntrate">
+                                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEntrate" aria-expanded="true" aria-controls="collapseEntrate">
+                                            Descrizioni entrate
+                                        </button>
+                                    </h2>
+                                    <div id="collapseEntrate" class="accordion-collapse collapse show" aria-labelledby="headingEntrate" data-bs-parent="#movementDescriptionsAccordion">
+                                        <div class="accordion-body">
+                                            <label class="form-label" for="descrizioni_entrata">Una descrizione per riga</label>
+                                            <textarea class="form-control" id="descrizioni_entrata" name="descrizioni_entrata" rows="6" placeholder="Es. Incasso giornaliero&#10;Vendita servizi"><?php echo sanitize_output(implode("\n", $movementDescriptions['entrate'])); ?></textarea>
+                                            <div class="form-text">Limite 180 caratteri per descrizione. Le righe vuote saranno ignorate.</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="headingUscite">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseUscite" aria-expanded="false" aria-controls="collapseUscite">
+                                            Descrizioni uscite
+                                        </button>
+                                    </h2>
+                                    <div id="collapseUscite" class="accordion-collapse collapse" aria-labelledby="headingUscite" data-bs-parent="#movementDescriptionsAccordion">
+                                        <div class="accordion-body">
+                                            <label class="form-label" for="descrizioni_uscita">Una descrizione per riga</label>
+                                            <textarea class="form-control" id="descrizioni_uscita" name="descrizioni_uscita" rows="6" placeholder="Es. Pagamento fornitori&#10;Spese operative"><?php echo sanitize_output(implode("\n", $movementDescriptions['uscite'])); ?></textarea>
+                                            <div class="form-text">Limite 180 caratteri per descrizione. Le righe vuote saranno ignorate.</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-end mt-3">
+                                <button class="btn btn-warning text-dark" type="submit"><i class="fa-solid fa-save me-2"></i>Salva descrizioni</button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>
