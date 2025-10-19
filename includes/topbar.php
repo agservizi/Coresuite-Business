@@ -58,7 +58,7 @@ $role = $_SESSION['role'] ?? '';
                         <i class="fa-solid fa-user-circle topbar-btn-icon-lead" aria-hidden="true"></i>
                         <span class="topbar-btn-label"><?php echo sanitize_output($username); ?></span>
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
+                    <ul class="dropdown-menu dropdown-menu-end topbar-dropdown">
                         <li class="dropdown-header">
                             <span class="text-muted small">Ruolo</span>
                             <div class="fw-semibold text-capitalize"><?php echo sanitize_output($role); ?></div>
