@@ -23,7 +23,7 @@ $data = [
 	'tipo_movimento' => 'Entrata',
 	'importo' => '0.01',
 	'data_scadenza' => '',
-	'data_pagamento' => '',
+	'data_pagamento' => date('d/m/Y'),
 	'note' => '',
 ];
 
@@ -60,14 +60,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 		$data['importo'] = number_format(abs((float) $data['importo']), 2, '.', '');
 	}
 
-	$data['data_scadenza'] = $data['data_scadenza'] ?: null;
-	if ($data['data_scadenza'] && !DateTimeImmutable::createFromFormat('Y-m-d', $data['data_scadenza'])) {
-		$errors[] = 'La data di scadenza non è valida.';
+	$data['data_scadenza'] = $data['data_scadenza'] ?: '';
+	$scadenzaForDb = null;
+	if ($data['data_scadenza'] !== '') {
+		$scadenzaDate = DateTimeImmutable::createFromFormat('d/m/Y', $data['data_scadenza']);
+		if (!$scadenzaDate || $scadenzaDate->format('d/m/Y') !== $data['data_scadenza']) {
+			$errors[] = 'La data di scadenza non è valida (usa il formato gg/mm/aaaa).';
+		} else {
+			$scadenzaForDb = $scadenzaDate->format('Y-m-d');
+		}
 	}
 
-	$data['data_pagamento'] = $data['data_pagamento'] ?: null;
-	if ($data['data_pagamento'] && !DateTimeImmutable::createFromFormat('Y-m-d', $data['data_pagamento'])) {
-		$errors[] = 'La data del movimento non è valida.';
+	$pagamentoForDb = null;
+	if ($data['data_pagamento'] === '') {
+		$errors[] = 'Specifica la data in cui stai registrando il movimento.';
+	} else {
+		$pagamentoDate = DateTimeImmutable::createFromFormat('d/m/Y', $data['data_pagamento']);
+		if (!$pagamentoDate || $pagamentoDate->format('d/m/Y') !== $data['data_pagamento']) {
+			$errors[] = 'La data del movimento non è valida (usa il formato gg/mm/aaaa).';
+		} else {
+			$pagamentoForDb = $pagamentoDate->format('Y-m-d');
+		}
 	}
 
 	$uploadPath = null;
@@ -136,8 +149,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 			':stato' => $data['stato'],
 			':tipo_movimento' => $data['tipo_movimento'],
 			':importo' => $data['importo'],
-			':data_scadenza' => $data['data_scadenza'] ?: null,
-			':data_pagamento' => $data['data_pagamento'] ?: null,
+			':data_scadenza' => $scadenzaForDb,
+			':data_pagamento' => $pagamentoForDb,
 			':note' => $data['note'] ?: null,
 			':allegato_path' => $uploadPath,
 			':allegato_hash' => $uploadHash,
@@ -231,12 +244,12 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 					</div>
 					<div class="col-md-4">
 						<label class="form-label" for="data_scadenza">Data scadenza</label>
-						<input class="form-control" id="data_scadenza" name="data_scadenza" type="date" value="<?php echo sanitize_output((string) $data['data_scadenza']); ?>">
+						<input class="form-control" id="data_scadenza" name="data_scadenza" type="text" inputmode="numeric" pattern="\d{2}/\d{2}/\d{4}" placeholder="gg/mm/aaaa" value="<?php echo sanitize_output((string) $data['data_scadenza']); ?>">
 					</div>
 					<div class="col-md-4">
 						<label class="form-label" for="data_pagamento">Data movimento</label>
-						<input class="form-control" id="data_pagamento" name="data_pagamento" type="date" value="<?php echo sanitize_output((string) $data['data_pagamento']); ?>">
-						<small class="text-muted">Compila solo quando il movimento è stato registrato.</small>
+						<input class="form-control" id="data_pagamento" name="data_pagamento" type="text" inputmode="numeric" pattern="\d{2}/\d{2}/\d{4}" placeholder="gg/mm/aaaa" value="<?php echo sanitize_output((string) $data['data_pagamento']); ?>" required>
+						<small class="text-muted">Imposta la giornata di registrazione (predefinita: oggi) nel formato gg/mm/aaaa.</small>
 					</div>
 					<div class="col-12">
 						<label class="form-label" for="note">Note</label>
