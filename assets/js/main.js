@@ -810,7 +810,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.CS_INITIAL_FLASHES.forEach((flash) => {
             if (flash?.message) {
                 const type = flash.type ?? 'info';
-                Toast.show(flash.message, type);
+                FlashModal.show(flash.message, type);
             }
         });
     }
@@ -847,3 +847,90 @@ function createToastContainer() {
 }
 
 window.CSToast = Toast;
+
+const FlashModal = (() => {
+    const queue = [];
+    let isShowing = false;
+
+    const typeConfig = {
+        success: { title: 'Operazione completata', headerClass: 'text-bg-success' },
+        danger: { title: 'Operazione non riuscita', headerClass: 'text-bg-danger' },
+        warning: { title: 'Attenzione', headerClass: 'text-bg-warning text-dark' },
+        info: { title: 'Informazione', headerClass: 'text-bg-info text-dark' }
+    };
+
+    const createModal = () => {
+        const modal = document.createElement('div');
+        modal.id = 'csFlashModal';
+        modal.className = 'modal fade';
+        modal.tabIndex = -1;
+        modal.setAttribute('aria-hidden', 'true');
+        modal.innerHTML = `
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h1 class="modal-title fs-5">Avviso</h1>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Chiudi"></button>
+                    </div>
+                    <div class="modal-body"></div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-warning text-dark" data-bs-dismiss="modal">Chiudi</button>
+                    </div>
+                </div>
+            </div>`;
+        document.body.appendChild(modal);
+        return modal;
+    };
+
+    const getModalElement = () => document.getElementById('csFlashModal') || createModal();
+
+    const applyTypeStyles = (modalElement, type) => {
+        const { title, headerClass } = typeConfig[type] ?? typeConfig.info;
+        const header = modalElement.querySelector('.modal-header');
+        const titleEl = modalElement.querySelector('.modal-title');
+        const bodyEl = modalElement.querySelector('.modal-body');
+        if (!header || !titleEl || !bodyEl) {
+            return;
+        }
+
+        header.className = 'modal-header';
+        if (headerClass) {
+            header.classList.add(...headerClass.split(' '));
+        }
+        titleEl.textContent = title;
+    };
+
+    const showNext = () => {
+        if (queue.length === 0) {
+            isShowing = false;
+            return;
+        }
+
+        isShowing = true;
+        const { message, type } = queue.shift();
+        const modalElement = getModalElement();
+        applyTypeStyles(modalElement, type);
+        const bodyEl = modalElement.querySelector('.modal-body');
+        if (bodyEl) {
+            bodyEl.textContent = message;
+        }
+
+    // eslint-disable-next-line no-undef
+    const modalInstance = bootstrap.Modal.getOrCreateInstance(modalElement);
+        modalElement.addEventListener('hidden.bs.modal', () => {
+            showNext();
+        }, { once: true });
+        modalInstance.show();
+    };
+
+    return {
+        show(message, type = 'info') {
+            queue.push({ message, type });
+            if (!isShowing) {
+                showNext();
+            }
+        }
+    };
+})();
+
+window.CSFlashModal = FlashModal;
