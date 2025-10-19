@@ -24,6 +24,54 @@ $charts = [
     ],
 ];
 
+$saldoToday = new DateTimeImmutable('today');
+$saldoDay = isset($_GET['saldo_day']) ? (int) $_GET['saldo_day'] : (int) $saldoToday->format('d');
+$saldoMonth = isset($_GET['saldo_month']) ? (int) $_GET['saldo_month'] : (int) $saldoToday->format('m');
+$saldoYear = isset($_GET['saldo_year']) ? (int) $_GET['saldo_year'] : (int) $saldoToday->format('Y');
+
+if ($saldoDay < 1 || $saldoDay > 31) {
+    $saldoDay = (int) $saldoToday->format('d');
+}
+if ($saldoMonth < 1 || $saldoMonth > 12) {
+    $saldoMonth = (int) $saldoToday->format('m');
+}
+if ($saldoYear < ((int) $saldoToday->format('Y') - 5) || $saldoYear > ((int) $saldoToday->format('Y') + 1)) {
+    $saldoYear = (int) $saldoToday->format('Y');
+}
+
+$saldoSelectedDate = DateTimeImmutable::createFromFormat('!Y-n-j', sprintf('%04d-%d-%d', $saldoYear, $saldoMonth, $saldoDay));
+if (!$saldoSelectedDate) {
+    $saldoSelectedDate = $saldoToday;
+    $saldoDay = (int) $saldoToday->format('d');
+    $saldoMonth = (int) $saldoToday->format('m');
+    $saldoYear = (int) $saldoToday->format('Y');
+}
+
+$saldoFilter = [
+    'day' => $saldoDay,
+    'month' => $saldoMonth,
+    'year' => $saldoYear,
+    'date' => $saldoSelectedDate,
+];
+
+$saldoFilterLabel = $saldoSelectedDate->format('d/m/Y');
+$saldoMonthLabels = [
+    1 => 'Gennaio',
+    2 => 'Febbraio',
+    3 => 'Marzo',
+    4 => 'Aprile',
+    5 => 'Maggio',
+    6 => 'Giugno',
+    7 => 'Luglio',
+    8 => 'Agosto',
+    9 => 'Settembre',
+    10 => 'Ottobre',
+    11 => 'Novembre',
+    12 => 'Dicembre',
+];
+
+$saldoYearOptions = range((int) $saldoToday->format('Y') - 5, (int) $saldoToday->format('Y') + 1);
+
 $reminders = [];
 $dashboardUsername = current_user_display_name();
 
@@ -46,11 +94,15 @@ try {
     $dailyRevenueStmt = $pdo->prepare("SELECT COALESCE(SUM(importo), 0) FROM (
         SELECT CASE WHEN tipo_movimento = 'Entrata' THEN importo ELSE -importo END AS importo
         FROM entrate_uscite
-        WHERE stato = 'Completato' AND DATE(COALESCE(data_pagamento, updated_at)) = CURRENT_DATE
+        WHERE stato = 'Completato' AND DATE(COALESCE(data_pagamento, updated_at)) = :target_date_entrate
         UNION ALL
-        SELECT importo FROM servizi_ricariche WHERE DATE(data_operazione) = CURRENT_DATE
+        SELECT importo FROM servizi_ricariche WHERE DATE(data_operazione) = :target_date_ricariche
     ) AS revenues");
-    $dailyRevenueStmt->execute();
+    $targetDateParam = $saldoFilter['date']->format('Y-m-d');
+    $dailyRevenueStmt->execute([
+        ':target_date_entrate' => $targetDateParam,
+        ':target_date_ricariche' => $targetDateParam,
+    ]);
     $stats['dailyRevenue'] = (float) $dailyRevenueStmt->fetchColumn();
 
     $ticketStmt = $pdo->prepare("SELECT id, titolo, stato, created_at FROM ticket ORDER BY created_at DESC LIMIT 5");
@@ -171,8 +223,32 @@ require_once __DIR__ . '/includes/sidebar.php';
                             <span class="hero-kpi-value" data-dashboard-stat="servicesInProgress" data-format="number"><?php echo number_format($stats['servicesInProgress']); ?></span>
                         </div>
                         <div class="hero-kpi">
-                            <span class="hero-kpi-label">Saldo oggi</span>
+                            <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+                                <span class="hero-kpi-label mb-0">Saldo</span>
+                                <form method="get" class="d-flex flex-wrap align-items-center gap-1 hero-saldo-filter">
+                                    <?php if ($view !== ''): ?>
+                                        <input type="hidden" name="view" value="<?php echo sanitize_output($view); ?>">
+                                    <?php endif; ?>
+                                    <select class="form-select form-select-sm" name="saldo_day" aria-label="Giorno saldo">
+                                        <?php for ($day = 1; $day <= 31; $day++): ?>
+                                            <option value="<?php echo $day; ?>" <?php echo $saldoFilter['day'] === $day ? 'selected' : ''; ?>><?php echo sprintf('%02d', $day); ?></option>
+                                        <?php endfor; ?>
+                                    </select>
+                                    <select class="form-select form-select-sm" name="saldo_month" aria-label="Mese saldo">
+                                        <?php foreach ($saldoMonthLabels as $monthNumber => $monthLabel): ?>
+                                            <option value="<?php echo $monthNumber; ?>" <?php echo $saldoFilter['month'] === $monthNumber ? 'selected' : ''; ?>><?php echo sanitize_output($monthLabel); ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <select class="form-select form-select-sm" name="saldo_year" aria-label="Anno saldo">
+                                        <?php foreach ($saldoYearOptions as $yearOption): ?>
+                                            <option value="<?php echo $yearOption; ?>" <?php echo $saldoFilter['year'] === $yearOption ? 'selected' : ''; ?>><?php echo $yearOption; ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <button class="btn btn-sm btn-outline-warning" type="submit">Applica</button>
+                                </form>
+                            </div>
                             <span class="hero-kpi-value" data-dashboard-stat="dailyRevenue" data-format="currency"><?php echo sanitize_output(format_currency($stats['dailyRevenue'])); ?></span>
+                            <small class="text-muted">Data: <?php echo sanitize_output($saldoFilterLabel); ?></small>
                         </div>
                         <div class="hero-kpi">
                             <span class="hero-kpi-label">Ticket recenti</span>
@@ -218,9 +294,9 @@ require_once __DIR__ . '/includes/sidebar.php';
                         <div class="card-body">
                             <div class="metric-icon metric-icon-revenue"><i class="fa-solid fa-euro-sign"></i></div>
                             <div>
-                                <div class="metric-label">Saldo odierno</div>
+                                <div class="metric-label">Saldo selezionato</div>
                                 <div class="metric-value" data-dashboard-stat="dailyRevenue" data-format="currency"><?php echo sanitize_output(format_currency($stats['dailyRevenue'])); ?></div>
-                                <div class="metric-footnote">Entrate - Uscite del giorno</div>
+                                <div class="metric-footnote">Data <?php echo sanitize_output($saldoFilterLabel); ?></div>
                             </div>
                         </div>
                     </div>
