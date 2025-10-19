@@ -15,7 +15,6 @@ $puoModificare = current_user_can('Admin', 'Operatore');
 $puoEliminare = current_user_can('Admin');
 
 $filters = [
-	'cliente_id' => isset($_GET['cliente_id']) ? (int) $_GET['cliente_id'] : null,
 	'stato' => isset($_GET['stato']) && in_array($_GET['stato'], $stati, true) ? $_GET['stato'] : null,
 	'tipo_movimento' => isset($_GET['tipo_movimento']) && in_array($_GET['tipo_movimento'], $tipiMovimento, true) ? $_GET['tipo_movimento'] : null,
 	'search' => trim($_GET['search'] ?? ''),
@@ -26,11 +25,6 @@ $sql = "SELECT p.*, c.nome, c.cognome, c.ragione_sociale
 	FROM entrate_uscite p
 	LEFT JOIN clienti c ON p.cliente_id = c.id
 	WHERE 1 = 1";
-
-if ($filters['cliente_id']) {
-	$sql .= ' AND p.cliente_id = :cliente_id';
-	$params[':cliente_id'] = $filters['cliente_id'];
-}
 
 if ($filters['stato']) {
 	$sql .= ' AND p.stato = :stato';
@@ -53,9 +47,6 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $pagamenti = $stmt->fetchAll();
 
-$clientsStmt = $pdo->query('SELECT id, nome, cognome, ragione_sociale FROM clienti ORDER BY ragione_sociale, cognome, nome');
-$clients = $clientsStmt->fetchAll();
-
 $csrfToken = csrf_token();
 
 require_once __DIR__ . '/../../../includes/header.php';
@@ -73,7 +64,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 		<div class="page-toolbar mb-4 d-flex justify-content-between align-items-start flex-wrap gap-3">
 			<div>
 				<h1 class="h3 mb-1">Entrate/Uscite</h1>
-				<p class="text-muted mb-0">Registra e monitora entrate e uscite associate ai clienti.</p>
+				<p class="text-muted mb-0">Registra e monitora movimenti economici interni all&rsquo;azienda.</p>
 			</div>
 			<div class="toolbar-actions d-flex gap-2">
 				<a class="btn btn-outline-warning" href="../../../dashboard.php"><i class="fa-solid fa-gauge-high me-2"></i>Dashboard</a>
@@ -90,23 +81,6 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 			<div class="card-body">
 				<form class="row g-3" method="get" novalidate>
 					<div class="col-md-4">
-						<label class="form-label" for="cliente_id">Cliente</label>
-						<select class="form-select" id="cliente_id" name="cliente_id">
-							<option value="">Tutti</option>
-							<?php foreach ($clients as $client): ?>
-								<option value="<?php echo (int) $client['id']; ?>" <?php echo $filters['cliente_id'] === (int) $client['id'] ? 'selected' : ''; ?>>
-									<?php
-										$labelPieces = array_filter([
-											$client['ragione_sociale'] ?: null,
-											trim(($client['cognome'] ?? '') . ' ' . ($client['nome'] ?? '')) ?: null,
-										]);
-										echo sanitize_output($labelPieces ? implode(' • ', $labelPieces) : ('#' . $client['id']));
-									?>
-								</option>
-							<?php endforeach; ?>
-						</select>
-					</div>
-					<div class="col-md-3">
 						<label class="form-label" for="stato">Stato</label>
 						<select class="form-select" id="stato" name="stato">
 							<option value="">Tutti</option>
@@ -115,7 +89,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 							<?php endforeach; ?>
 						</select>
 					</div>
-					<div class="col-md-3">
+					<div class="col-md-4">
 						<label class="form-label" for="tipo_movimento">Tipo</label>
 						<select class="form-select" id="tipo_movimento" name="tipo_movimento">
 							<option value="">Entrate e uscite</option>
@@ -124,7 +98,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 							<?php endforeach; ?>
 						</select>
 					</div>
-					<div class="col-md-3">
+					<div class="col-md-4">
 						<label class="form-label" for="search">Ricerca</label>
 						<input class="form-control" id="search" type="text" name="search" value="<?php echo sanitize_output($filters['search']); ?>" placeholder="Descrizione o riferimento">
 					</div>
@@ -145,7 +119,6 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 						<thead>
 							<tr>
 								<th>ID</th>
-								<th>Cliente</th>
 								<th>Descrizione</th>
 								<th>Tipo</th>
 								<th>Importo</th>
@@ -160,13 +133,6 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 							<?php foreach ($pagamenti as $pagamento): ?>
 								<tr>
 									<td>#<?php echo (int) $pagamento['id']; ?></td>
-									<td>
-										<?php
-											$clientName = trim(($pagamento['cognome'] ?? '') . ' ' . ($pagamento['nome'] ?? ''));
-											$ragione = $pagamento['ragione_sociale'] ?? '';
-											echo sanitize_output($ragione ?: ($clientName ?: 'Movimento interno'));
-										?>
-									</td>
 									<td>
 										<strong><?php echo sanitize_output($pagamento['descrizione']); ?></strong><br>
 										<small class="text-muted"><?php echo $pagamento['riferimento'] ? sanitize_output($pagamento['riferimento']) : '—'; ?></small>
