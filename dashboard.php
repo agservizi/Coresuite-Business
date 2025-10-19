@@ -24,61 +24,6 @@ $charts = [
     ],
 ];
 
-$saldoScopes = ['day', 'month', 'year'];
-$saldoScope = strtolower((string) ($_GET['saldo_scope'] ?? 'day'));
-if (!in_array($saldoScope, $saldoScopes, true)) {
-    $saldoScope = 'day';
-}
-$saldoScopeIndex = array_search($saldoScope, $saldoScopes, true);
-$nextSaldoScope = $saldoScopes[($saldoScopeIndex + 1) % count($saldoScopes)];
-
-$today = new DateTimeImmutable('today');
-$monthNames = [
-    1 => 'Gennaio',
-    2 => 'Febbraio',
-    3 => 'Marzo',
-    4 => 'Aprile',
-    5 => 'Maggio',
-    6 => 'Giugno',
-    7 => 'Luglio',
-    8 => 'Agosto',
-    9 => 'Settembre',
-    10 => 'Ottobre',
-    11 => 'Novembre',
-    12 => 'Dicembre',
-];
-
-switch ($saldoScope) {
-    case 'month':
-        $saldoPeriodStart = $today->modify('first day of this month');
-        $saldoPeriodEnd = $saldoPeriodStart->modify('last day of this month');
-        $saldoScopeLabel = 'Saldo mensile';
-        $saldoFootnote = 'Entrate - Uscite del mese corrente';
-        $saldoRangeLabel = $monthNames[(int) $saldoPeriodStart->format('n')] . ' ' . $saldoPeriodStart->format('Y');
-        $saldoButtonLabel = 'Mostra saldo annuale';
-        break;
-    case 'year':
-        $saldoPeriodStart = $today->setDate((int) $today->format('Y'), 1, 1);
-        $saldoPeriodEnd = $saldoPeriodStart->modify('+1 year -1 day');
-        $saldoScopeLabel = 'Saldo annuale';
-        $saldoFootnote = "Entrate - Uscite dell'anno corrente";
-        $saldoRangeLabel = 'Anno ' . $saldoPeriodStart->format('Y');
-        $saldoButtonLabel = 'Mostra saldo giornaliero';
-        break;
-    case 'day':
-    default:
-        $saldoPeriodStart = $today;
-        $saldoPeriodEnd = $today;
-        $saldoScopeLabel = 'Saldo giornaliero';
-        $saldoFootnote = 'Entrate - Uscite del giorno';
-        $saldoRangeLabel = $today->format('d/m/Y');
-        $saldoButtonLabel = 'Mostra saldo mensile';
-        break;
-}
-
-$saldoPeriodStartParam = $saldoPeriodStart->format('Y-m-d');
-$saldoPeriodEndParam = $saldoPeriodEnd->format('Y-m-d');
-
 $reminders = [];
 $dashboardUsername = current_user_display_name();
 
@@ -101,14 +46,11 @@ try {
     $dailyRevenueStmt = $pdo->prepare("SELECT COALESCE(SUM(importo), 0) FROM (
         SELECT CASE WHEN tipo_movimento = 'Entrata' THEN importo ELSE -importo END AS importo
         FROM entrate_uscite
-        WHERE stato = 'Completato' AND DATE(COALESCE(data_pagamento, updated_at)) BETWEEN :start_date AND :end_date
+        WHERE stato = 'Completato' AND DATE(COALESCE(data_pagamento, updated_at)) = CURRENT_DATE
         UNION ALL
-        SELECT importo FROM servizi_ricariche WHERE DATE(data_operazione) BETWEEN :start_date AND :end_date
+        SELECT importo FROM servizi_ricariche WHERE DATE(data_operazione) = CURRENT_DATE
     ) AS revenues");
-    $dailyRevenueStmt->execute([
-        ':start_date' => $saldoPeriodStartParam,
-        ':end_date' => $saldoPeriodEndParam,
-    ]);
+    $dailyRevenueStmt->execute();
     $stats['dailyRevenue'] = (float) $dailyRevenueStmt->fetchColumn();
 
     $ticketStmt = $pdo->prepare("SELECT id, titolo, stato, created_at FROM ticket ORDER BY created_at DESC LIMIT 5");
@@ -229,22 +171,8 @@ require_once __DIR__ . '/includes/sidebar.php';
                             <span class="hero-kpi-value" data-dashboard-stat="servicesInProgress" data-format="number"><?php echo number_format($stats['servicesInProgress']); ?></span>
                         </div>
                         <div class="hero-kpi">
-                            <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
-                                <span class="hero-kpi-label"><?php echo sanitize_output($saldoScopeLabel); ?></span>
-                                <form method="get" class="d-inline-flex">
-                                    <?php foreach ($_GET as $paramName => $paramValue): ?>
-                                        <?php if ($paramName === 'saldo_scope' || is_array($paramValue)) { continue; } ?>
-                                        <input type="hidden" name="<?php echo sanitize_output($paramName); ?>" value="<?php echo sanitize_output((string) $paramValue); ?>">
-                                    <?php endforeach; ?>
-                                    <input type="hidden" name="saldo_scope" value="<?php echo sanitize_output($nextSaldoScope); ?>">
-                                    <button type="submit" class="btn btn-sm btn-outline-light text-nowrap">
-                                        <i class="fa-solid fa-arrows-rotate"></i>
-                                        <?php echo sanitize_output($saldoButtonLabel); ?>
-                                    </button>
-                                </form>
-                            </div>
+                            <span class="hero-kpi-label">Saldo oggi</span>
                             <span class="hero-kpi-value" data-dashboard-stat="dailyRevenue" data-format="currency"><?php echo sanitize_output(format_currency($stats['dailyRevenue'])); ?></span>
-                            <small class="text-muted d-block mt-1"><?php echo sanitize_output($saldoRangeLabel); ?></small>
                         </div>
                         <div class="hero-kpi">
                             <span class="hero-kpi-label">Ticket recenti</span>
@@ -290,9 +218,9 @@ require_once __DIR__ . '/includes/sidebar.php';
                         <div class="card-body">
                             <div class="metric-icon metric-icon-revenue"><i class="fa-solid fa-euro-sign"></i></div>
                             <div>
-                                <div class="metric-label"><?php echo sanitize_output($saldoScopeLabel); ?></div>
+                                <div class="metric-label">Saldo odierno</div>
                                 <div class="metric-value" data-dashboard-stat="dailyRevenue" data-format="currency"><?php echo sanitize_output(format_currency($stats['dailyRevenue'])); ?></div>
-                                <div class="metric-footnote"><?php echo sanitize_output($saldoFootnote); ?></div>
+                                <div class="metric-footnote">Entrate - Uscite del giorno</div>
                             </div>
                         </div>
                     </div>
