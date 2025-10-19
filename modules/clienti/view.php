@@ -21,8 +21,10 @@ if (!$client) {
     exit;
 }
 
-$serviceSummaryQuery = "SELECT 'Pagamenti' AS tipo, COUNT(*) AS totale, COALESCE(SUM(importo), 0) AS importo
-    FROM pagamenti WHERE cliente_id = ?
+$serviceSummaryQuery = "SELECT 'Entrate' AS tipo, COUNT(*) AS totale, COALESCE(SUM(importo), 0) AS importo
+    FROM pagamenti WHERE cliente_id = ? AND tipo_movimento = 'Entrata'
+    UNION ALL
+    SELECT 'Uscite', COUNT(*), COALESCE(SUM(importo * -1), 0) FROM pagamenti WHERE cliente_id = ? AND tipo_movimento = 'Uscita'
     UNION ALL
     SELECT 'Ricariche', COUNT(*), COALESCE(SUM(importo), 0) FROM servizi_ricariche WHERE cliente_id = ?
     UNION ALL
@@ -33,11 +35,12 @@ $serviceSummaryQuery = "SELECT 'Pagamenti' AS tipo, COUNT(*) AS totale, COALESCE
     SELECT 'Logistici', COUNT(*), 0 FROM spedizioni WHERE cliente_id = ?";
 
 $summaryStmt = $pdo->prepare($serviceSummaryQuery);
-$summaryStmt->execute(array_fill(0, 5, $id));
+$summaryStmt->execute(array_fill(0, 6, $id));
 $summary = $summaryStmt->fetchAll();
 
 $latestPracticesStmt = $pdo->prepare("(
-    SELECT 'Pagamento' AS categoria, descrizione AS riferimento, stato, COALESCE(data_pagamento, data_scadenza, updated_at) AS data
+    SELECT CASE WHEN tipo_movimento = 'Entrata' THEN 'Entrata' ELSE 'Uscita' END AS categoria,
+        descrizione AS riferimento, stato, COALESCE(data_pagamento, data_scadenza, updated_at) AS data
     FROM pagamenti WHERE cliente_id = ?
     ) UNION ALL (
         SELECT 'Ricarica' AS categoria, operatore AS riferimento, stato, data_operazione AS data
@@ -108,7 +111,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <div class="card ag-card h-100">
                     <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
                         <h5 class="card-title mb-0">Storico servizi</h5>
-                        <a class="btn btn-sm btn-outline-warning" href="../servizi/pagamenti/create.php?cliente_id=<?php echo (int) $client['id']; ?>">Nuovo pagamento</a>
+                        <a class="btn btn-sm btn-outline-warning" href="../servizi/entrate-uscite/create.php?cliente_id=<?php echo (int) $client['id']; ?>">Nuovo movimento</a>
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
@@ -117,8 +120,10 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                     <div class="border rounded-3 p-3 h-100">
                                         <div class="text-muted small text-uppercase"><?php echo sanitize_output($row['tipo']); ?></div>
                                         <div class="fs-3 fw-semibold"><?php echo (int) $row['totale']; ?></div>
-                                        <?php if ((float) $row['importo'] > 0): ?>
-                                            <div class="text-warning">Totale: <?php echo sanitize_output(format_currency((float) $row['importo'])); ?></div>
+                                        <?php if ((float) $row['importo'] !== 0.0): ?>
+                                            <?php $importo = (float) $row['importo']; ?>
+                                            <?php $importoClass = $importo >= 0 ? 'text-success' : 'text-danger'; ?>
+                                            <div class="<?php echo $importoClass; ?>">Valore: <?php echo sanitize_output(format_currency($importo)); ?></div>
                                         <?php endif; ?>
                                     </div>
                                 </div>

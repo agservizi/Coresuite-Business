@@ -20,7 +20,7 @@ $response = [
             'values' => [],
         ],
         'services' => [
-            'labels' => ['Pagamenti', 'Ricariche', 'Digitali', 'Telefonia', 'Logistici'],
+            'labels' => ['Entrate/Uscite', 'Ricariche', 'Digitali', 'Telefonia', 'Logistici'],
             'values' => [0, 0, 0, 0, 0],
         ],
     ],
@@ -45,7 +45,9 @@ try {
     $response['stats']['servicesInProgress'] = (int) $servicesInProgressStmt->fetchColumn();
 
     $dailyRevenueStmt = $pdo->prepare("SELECT COALESCE(SUM(importo), 0) FROM (
-        SELECT importo FROM pagamenti WHERE stato = 'Completato' AND DATE(COALESCE(data_pagamento, updated_at)) = CURRENT_DATE
+        SELECT CASE WHEN tipo_movimento = 'Entrata' THEN importo ELSE -importo END AS importo
+        FROM pagamenti
+        WHERE stato = 'Completato' AND DATE(COALESCE(data_pagamento, updated_at)) = CURRENT_DATE
         UNION ALL
         SELECT importo FROM servizi_ricariche WHERE DATE(data_operazione) = CURRENT_DATE
     ) AS revenues");
@@ -67,7 +69,9 @@ try {
 
     $revenueChartStmt = $pdo->prepare("SELECT DATE_FORMAT(data_operazione, '%b %Y') AS label, SUM(importo) AS totale
         FROM (
-            SELECT COALESCE(data_pagamento, data_scadenza, created_at) AS data_operazione, importo FROM pagamenti WHERE stato = 'Completato'
+            SELECT COALESCE(data_pagamento, data_scadenza, created_at) AS data_operazione,
+                   CASE WHEN tipo_movimento = 'Entrata' THEN importo ELSE -importo END AS importo
+            FROM pagamenti WHERE stato = 'Completato'
             UNION ALL
             SELECT data_operazione, importo FROM servizi_ricariche
         ) AS unified
@@ -119,18 +123,20 @@ try {
         ];
     }
 
-    $pendingPagamentiStmt = $pdo->prepare("SELECT id, descrizione, stato, data_scadenza, updated_at FROM pagamenti WHERE stato IN ('In lavorazione', 'In attesa') ORDER BY COALESCE(data_scadenza, updated_at) ASC LIMIT 1");
+    $pendingPagamentiStmt = $pdo->prepare("SELECT id, descrizione, stato, tipo_movimento, data_scadenza, updated_at FROM pagamenti WHERE stato IN ('In lavorazione', 'In attesa') ORDER BY COALESCE(data_scadenza, updated_at) ASC LIMIT 1");
     $pendingPagamentiStmt->execute();
     if ($pendingPagamento = $pendingPagamentiStmt->fetch()) {
+        $movimentoLabel = $pendingPagamento['tipo_movimento'] ?? 'Entrata';
+        $icon = $movimentoLabel === 'Uscita' ? 'fa-arrow-trend-down' : 'fa-arrow-trend-up';
         $reminders[] = [
-            'icon' => 'fa-credit-card',
-            'title' => 'Pagamento da completare',
+            'icon' => $icon,
+            'title' => sprintf('%s da completare', $movimentoLabel),
             'detail' => sprintf('%s in stato %s. Scadenza %s.',
-                $pendingPagamento['descrizione'] ?: ('Pagamento #' . $pendingPagamento['id']),
+                $pendingPagamento['descrizione'] ?: ($movimentoLabel . ' #' . $pendingPagamento['id']),
                 strtoupper($pendingPagamento['stato'] ?? ''),
                 $pendingPagamento['data_scadenza'] ? format_datetime($pendingPagamento['data_scadenza'], 'd/m/Y') : 'N/D'
             ),
-            'url' => base_url('modules/servizi/pagamenti/view.php?id=' . $pendingPagamento['id']),
+            'url' => base_url('modules/servizi/entrate-uscite/view.php?id=' . $pendingPagamento['id']),
         ];
     }
 

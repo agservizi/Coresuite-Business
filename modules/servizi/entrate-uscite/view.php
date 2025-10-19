@@ -4,7 +4,7 @@ require_once __DIR__ . '/../../../includes/db_connect.php';
 require_once __DIR__ . '/../../../includes/helpers.php';
 
 require_role('Admin', 'Operatore', 'Viewer');
-$pageTitle = 'Dettaglio pagamento';
+$pageTitle = 'Dettaglio movimento';
 
 $id = (int) ($_GET['id'] ?? 0);
 if ($id <= 0) {
@@ -38,13 +38,13 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 	<?php require_once __DIR__ . '/../../../includes/topbar.php'; ?>
 	<main class="content-wrapper">
 		<div class="d-flex justify-content-between align-items-center mb-4">
-			<a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-arrow-left"></i> Elenco pagamenti</a>
+			<a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-arrow-left"></i> Elenco movimenti</a>
 			<div class="d-flex gap-2">
 				<?php if ($puoModificare): ?>
 					<a class="btn btn-warning text-dark" href="edit.php?id=<?php echo $id; ?>"><i class="fa-solid fa-pen"></i> Modifica</a>
 				<?php endif; ?>
 				<?php if ($puoEliminare): ?>
-					<form method="post" action="delete.php" onsubmit="return confirm('Eliminare definitivamente questo pagamento?');">
+					<form method="post" action="delete.php" onsubmit="return confirm('Eliminare definitivamente questo movimento?');">
 						<input type="hidden" name="id" value="<?php echo $id; ?>">
 						<input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
 						<button class="btn btn-outline-danger" type="submit"><i class="fa-solid fa-trash"></i> Elimina</button>
@@ -57,7 +57,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 			<div class="col-lg-8">
 				<div class="card ag-card h-100">
 					<div class="card-header bg-transparent border-0">
-						<h1 class="h4 mb-0">Dettagli pagamento</h1>
+						<h1 class="h4 mb-0">Dettagli movimento</h1>
 					</div>
 					<div class="card-body">
 						<dl class="row mb-0">
@@ -67,17 +67,31 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 							</dd>
 							<dt class="col-sm-4 text-muted">Descrizione</dt>
 							<dd class="col-sm-8"><?php echo sanitize_output($pagamento['descrizione']); ?></dd>
+							<dt class="col-sm-4 text-muted">Tipo movimento</dt>
+							<dd class="col-sm-8">
+								<?php
+									$tipoMovimento = $pagamento['tipo_movimento'] ?? 'Entrata';
+									$badgeClass = $tipoMovimento === 'Uscita' ? 'bg-danger text-white' : 'bg-success text-white';
+								?>
+								<span class="badge <?php echo $badgeClass; ?>"><?php echo sanitize_output($tipoMovimento); ?></span>
+							</dd>
 							<dt class="col-sm-4 text-muted">Metodo</dt>
 							<dd class="col-sm-8"><?php echo sanitize_output($pagamento['metodo']); ?></dd>
 							<dt class="col-sm-4 text-muted">Stato</dt>
 							<dd class="col-sm-8"><span class="badge bg-warning text-dark"><?php echo sanitize_output($pagamento['stato']); ?></span></dd>
 							<dt class="col-sm-4 text-muted">Importo</dt>
-							<dd class="col-sm-8">€ <?php echo number_format((float) $pagamento['importo'], 2, ',', '.'); ?></dd>
+							<dd class="col-sm-8">
+								<?php
+									$sign = ($pagamento['tipo_movimento'] ?? 'Entrata') === 'Uscita' ? -1 : 1;
+									$amountClass = $sign < 0 ? 'text-danger' : 'text-success';
+								?>
+								<span class="<?php echo $amountClass; ?>"><?php echo sanitize_output(format_currency((float) $pagamento['importo'] * $sign)); ?></span>
+							</dd>
 							<dt class="col-sm-4 text-muted">Riferimento</dt>
 							<dd class="col-sm-8"><?php echo sanitize_output($pagamento['riferimento'] ?: '—'); ?></dd>
 							<dt class="col-sm-4 text-muted">Data scadenza</dt>
 							<dd class="col-sm-8"><?php echo $pagamento['data_scadenza'] ? format_date_locale($pagamento['data_scadenza']) : '—'; ?></dd>
-							<dt class="col-sm-4 text-muted">Data pagamento</dt>
+							<dt class="col-sm-4 text-muted">Data movimento</dt>
 							<dd class="col-sm-8"><?php echo $pagamento['data_pagamento'] ? format_date_locale($pagamento['data_pagamento']) : '—'; ?></dd>
 							<dt class="col-sm-4 text-muted">Note</dt>
 							<dd class="col-sm-8"><?php echo nl2br(sanitize_output($pagamento['note'] ?: '—')); ?></dd>

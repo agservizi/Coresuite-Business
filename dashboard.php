@@ -19,7 +19,7 @@ $charts = [
         'values' => [],
     ],
     'services' => [
-        'labels' => ['Pagamenti', 'Ricariche', 'Digitali', 'Telefonia', 'Logistici'],
+        'labels' => ['Entrate/Uscite', 'Ricariche', 'Digitali', 'Telefonia', 'Logistici'],
         'values' => [0, 0, 0, 0, 0],
     ],
 ];
@@ -44,7 +44,9 @@ try {
     $stats['servicesInProgress'] = (int) $servicesInProgressStmt->fetchColumn();
 
     $dailyRevenueStmt = $pdo->prepare("SELECT COALESCE(SUM(importo), 0) FROM (
-        SELECT importo FROM pagamenti WHERE stato = 'Completato' AND DATE(COALESCE(data_pagamento, updated_at)) = CURRENT_DATE
+        SELECT CASE WHEN tipo_movimento = 'Entrata' THEN importo ELSE -importo END AS importo
+        FROM pagamenti
+        WHERE stato = 'Completato' AND DATE(COALESCE(data_pagamento, updated_at)) = CURRENT_DATE
         UNION ALL
         SELECT importo FROM servizi_ricariche WHERE DATE(data_operazione) = CURRENT_DATE
     ) AS revenues");
@@ -57,7 +59,9 @@ try {
 
     $revenueChartStmt = $pdo->prepare("SELECT DATE_FORMAT(data_operazione, '%b %Y') AS label, SUM(importo) AS totale
         FROM (
-            SELECT COALESCE(data_pagamento, data_scadenza, created_at) AS data_operazione, importo FROM pagamenti WHERE stato = 'Completato'
+            SELECT COALESCE(data_pagamento, data_scadenza, created_at) AS data_operazione,
+                   CASE WHEN tipo_movimento = 'Entrata' THEN importo ELSE -importo END AS importo
+            FROM pagamenti WHERE stato = 'Completato'
             UNION ALL
             SELECT data_operazione, importo FROM servizi_ricariche
         ) AS unified
@@ -108,18 +112,20 @@ try {
         ];
     }
 
-    $pendingPagamentiStmt = $pdo->prepare("SELECT id, descrizione, stato, data_scadenza, updated_at FROM pagamenti WHERE stato IN ('In lavorazione', 'In attesa') ORDER BY COALESCE(data_scadenza, updated_at) ASC LIMIT 1");
+    $pendingPagamentiStmt = $pdo->prepare("SELECT id, descrizione, stato, tipo_movimento, data_scadenza, updated_at FROM pagamenti WHERE stato IN ('In lavorazione', 'In attesa') ORDER BY COALESCE(data_scadenza, updated_at) ASC LIMIT 1");
     $pendingPagamentiStmt->execute();
     if ($pendingPagamento = $pendingPagamentiStmt->fetch()) {
+        $movimentoLabel = $pendingPagamento['tipo_movimento'] ?? 'Entrata';
+        $icon = $movimentoLabel === 'Uscita' ? 'fa-arrow-trend-down' : 'fa-arrow-trend-up';
         $reminders[] = [
-            'icon' => 'fa-credit-card',
-            'title' => 'Pagamento da completare',
+            'icon' => $icon,
+            'title' => sprintf('%s da completare', $movimentoLabel),
             'detail' => sprintf('%s in stato %s. Scadenza %s.',
-                $pendingPagamento['descrizione'] ?: ('Pagamento #' . $pendingPagamento['id']),
+                $pendingPagamento['descrizione'] ?: ($movimentoLabel . ' #' . $pendingPagamento['id']),
                 strtoupper($pendingPagamento['stato'] ?? ''),
                 $pendingPagamento['data_scadenza'] ? format_datetime($pendingPagamento['data_scadenza'], 'd/m/Y') : 'N/D'
             ),
-            'url' => base_url('modules/servizi/pagamenti/view.php?id=' . $pendingPagamento['id']),
+            'url' => base_url('modules/servizi/entrate-uscite/view.php?id=' . $pendingPagamento['id']),
         ];
     }
 } catch (PDOException $e) {
@@ -165,7 +171,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                             <span class="hero-kpi-value" data-dashboard-stat="servicesInProgress" data-format="number"><?php echo number_format($stats['servicesInProgress']); ?></span>
                         </div>
                         <div class="hero-kpi">
-                            <span class="hero-kpi-label">Incassi oggi</span>
+                            <span class="hero-kpi-label">Saldo oggi</span>
                             <span class="hero-kpi-value" data-dashboard-stat="dailyRevenue" data-format="currency"><?php echo sanitize_output(format_currency($stats['dailyRevenue'])); ?></span>
                         </div>
                         <div class="hero-kpi">
@@ -212,9 +218,9 @@ require_once __DIR__ . '/includes/sidebar.php';
                         <div class="card-body">
                             <div class="metric-icon metric-icon-revenue"><i class="fa-solid fa-euro-sign"></i></div>
                             <div>
-                                <div class="metric-label">Incassi odierni</div>
+                                <div class="metric-label">Saldo odierno</div>
                                 <div class="metric-value" data-dashboard-stat="dailyRevenue" data-format="currency"><?php echo sanitize_output(format_currency($stats['dailyRevenue'])); ?></div>
-                                <div class="metric-footnote">Rilevazione giornaliera</div>
+                                <div class="metric-footnote">Entrate - Uscite del giorno</div>
                             </div>
                         </div>
                     </div>
@@ -237,7 +243,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                 <div class="col-12 col-xl-7">
                     <div class="card ag-card h-100">
                         <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
-                            <h5 class="card-title mb-0">Trend Incassi</h5>
+                            <h5 class="card-title mb-0">Trend Entrate/Uscite</h5>
                             <span class="text-muted small">Ultimi 6 mesi</span>
                         </div>
                         <div class="card-body">
@@ -245,9 +251,9 @@ require_once __DIR__ . '/includes/sidebar.php';
                         </div>
                     </div>
                 </div>
-                <div class="col-12 col-xl-5">
+                <div class="col-12 col-xl-7">
                     <div class="card ag-card h-100">
-                        <div class="card-header bg-transparent border-0">
+                    </div>
                             <h5 class="card-title mb-0">Volume Servizi</h5>
                         </div>
                         <div class="card-body">
@@ -258,10 +264,10 @@ require_once __DIR__ . '/includes/sidebar.php';
             </div>
 
             <div class="row g-4">
-                <div class="col-12 col-xl-6">
+                <div class="col-12 col-xl-7">
                     <div class="card ag-card h-100">
-                        <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
-                            <h5 class="card-title mb-0">Ticket recenti</h5>
+                    </div>
+                </div>
                             <a class="btn btn-sm btn-outline-warning" href="modules/ticket/index.php">Vedi tutti</a>
                         </div>
                         <div class="card-body p-0">
@@ -335,7 +341,7 @@ require_once __DIR__ . '/includes/sidebar.php';
     const revenueChartData = {
         labels: <?php echo json_encode($charts['revenue']['labels'], JSON_THROW_ON_ERROR); ?>,
         datasets: [{
-            label: 'Incassi',
+            label: 'Saldo',
             data: <?php echo json_encode($charts['revenue']['values'], JSON_THROW_ON_ERROR); ?>,
             borderColor: '#0b2f6b',
             backgroundColor: 'rgba(11, 47, 107, 0.14)',

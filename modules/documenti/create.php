@@ -97,7 +97,7 @@ foreach ($clientRows as $clientRow) {
     ];
 }
 
-$moduleOptions = ['Pagamenti', 'Ricariche', 'Servizi Digitali', 'Telefonia', 'Logistici', 'Ticket', 'Altro'];
+$moduleOptions = ['Entrate/Uscite', 'Ricariche', 'Servizi Digitali', 'Telefonia', 'Logistici', 'Ticket', 'Altro'];
 $statuses = ['Bozza', 'Pubblicato', 'Archiviato'];
 $csrfToken = csrf_token();
 $existingTags = [];

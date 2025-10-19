@@ -4,31 +4,40 @@ require_once __DIR__ . '/../../../includes/db_connect.php';
 require_once __DIR__ . '/../../../includes/helpers.php';
 
 require_role('Admin', 'Operatore');
-$pageTitle = 'Nuovo pagamento';
+$pageTitle = 'Modifica movimento';
+
+$id = (int) ($_GET['id'] ?? 0);
+if ($id <= 0) {
+	header('Location: index.php');
+	exit;
+}
+
+$stmt = $pdo->prepare('SELECT * FROM pagamenti WHERE id = :id');
+$stmt->execute([':id' => $id]);
+$pagamento = $stmt->fetch();
+
+if (!$pagamento) {
+	header('Location: index.php?notfound=1');
+	exit;
+}
 
 $stati = ['In lavorazione', 'In attesa', 'Completato', 'Annullato'];
 $metodi = ['Bonifico', 'Carta di credito', 'Carta di debito', 'Contanti', 'RID', 'Altro'];
+$tipiMovimento = ['Entrata', 'Uscita'];
 
 $clientsStmt = $pdo->query('SELECT id, nome, cognome, ragione_sociale FROM clienti ORDER BY ragione_sociale, cognome, nome');
 $clients = $clientsStmt->fetchAll();
 
+$data = $pagamento;
+$data['tipo_movimento'] = $data['tipo_movimento'] ?? 'Entrata';
+$data['importo'] = number_format((float) $data['importo'], 2, '.', '');
 $errors = [];
-$data = [
-	'cliente_id' => '',
-	'descrizione' => '',
-	'riferimento' => '',
-	'metodo' => 'Bonifico',
-	'stato' => 'In lavorazione',
-	'importo' => '0.00',
-	'data_scadenza' => '',
-	'data_pagamento' => '',
-	'note' => '',
-];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	require_valid_csrf();
 
-	foreach (array_keys($data) as $field) {
+	$fields = ['cliente_id', 'descrizione', 'riferimento', 'metodo', 'stato', 'tipo_movimento', 'importo', 'data_scadenza', 'data_pagamento', 'note'];
+	foreach ($fields as $field) {
 		$data[$field] = trim($_POST[$field] ?? '');
 	}
 
@@ -37,7 +46,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	}
 
 	if ($data['descrizione'] === '') {
-		$errors[] = 'Inserisci una descrizione del pagamento.';
+		$errors[] = "Inserisci una descrizione del movimento.";
+	}
+
+	if (!in_array($data['tipo_movimento'], $tipiMovimento, true)) {
+		$data['tipo_movimento'] = 'Entrata';
 	}
 
 	if (!in_array($data['metodo'], $metodi, true)) {
@@ -50,6 +63,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 	if (!is_numeric($data['importo'])) {
 		$errors[] = 'Inserisci un importo numerico valido.';
+	} else {
+		$data['importo'] = number_format(abs((float) $data['importo']), 2, '.', '');
 	}
 
 	$data['data_scadenza'] = $data['data_scadenza'] ?: null;
@@ -59,11 +74,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 	$data['data_pagamento'] = $data['data_pagamento'] ?: null;
 	if ($data['data_pagamento'] && !DateTimeImmutable::createFromFormat('Y-m-d', $data['data_pagamento'])) {
-		$errors[] = 'La data di pagamento non è valida.';
+		$errors[] = 'La data del movimento non è valida.';
 	}
 
-	$uploadPath = null;
-	$uploadHash = null;
+	$newPath = $pagamento['allegato_path'] ?? null;
+	$newHash = $pagamento['allegato_hash'] ?? null;
 	$uploadedFile = $_FILES['allegato'] ?? null;
 
 	if ($uploadedFile && !empty($uploadedFile['name']) && $uploadedFile['error'] !== UPLOAD_ERR_OK) {
@@ -71,69 +86,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	}
 
 	if (!$errors && $uploadedFile && !empty($uploadedFile['name']) && $uploadedFile['error'] === UPLOAD_ERR_OK) {
-		$storageDir = public_path('assets/uploads/pagamenti');
+		$storageDir = public_path('assets/uploads/entrate-uscite');
 		if (!is_dir($storageDir) && !mkdir($storageDir, 0775, true) && !is_dir($storageDir)) {
 			$errors[] = 'Impossibile creare la cartella di archiviazione allegati.';
 		} else {
 			$original = sanitize_filename($uploadedFile['name']);
-			$fileName = sprintf('pagamento_%s_%s', date('YmdHis'), $original);
+			$prefix = strtolower($data['tipo_movimento'] ?: 'movimento');
+			$fileName = sprintf('%s_%s_%s', $prefix, date('YmdHis'), $original);
 			$destination = $storageDir . DIRECTORY_SEPARATOR . $fileName;
 			if (!move_uploaded_file($uploadedFile['tmp_name'], $destination)) {
 				$errors[] = 'Impossibile salvare il file allegato.';
 			} else {
-				$uploadPath = 'assets/uploads/pagamenti/' . $fileName;
-				$uploadHash = hash_file('sha256', $destination);
+				if (!empty($pagamento['allegato_path'])) {
+					$oldAbsolute = public_path($pagamento['allegato_path']);
+					if (is_file($oldAbsolute)) {
+						@unlink($oldAbsolute);
+					}
+				}
+				$newPath = 'assets/uploads/entrate-uscite/' . $fileName;
+				$newHash = hash_file('sha256', $destination);
 			}
 		}
 	}
 
 	if (!$errors) {
-		$stmt = $pdo->prepare('INSERT INTO pagamenti (
-			cliente_id,
-			descrizione,
-			riferimento,
-			metodo,
-			stato,
-			importo,
-			data_scadenza,
-			data_pagamento,
-			note,
-			allegato_path,
-			allegato_hash,
-			created_at,
-			updated_at
-		) VALUES (
-			:cliente_id,
-			:descrizione,
-			:riferimento,
-			:metodo,
-			:stato,
-			:importo,
-			:data_scadenza,
-			:data_pagamento,
-			:note,
-			:allegato_path,
-			:allegato_hash,
-			NOW(),
-			NOW()
-		)');
+		$stmt = $pdo->prepare('UPDATE pagamenti SET
+			cliente_id = :cliente_id,
+			descrizione = :descrizione,
+			riferimento = :riferimento,
+			metodo = :metodo,
+			stato = :stato,
+			tipo_movimento = :tipo_movimento,
+			importo = :importo,
+			data_scadenza = :data_scadenza,
+			data_pagamento = :data_pagamento,
+			note = :note,
+			allegato_path = :allegato_path,
+			allegato_hash = :allegato_hash,
+			updated_at = NOW()
+		WHERE id = :id');
 		$stmt->execute([
 			':cliente_id' => (int) $data['cliente_id'],
 			':descrizione' => $data['descrizione'],
 			':riferimento' => $data['riferimento'] ?: null,
 			':metodo' => $data['metodo'],
 			':stato' => $data['stato'],
-			':importo' => number_format((float) $data['importo'], 2, '.', ''),
+			':tipo_movimento' => $data['tipo_movimento'],
+			':importo' => $data['importo'],
 			':data_scadenza' => $data['data_scadenza'] ?: null,
 			':data_pagamento' => $data['data_pagamento'] ?: null,
 			':note' => $data['note'] ?: null,
-			':allegato_path' => $uploadPath,
-			':allegato_hash' => $uploadHash,
+			':allegato_path' => $newPath,
+			':allegato_hash' => $newHash,
+			':id' => $id,
 		]);
 
-		$paymentId = (int) $pdo->lastInsertId();
-		add_flash('success', 'Pagamento registrato correttamente.');
-		header('Location: view.php?id=' . $paymentId);
+		add_flash('success', 'Movimento aggiornato correttamente.');
+		header('Location: view.php?id=' . $id);
 		exit;
 	}
 }
@@ -147,11 +156,11 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 	<?php require_once __DIR__ . '/../../../includes/topbar.php'; ?>
 	<main class="content-wrapper">
 		<div class="mb-4">
-			<a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-arrow-left"></i> Tutti i pagamenti</a>
+			<a class="btn btn-outline-warning" href="view.php?id=<?php echo $id; ?>"><i class="fa-solid fa-arrow-left"></i> Dettaglio movimento</a>
 		</div>
 		<div class="card ag-card">
 			<div class="card-header bg-transparent border-0">
-				<h1 class="h4 mb-0">Nuovo pagamento</h1>
+				<h1 class="h4 mb-0">Modifica movimento</h1>
 			</div>
 			<div class="card-body">
 				<?php if ($errors): ?>
@@ -164,7 +173,6 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 					<div class="col-md-6">
 						<label class="form-label" for="cliente_id">Cliente</label>
 						<select class="form-select" id="cliente_id" name="cliente_id" required>
-							<option value="">Seleziona cliente</option>
 							<?php foreach ($clients as $client): ?>
 								<option value="<?php echo (int) $client['id']; ?>" <?php echo ((int) $data['cliente_id'] === (int) $client['id']) ? 'selected' : ''; ?>>
 									<?php
@@ -183,8 +191,16 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 						<input class="form-control" id="descrizione" name="descrizione" value="<?php echo sanitize_output($data['descrizione']); ?>" maxlength="180" required>
 					</div>
 					<div class="col-md-4">
+						<label class="form-label" for="tipo_movimento">Tipo movimento</label>
+						<select class="form-select" id="tipo_movimento" name="tipo_movimento">
+							<?php foreach ($tipiMovimento as $tipo): ?>
+								<option value="<?php echo $tipo; ?>" <?php echo $data['tipo_movimento'] === $tipo ? 'selected' : ''; ?>><?php echo $tipo; ?></option>
+							<?php endforeach; ?>
+						</select>
+					</div>
+					<div class="col-md-4">
 						<label class="form-label" for="riferimento">Riferimento</label>
-						<input class="form-control" id="riferimento" name="riferimento" value="<?php echo sanitize_output($data['riferimento']); ?>" maxlength="80" placeholder="Es. FATT-2025-001">
+						<input class="form-control" id="riferimento" name="riferimento" value="<?php echo sanitize_output($data['riferimento'] ?? ''); ?>" maxlength="80">
 					</div>
 					<div class="col-md-4">
 						<label class="form-label" for="metodo">Metodo</label>
@@ -206,7 +222,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 						<label class="form-label" for="importo">Importo</label>
 						<div class="input-group">
 							<span class="input-group-text">€</span>
-							<input class="form-control" id="importo" name="importo" type="number" step="0.01" min="0" value="<?php echo sanitize_output($data['importo']); ?>" required>
+							<input class="form-control" id="importo" name="importo" type="number" step="0.01" min="0.01" value="<?php echo sanitize_output((string) $data['importo']); ?>" required>
 						</div>
 					</div>
 					<div class="col-md-4">
@@ -214,22 +230,25 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 						<input class="form-control" id="data_scadenza" name="data_scadenza" type="date" value="<?php echo sanitize_output((string) $data['data_scadenza']); ?>">
 					</div>
 					<div class="col-md-4">
-						<label class="form-label" for="data_pagamento">Data pagamento</label>
+						<label class="form-label" for="data_pagamento">Data movimento</label>
 						<input class="form-control" id="data_pagamento" name="data_pagamento" type="date" value="<?php echo sanitize_output((string) $data['data_pagamento']); ?>">
-						<small class="text-muted">Compila solo quando l'importo è incassato.</small>
 					</div>
 					<div class="col-12">
 						<label class="form-label" for="note">Note</label>
-						<textarea class="form-control" id="note" name="note" rows="4" placeholder="Note interne o condizioni"><?php echo sanitize_output($data['note']); ?></textarea>
+						<textarea class="form-control" id="note" name="note" rows="4"><?php echo sanitize_output($data['note'] ?? ''); ?></textarea>
 					</div>
 					<div class="col-md-6">
 						<label class="form-label" for="allegato">Allegato (opzionale)</label>
 						<input class="form-control" id="allegato" name="allegato" type="file" accept="application/pdf,image/*">
-						<small class="text-muted">Puoi allegare un PDF o un'immagine (es. distinta di pagamento).</small>
+						<?php if (!empty($pagamento['allegato_path'])): ?>
+							<small class="d-block mt-2">Allegato attuale: <a class="link-warning" href="../../../<?php echo sanitize_output($pagamento['allegato_path']); ?>" target="_blank">Scarica</a></small>
+						<?php else: ?>
+							<small class="text-muted">Nessun file caricato.</small>
+						<?php endif; ?>
 					</div>
 					<div class="col-12 d-flex justify-content-end gap-2">
-						<a class="btn btn-secondary" href="index.php">Annulla</a>
-						<button class="btn btn-warning text-dark" type="submit">Salva pagamento</button>
+						<a class="btn btn-secondary" href="view.php?id=<?php echo $id; ?>">Annulla</a>
+						<button class="btn btn-warning text-dark" type="submit">Salva modifiche</button>
 					</div>
 				</form>
 			</div>

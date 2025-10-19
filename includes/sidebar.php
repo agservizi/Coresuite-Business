@@ -23,10 +23,10 @@ if (!function_exists('nav_is_active')) {
 
 $serviziItems = [
     [
-        'needle' => 'modules/servizi/pagamenti',
-        'label' => 'Pagamenti',
-        'icon' => 'fa-solid fa-credit-card',
-        'href' => base_url('modules/servizi/pagamenti/index.php'),
+        'needle' => 'modules/servizi/entrate-uscite',
+        'label' => 'Entrate/Uscite',
+        'icon' => 'fa-solid fa-arrow-trend-up',
+        'href' => base_url('modules/servizi/entrate-uscite/index.php'),
     ],
     [
         'needle' => 'modules/servizi/ricariche',

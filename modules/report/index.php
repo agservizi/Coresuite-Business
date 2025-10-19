@@ -9,16 +9,19 @@ $pageTitle = 'Report e Statistiche';
 $from = $_GET['from'] ?? date('Y-m-01');
 $to = $_GET['to'] ?? date('Y-m-t');
 $service = $_GET['service'] ?? 'all';
+if ($service === 'pagamenti') {
+    $service = 'entrate-uscite';
+}
 $operator = $_GET['operator'] ?? '';
 $format = $_GET['export'] ?? '';
 
 $filters = [':from' => $from, ':to' => $to];
 $serviceMap = [
-    'pagamenti' => [
+    'entrate-uscite' => [
         'table' => 'pagamenti',
-        'columns' => ['descrizione', 'riferimento', 'metodo', 'stato', 'importo', 'data_scadenza', 'data_pagamento'],
+        'columns' => ['tipo_movimento', 'descrizione', 'riferimento', 'metodo', 'stato', 'importo', 'data_scadenza', 'data_pagamento'],
         'date_column' => 'created_at',
-        'label' => 'Pagamenti',
+        'label' => 'Entrate/Uscite',
     ],
     'ricariche' => [
         'table' => 'servizi_ricariche',
@@ -68,7 +71,9 @@ $summary = [
 ];
 
 $revenueStmt = $pdo->prepare("SELECT COALESCE(SUM(importo),0) FROM (
-    SELECT importo, COALESCE(data_pagamento, data_scadenza, created_at) AS data_riferimento FROM pagamenti WHERE stato = 'Completato'
+    SELECT CASE WHEN tipo_movimento = 'Entrata' THEN importo ELSE -importo END AS importo,
+           COALESCE(data_pagamento, data_scadenza, created_at) AS data_riferimento
+    FROM pagamenti WHERE stato = 'Completato'
     UNION ALL
     SELECT importo, data_operazione AS data_riferimento FROM servizi_ricariche
 ) AS revenues WHERE data_riferimento BETWEEN :from AND :to");
@@ -83,7 +88,12 @@ if ($format === 'csv' && $current) {
     foreach ($dataset as $row) {
         $dataRow = [$row['id']];
         foreach ($current['columns'] as $col) {
-            $dataRow[] = $row[$col] ?? '';
+            $value = $row[$col] ?? '';
+            if ($current['table'] === 'pagamenti' && $col === 'importo') {
+                $sign = (($row['tipo_movimento'] ?? 'Entrata') === 'Uscita') ? -1 : 1;
+                $value = number_format(((float) $value) * $sign, 2, '.', '');
+            }
+            $dataRow[] = $value;
         }
         $dataRow[] = $row[$current['date_column']] ?? '';
         fputcsv($out, $dataRow);
@@ -120,7 +130,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             <div class="col-lg-4 col-md-6">
                 <div class="card ag-card h-100">
                     <div class="card-body">
-                        <div class="card-title">Entrate periodo</div>
+                        <div class="card-title">Saldo periodo</div>
                         <div class="fs-2 fw-bold"><?php echo sanitize_output(format_currency($summary['revenue'])); ?></div>
                     </div>
                 </div>
@@ -196,7 +206,24 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                     <tr>
                                         <td>#<?php echo (int) $row['id']; ?></td>
                                         <?php foreach ($current['columns'] as $col): ?>
-                                            <td><?php echo sanitize_output($row[$col] ?? ''); ?></td>
+                                            <?php
+                                                $rawValue = $row[$col] ?? null;
+                                                if ($col === 'importo') {
+                                                    $factor = 1;
+                                                    if ($current['table'] === 'pagamenti') {
+                                                        $factor = (($row['tipo_movimento'] ?? 'Entrata') === 'Uscita') ? -1 : 1;
+                                                    }
+                                                    $displayValue = format_currency(((float) $rawValue) * $factor);
+                                                } elseif ($col === 'data_scadenza' || $col === 'data_pagamento' || $col === 'data_operazione' || $col === 'created_at') {
+                                                    $displayValue = $rawValue ? date('d/m/Y', strtotime((string) $rawValue)) : '—';
+                                                } else {
+                                                    $displayValue = (string) ($rawValue ?? '');
+                                                    if ($displayValue === '') {
+                                                        $displayValue = '—';
+                                                    }
+                                                }
+                                            ?>
+                                            <td><?php echo sanitize_output($displayValue); ?></td>
                                         <?php endforeach; ?>
                                         <td><?php echo sanitize_output(date('d/m/Y', strtotime($row[$current['date_column']] ?? 'now'))); ?></td>
                                     </tr>

@@ -65,6 +65,7 @@ CREATE TABLE IF NOT EXISTS clienti (
 CREATE TABLE IF NOT EXISTS pagamenti (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     cliente_id INT UNSIGNED NOT NULL,
+    tipo_movimento ENUM('Entrata','Uscita') NOT NULL DEFAULT 'Entrata',
     descrizione VARCHAR(180) NOT NULL,
     riferimento VARCHAR(80) NULL,
     metodo VARCHAR(60) NOT NULL DEFAULT 'Bonifico',
@@ -82,6 +83,7 @@ CREATE TABLE IF NOT EXISTS pagamenti (
     INDEX idx_pagamenti_scadenza (data_scadenza),
     INDEX idx_pagamenti_pagamento (data_pagamento),
     INDEX idx_pagamenti_cliente_stato (cliente_id, stato),
+    INDEX idx_pagamenti_tipo (tipo_movimento),
     FOREIGN KEY (cliente_id) REFERENCES clienti(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

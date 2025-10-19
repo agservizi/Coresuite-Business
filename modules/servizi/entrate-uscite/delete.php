@@ -41,11 +41,11 @@ try {
 	}
 
 	$pdo->commit();
-	add_flash('success', 'Pagamento eliminato correttamente.');
+	add_flash('success', 'Movimento eliminato correttamente.');
 } catch (Throwable $e) {
 	$pdo->rollBack();
-	error_log('Errore eliminazione pagamento ID ' . $id . ': ' . $e->getMessage());
-	add_flash('danger', 'Impossibile eliminare il pagamento. Riprova più tardi.');
+	error_log('Errore eliminazione movimento ID ' . $id . ': ' . $e->getMessage());
+	add_flash('danger', "Impossibile eliminare il movimento. Riprova più tardi.");
 }
 
 header('Location: index.php');
