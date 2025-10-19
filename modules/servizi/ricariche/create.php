@@ -8,13 +8,14 @@ require_role('Admin', 'Operatore');
 $pageTitle = 'Nuovo appuntamento';
 
 $clients = $pdo->query('SELECT id, nome, cognome FROM clienti ORDER BY cognome, nome')->fetchAll();
+$titleOptions = ['Apertura SPID', 'Registrazione PEC', 'Richiesta Firma Digitale/CNS'];
 $serviceTypes = ['Consulenza', 'Sopralluogo', 'Supporto tecnico', 'Rinnovo servizio'];
 $statuses = ['Programmato', 'In corso', 'Completato', 'Annullato'];
 $responsabili = $pdo->query("SELECT username FROM users WHERE ruolo IN ('Admin', 'Manager', 'Operatore') ORDER BY username")->fetchAll(PDO::FETCH_COLUMN);
 
 $data = [
     'cliente_id' => '',
-    'titolo' => '',
+    'titolo' => $titleOptions[0],
     'tipo_servizio' => $serviceTypes[0],
     'responsabile' => '',
     'luogo' => '',
@@ -159,7 +160,13 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         </div>
                         <div class="col-md-6">
                             <label class="form-label" for="titolo">Titolo</label>
-                            <input class="form-control" id="titolo" name="titolo" value="<?php echo sanitize_output($data['titolo']); ?>" required>
+                            <input class="form-control" id="titolo" name="titolo" list="titoloOptions" value="<?php echo sanitize_output($data['titolo']); ?>" placeholder="Seleziona o inserisci un titolo" required>
+                            <datalist id="titoloOptions">
+                                <?php foreach ($titleOptions as $option): ?>
+                                    <option value="<?php echo sanitize_output($option); ?>"></option>
+                                <?php endforeach; ?>
+                            </datalist>
+                            <small class="text-muted">Puoi scegliere una proposta oppure digitare un titolo personalizzato.</small>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label" for="tipo_servizio">Tipologia</label>
