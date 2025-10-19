@@ -24,6 +24,8 @@ $data = [
     'stato' => $statuses[0],
     'note' => '',
 ];
+$titleChoice = $titleOptions[0];
+$customTitle = '';
 $errors = [];
 $csrfToken = csrf_token();
 
@@ -33,11 +35,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $data[$field] = trim($_POST[$field] ?? '');
     }
 
+    $titleChoice = trim($_POST['title_choice'] ?? $titleOptions[0]);
+    if (!in_array($titleChoice, $titleOptions, true) && $titleChoice !== '__custom') {
+        $titleChoice = $titleOptions[0];
+    }
+    if ($titleChoice === '__custom') {
+        $customTitle = trim($_POST['custom_title'] ?? '');
+        $data['titolo'] = $customTitle;
+        if ($data['titolo'] === '') {
+            $errors[] = 'Inserisci un titolo personalizzato.';
+        }
+    } else {
+        $data['titolo'] = $titleChoice;
+    }
+
     if ((int) $data['cliente_id'] <= 0) {
         $errors[] = 'Seleziona un cliente valido.';
     }
-    if ($data['titolo'] === '') {
-        $errors[] = 'Inserisci un titolo per l\'appuntamento.';
+    if ($data['titolo'] === '' && $titleChoice !== '__custom') {
+        $errors[] = 'Seleziona un titolo per l\'appuntamento.';
     }
     if (!in_array($data['tipo_servizio'], $serviceTypes, true)) {
         $errors[] = 'Tipo di servizio non valido.';
@@ -159,14 +175,19 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             </select>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label" for="titolo">Titolo</label>
-                            <input class="form-control" id="titolo" name="titolo" list="titoloOptions" value="<?php echo sanitize_output($data['titolo']); ?>" placeholder="Seleziona o inserisci un titolo" required>
-                            <datalist id="titoloOptions">
+                            <label class="form-label" for="title_choice">Titolo</label>
+                            <select class="form-select" id="title_choice" name="title_choice">
                                 <?php foreach ($titleOptions as $option): ?>
-                                    <option value="<?php echo sanitize_output($option); ?>"></option>
+                                    <option value="<?php echo sanitize_output($option); ?>" <?php echo $titleChoice === $option ? 'selected' : ''; ?>><?php echo sanitize_output($option); ?></option>
                                 <?php endforeach; ?>
-                            </datalist>
-                            <small class="text-muted">Puoi scegliere una proposta oppure digitare un titolo personalizzato.</small>
+                                <option value="__custom" <?php echo $titleChoice === '__custom' ? 'selected' : ''; ?>>Titolo personalizzato…</option>
+                            </select>
+                            <small class="text-muted">Seleziona una delle opzioni oppure scegli "Titolo personalizzato".</small>
+                        </div>
+                        <div class="col-md-6" id="customTitleGroup" <?php echo $titleChoice === '__custom' ? '' : 'hidden'; ?>>
+                            <label class="form-label" for="custom_title">Titolo personalizzato</label>
+                            <input class="form-control" id="custom_title" name="custom_title" value="<?php echo sanitize_output($customTitle); ?>" placeholder="Inserisci il titolo dell'appuntamento">
+                            <small class="text-muted">Verrà utilizzato solo se scegli l'opzione personalizzata.</small>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label" for="tipo_servizio">Tipologia</label>
@@ -219,6 +240,31 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 </form>
             </div>
         </div>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                var select = document.getElementById('title_choice');
+                var customGroup = document.getElementById('customTitleGroup');
+                var customInput = document.getElementById('custom_title');
+                if (!select || !customGroup) {
+                    return;
+                }
+                var toggleCustom = function () {
+                    if (select.value === '__custom') {
+                        customGroup.removeAttribute('hidden');
+                        if (customInput) {
+                            customInput.required = true;
+                        }
+                    } else {
+                        customGroup.setAttribute('hidden', 'hidden');
+                        if (customInput) {
+                            customInput.required = false;
+                        }
+                    }
+                };
+                select.addEventListener('change', toggleCustom);
+                toggleCustom();
+            });
+        </script>
     </main>
 </div>
 <?php require_once __DIR__ . '/../../../includes/footer.php'; ?>
