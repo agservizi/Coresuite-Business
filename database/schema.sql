@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS clienti (
 
 CREATE TABLE IF NOT EXISTS entrate_uscite (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    cliente_id INT UNSIGNED NOT NULL,
+    cliente_id INT UNSIGNED NULL,
     tipo_movimento ENUM('Entrata','Uscita') NOT NULL DEFAULT 'Entrata',
     descrizione VARCHAR(180) NOT NULL,
     riferimento VARCHAR(80) NULL,

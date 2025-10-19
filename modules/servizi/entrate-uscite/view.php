@@ -28,6 +28,7 @@ $notaCliente = array_filter([
 	$pagamento['ragione_sociale'] ?: null,
 	trim(($pagamento['cognome'] ?? '') . ' ' . ($pagamento['nome'] ?? '')) ?: null,
 ]);
+$etichettaCliente = $notaCliente ? implode(' • ', $notaCliente) : 'Movimento interno';
 
 $csrfToken = csrf_token();
 
@@ -62,9 +63,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 					<div class="card-body">
 						<dl class="row mb-0">
 							<dt class="col-sm-4 text-muted">Cliente</dt>
-							<dd class="col-sm-8">
-								<?php echo sanitize_output($notaCliente ? implode(' • ', $notaCliente) : ('Cliente #' . $pagamento['cliente_id'])); ?>
-							</dd>
+							<dd class="col-sm-8"><?php echo sanitize_output($etichettaCliente); ?></dd>
 							<dt class="col-sm-4 text-muted">Descrizione</dt>
 							<dd class="col-sm-8"><?php echo sanitize_output($pagamento['descrizione']); ?></dd>
 							<dt class="col-sm-4 text-muted">Tipo movimento</dt>

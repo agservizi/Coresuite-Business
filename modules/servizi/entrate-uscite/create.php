@@ -10,12 +10,8 @@ $stati = ['In lavorazione', 'In attesa', 'Completato', 'Annullato'];
 $metodi = ['Bonifico', 'Carta di credito', 'Carta di debito', 'Contanti', 'RID', 'Altro'];
 $tipiMovimento = ['Entrata', 'Uscita'];
 
-$clientsStmt = $pdo->query('SELECT id, nome, cognome, ragione_sociale FROM clienti ORDER BY ragione_sociale, cognome, nome');
-$clients = $clientsStmt->fetchAll();
-
 $errors = [];
 $data = [
-	'cliente_id' => '',
 	'descrizione' => '',
 	'riferimento' => '',
 	'metodo' => 'Bonifico',
@@ -26,16 +22,13 @@ $data = [
 	'data_pagamento' => date('d/m/Y'),
 	'note' => '',
 ];
+$clienteId = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	require_valid_csrf();
 
 	foreach (array_keys($data) as $field) {
 		$data[$field] = trim($_POST[$field] ?? '');
-	}
-
-	if ((int) $data['cliente_id'] <= 0) {
-		$errors[] = 'Seleziona un cliente valido.';
 	}
 
 	if ($data['descrizione'] === '') {
@@ -142,7 +135,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 			NOW()
 		)');
 		$stmt->execute([
-			':cliente_id' => (int) $data['cliente_id'],
+			':cliente_id' => $clienteId,
 			':descrizione' => $data['descrizione'],
 			':riferimento' => $data['riferimento'] ?: null,
 			':metodo' => $data['metodo'],
@@ -186,22 +179,10 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 				<?php endif; ?>
 				<form method="post" enctype="multipart/form-data" class="row g-4" novalidate>
 					<input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
-					<div class="col-md-6">
-						<label class="form-label" for="cliente_id">Cliente</label>
-						<select class="form-select" id="cliente_id" name="cliente_id" required>
-							<option value="">Seleziona cliente</option>
-							<?php foreach ($clients as $client): ?>
-								<option value="<?php echo (int) $client['id']; ?>" <?php echo ((int) $data['cliente_id'] === (int) $client['id']) ? 'selected' : ''; ?>>
-									<?php
-										$labelPieces = array_filter([
-											$client['ragione_sociale'] ?: null,
-											trim(($client['cognome'] ?? '') . ' ' . ($client['nome'] ?? '')) ?: null,
-										]);
-										echo sanitize_output($labelPieces ? implode(' • ', $labelPieces) : ('#' . $client['id']));
-									?>
-								</option>
-							<?php endforeach; ?>
-						</select>
+					<div class="col-12">
+						<div class="alert alert-secondary py-2">
+							Movimento interno all'azienda (nessun cliente associato).
+						</div>
 					</div>
 					<div class="col-md-6">
 						<label class="form-label" for="descrizione">Descrizione</label>

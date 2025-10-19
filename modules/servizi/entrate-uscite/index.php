@@ -164,7 +164,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 										<?php
 											$clientName = trim(($pagamento['cognome'] ?? '') . ' ' . ($pagamento['nome'] ?? ''));
 											$ragione = $pagamento['ragione_sociale'] ?? '';
-											echo sanitize_output($ragione ?: ($clientName ?: 'N/D'));
+											echo sanitize_output($ragione ?: ($clientName ?: 'Movimento interno'));
 										?>
 									</td>
 									<td>

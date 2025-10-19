@@ -29,9 +29,13 @@ $clientsStmt = $pdo->query('SELECT id, nome, cognome, ragione_sociale FROM clien
 $clients = $clientsStmt->fetchAll();
 
 $data = $pagamento;
+$data['cliente_id'] = isset($data['cliente_id']) ? (string) $data['cliente_id'] : '';
 $data['tipo_movimento'] = $data['tipo_movimento'] ?? 'Entrata';
 $data['importo'] = number_format((float) $data['importo'], 2, '.', '');
+$data['data_scadenza'] = !empty($data['data_scadenza']) ? date('d/m/Y', strtotime($data['data_scadenza'])) : '';
+$data['data_pagamento'] = !empty($data['data_pagamento']) ? date('d/m/Y', strtotime($data['data_pagamento'])) : '';
 $errors = [];
+$clienteId = $data['cliente_id'] !== '' ? (int) $data['cliente_id'] : null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	require_valid_csrf();
@@ -41,8 +45,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 		$data[$field] = trim($_POST[$field] ?? '');
 	}
 
-	if ((int) $data['cliente_id'] <= 0) {
-		$errors[] = 'Seleziona un cliente valido.';
+	$clienteId = $data['cliente_id'] === '' ? null : (int) $data['cliente_id'];
+	if ($clienteId !== null && $clienteId <= 0) {
+		$errors[] = 'Se selezioni un cliente deve essere valido.';
 	}
 
 	if ($data['descrizione'] === '') {
@@ -67,14 +72,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 		$data['importo'] = number_format(abs((float) $data['importo']), 2, '.', '');
 	}
 
-	$data['data_scadenza'] = $data['data_scadenza'] ?: null;
-	if ($data['data_scadenza'] && !DateTimeImmutable::createFromFormat('Y-m-d', $data['data_scadenza'])) {
-		$errors[] = 'La data di scadenza non è valida.';
+	$data['data_scadenza'] = $data['data_scadenza'] ?: '';
+	$scadenzaForDb = null;
+	if ($data['data_scadenza'] !== '') {
+		$scadenzaDate = DateTimeImmutable::createFromFormat('d/m/Y', $data['data_scadenza']);
+		if (!$scadenzaDate || $scadenzaDate->format('d/m/Y') !== $data['data_scadenza']) {
+			$errors[] = 'La data di scadenza non è valida (usa il formato gg/mm/aaaa).';
+		} else {
+			$scadenzaForDb = $scadenzaDate->format('Y-m-d');
+		}
 	}
 
-	$data['data_pagamento'] = $data['data_pagamento'] ?: null;
-	if ($data['data_pagamento'] && !DateTimeImmutable::createFromFormat('Y-m-d', $data['data_pagamento'])) {
-		$errors[] = 'La data del movimento non è valida.';
+	$pagamentoForDb = null;
+	if ($data['data_pagamento'] === '') {
+		$errors[] = 'Specifica la data in cui stai registrando o aggiornando il movimento.';
+	} else {
+		$pagamentoDate = DateTimeImmutable::createFromFormat('d/m/Y', $data['data_pagamento']);
+		if (!$pagamentoDate || $pagamentoDate->format('d/m/Y') !== $data['data_pagamento']) {
+			$errors[] = 'La data del movimento non è valida (usa il formato gg/mm/aaaa).';
+		} else {
+			$pagamentoForDb = $pagamentoDate->format('Y-m-d');
+		}
 	}
 
 	$newPath = $pagamento['allegato_path'] ?? null;
@@ -126,15 +144,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 			updated_at = NOW()
 		WHERE id = :id');
 		$stmt->execute([
-			':cliente_id' => (int) $data['cliente_id'],
+			':cliente_id' => $clienteId,
 			':descrizione' => $data['descrizione'],
 			':riferimento' => $data['riferimento'] ?: null,
 			':metodo' => $data['metodo'],
 			':stato' => $data['stato'],
 			':tipo_movimento' => $data['tipo_movimento'],
 			':importo' => $data['importo'],
-			':data_scadenza' => $data['data_scadenza'] ?: null,
-			':data_pagamento' => $data['data_pagamento'] ?: null,
+			':data_scadenza' => $scadenzaForDb,
+			':data_pagamento' => $pagamentoForDb,
 			':note' => $data['note'] ?: null,
 			':allegato_path' => $newPath,
 			':allegato_hash' => $newHash,
@@ -170,18 +188,24 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 				<?php endif; ?>
 				<form method="post" enctype="multipart/form-data" class="row g-4" novalidate>
 					<input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
+					<div class="col-12">
+						<div class="alert alert-secondary py-2">
+							Lascia vuoto per movimento interno (nessun cliente associato).
+						</div>
+					</div>
 					<div class="col-md-6">
 						<label class="form-label" for="cliente_id">Cliente</label>
-						<select class="form-select" id="cliente_id" name="cliente_id" required>
+						<select class="form-select" id="cliente_id" name="cliente_id">
+							<option value="" <?php echo $data['cliente_id'] === '' ? 'selected' : ''; ?>>Nessun cliente (movimento interno)</option>
 							<?php foreach ($clients as $client): ?>
-								<option value="<?php echo (int) $client['id']; ?>" <?php echo ((int) $data['cliente_id'] === (int) $client['id']) ? 'selected' : ''; ?>>
+								<option value="<?php echo (int) $client['id']; ?>" <?php echo (string) $client['id'] === (string) $data['cliente_id'] ? 'selected' : ''; ?>>
 									<?php
 										$labelPieces = array_filter([
 											$client['ragione_sociale'] ?: null,
 											trim(($client['cognome'] ?? '') . ' ' . ($client['nome'] ?? '')) ?: null,
 										]);
 										echo sanitize_output($labelPieces ? implode(' • ', $labelPieces) : ('#' . $client['id']));
-									?>
+								?>
 								</option>
 							<?php endforeach; ?>
 						</select>
@@ -227,11 +251,12 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 					</div>
 					<div class="col-md-4">
 						<label class="form-label" for="data_scadenza">Data scadenza</label>
-						<input class="form-control" id="data_scadenza" name="data_scadenza" type="date" value="<?php echo sanitize_output((string) $data['data_scadenza']); ?>">
+						<input class="form-control" id="data_scadenza" name="data_scadenza" type="text" inputmode="numeric" pattern="\d{2}/\d{2}/\d{4}" placeholder="gg/mm/aaaa" value="<?php echo sanitize_output((string) $data['data_scadenza']); ?>">
 					</div>
 					<div class="col-md-4">
 						<label class="form-label" for="data_pagamento">Data movimento</label>
-						<input class="form-control" id="data_pagamento" name="data_pagamento" type="date" value="<?php echo sanitize_output((string) $data['data_pagamento']); ?>">
+						<input class="form-control" id="data_pagamento" name="data_pagamento" type="text" inputmode="numeric" pattern="\d{2}/\d{2}/\d{4}" placeholder="gg/mm/aaaa" value="<?php echo sanitize_output((string) $data['data_pagamento']); ?>">
+						<small class="text-muted">Formato richiesto: gg/mm/aaaa.</small>
 					</div>
 					<div class="col-12">
 						<label class="form-label" for="note">Note</label>
