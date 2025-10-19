@@ -28,7 +28,7 @@ $serviceSummaryQuery = "SELECT 'Entrate' AS tipo, COUNT(*) AS totale, COALESCE(S
     UNION ALL
     SELECT 'Appuntamenti', COUNT(*), 0 FROM servizi_appuntamenti WHERE cliente_id = ?
     UNION ALL
-    SELECT 'Digitali', COUNT(*), 0 FROM servizi_digitali WHERE cliente_id = ?
+    SELECT 'Programma Fedeltà', COUNT(*), COALESCE(SUM(punti), 0) FROM fedelta_movimenti WHERE cliente_id = ?
     UNION ALL
     SELECT 'Telefonia', COUNT(*), 0 FROM telefonia WHERE cliente_id = ?
     UNION ALL
@@ -46,8 +46,11 @@ $latestPracticesStmt = $pdo->prepare("(
     SELECT 'Appuntamento' AS categoria, titolo AS riferimento, stato, data_inizio AS data
     FROM servizi_appuntamenti WHERE cliente_id = ?
     ) UNION ALL (
-        SELECT 'Digitale' AS categoria, tipo AS riferimento, stato, created_at AS data
-        FROM servizi_digitali WHERE cliente_id = ?
+        SELECT 'Fedeltà' AS categoria,
+            CONCAT(tipo_movimento, ' ', CASE WHEN punti >= 0 THEN CONCAT('+', punti) ELSE punti END, ' pt') AS riferimento,
+            CASE WHEN punti >= 0 THEN 'Accredito' ELSE 'Riscatto' END AS stato,
+            data_movimento AS data
+        FROM fedelta_movimenti WHERE cliente_id = ?
     ) UNION ALL (
         SELECT 'Telefonia' AS categoria, operatore AS riferimento, stato, created_at AS data
         FROM telefonia WHERE cliente_id = ?
@@ -120,8 +123,14 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                     <div class="border rounded-3 p-3 h-100">
                                         <div class="text-muted small text-uppercase"><?php echo sanitize_output($row['tipo']); ?></div>
                                         <div class="fs-3 fw-semibold"><?php echo (int) $row['totale']; ?></div>
-                                        <?php if ((float) $row['importo'] !== 0.0): ?>
-                                            <?php $importo = (float) $row['importo']; ?>
+                                        <?php
+                                            $importo = (float) $row['importo'];
+                                            $isLoyalty = $row['tipo'] === 'Programma Fedeltà';
+                                        ?>
+                                        <?php if ($isLoyalty && $importo !== 0.0): ?>
+                                            <?php $loyaltyClass = $importo >= 0 ? 'text-success' : 'text-danger'; ?>
+                                            <div class="<?php echo $loyaltyClass; ?>">Saldo: <?php echo number_format((int) $importo, 0, ',', '.'); ?> pt</div>
+                                        <?php elseif (!$isLoyalty && $importo !== 0.0): ?>
                                             <?php $importoClass = $importo >= 0 ? 'text-success' : 'text-danger'; ?>
                                             <div class="<?php echo $importoClass; ?>">Valore: <?php echo sanitize_output(format_currency($importo)); ?></div>
                                         <?php endif; ?>

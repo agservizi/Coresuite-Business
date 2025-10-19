@@ -36,7 +36,7 @@ if ($clientLabel === '') {
 
 try {
     $pdo->beginTransaction();
-    $tables = ['entrate_uscite', 'servizi_appuntamenti', 'servizi_digitali', 'telefonia', 'spedizioni', 'ticket', 'documenti'];
+    $tables = ['entrate_uscite', 'servizi_appuntamenti', 'fedelta_movimenti', 'telefonia', 'spedizioni', 'ticket', 'documenti'];
     foreach ($tables as $table) {
         $stmt = $pdo->prepare("DELETE FROM {$table} WHERE cliente_id = :id");
         $stmt->execute([':id' => $id]);

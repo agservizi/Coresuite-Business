@@ -11,6 +11,8 @@ $to = $_GET['to'] ?? date('Y-m-t');
 $service = $_GET['service'] ?? 'all';
 if ($service === 'pagamenti') {
     $service = 'entrate-uscite';
+} elseif ($service === 'digitali') {
+    $service = 'fedelta';
 }
 $owner = trim($_GET['responsabile'] ?? ($_GET['operator'] ?? ''));
 $format = $_GET['export'] ?? '';
@@ -29,11 +31,11 @@ $serviceMap = [
         'date_column' => 'data_inizio',
         'label' => 'Appuntamenti',
     ],
-    'digitali' => [
-        'table' => 'servizi_digitali',
-        'columns' => ['tipo', 'stato', 'created_at'],
-        'date_column' => 'created_at',
-        'label' => 'Servizi digitali',
+    'fedelta' => [
+        'table' => 'fedelta_movimenti',
+        'columns' => ['tipo_movimento', 'descrizione', 'punti', 'saldo_post_movimento', 'ricompensa', 'operatore'],
+        'date_column' => 'data_movimento',
+        'label' => 'Programma Fedeltà',
     ],
     'telefonia' => [
         'table' => 'telefonia',
@@ -90,6 +92,8 @@ if ($format === 'csv' && $current) {
             if ($current['table'] === 'entrate_uscite' && $col === 'importo') {
                 $sign = (($row['tipo_movimento'] ?? 'Entrata') === 'Uscita') ? -1 : 1;
                 $value = number_format(((float) $value) * $sign, 2, '.', '');
+            } elseif ($current['table'] === 'fedelta_movimenti' && in_array($col, ['punti', 'saldo_post_movimento'], true)) {
+                $value = (string) (int) $value;
             }
             $dataRow[] = $value;
         }
@@ -212,11 +216,18 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                                         $factor = (($row['tipo_movimento'] ?? 'Entrata') === 'Uscita') ? -1 : 1;
                                                     }
                                                     $displayValue = format_currency(((float) $rawValue) * $factor);
+                                                } elseif ($current['table'] === 'fedelta_movimenti' && $col === 'punti') {
+                                                    $points = (int) $rawValue;
+                                                    $prefix = $points > 0 ? '+' : ($points < 0 ? '-' : '');
+                                                    $displayValue = sprintf('%s%d pt', $prefix, abs($points));
+                                                } elseif ($current['table'] === 'fedelta_movimenti' && $col === 'saldo_post_movimento') {
+                                                    $balancePoints = (int) $rawValue;
+                                                    $displayValue = number_format($balancePoints, 0, ',', '.') . ' pt';
                                                 } elseif (in_array($col, ['data_scadenza', 'data_pagamento'], true)) {
                                                     $displayValue = $rawValue ? format_date_locale((string) $rawValue) : '—';
                                                 } elseif (in_array($col, ['data_operazione', 'created_at'], true)) {
                                                     $displayValue = $rawValue ? format_date_locale((string) $rawValue) : '—';
-                                                } elseif (in_array($col, ['data_inizio', 'data_fine'], true)) {
+                                                } elseif (in_array($col, ['data_inizio', 'data_fine', 'data_movimento'], true)) {
                                                     $displayValue = $rawValue ? format_datetime_locale((string) $rawValue) : '—';
                                                 } else {
                                                     $displayValue = (string) ($rawValue ?? '');
@@ -231,6 +242,8 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                             $dateValue = $row[$current['date_column']] ?? null;
                                             if ($dateValue) {
                                                 if (in_array($current['date_column'], ['data_inizio', 'data_fine'], true)) {
+                                                    $formattedDate = format_datetime_locale((string) $dateValue);
+                                                } elseif ($current['date_column'] === 'data_movimento') {
                                                     $formattedDate = format_datetime_locale((string) $dateValue);
                                                 } else {
                                                     $formattedDate = format_date_locale((string) $dateValue);
