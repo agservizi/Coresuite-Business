@@ -183,6 +183,207 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    const notificationsRoot = document.querySelector('[data-notifications-root]');
+    if (notificationsRoot) {
+        const notificationsList = notificationsRoot.querySelector('[data-notifications-list]');
+        const notificationsBadge = notificationsRoot.querySelector('[data-notifications-badge]');
+        const notificationsTotal = notificationsRoot.querySelector('[data-notifications-total]');
+        const notificationsUpdated = notificationsRoot.querySelector('[data-notifications-updated]');
+        const refreshButton = notificationsRoot.querySelector('[data-notifications-refresh]');
+        const toggleButton = notificationsRoot.querySelector('[data-notifications-toggle]');
+        const endpoint = notificationsRoot.getAttribute('data-notifications-endpoint') || 'api/notifications.php';
+        const limit = Number.parseInt(notificationsRoot.getAttribute('data-limit'), 10) || 8;
+        const refreshInterval = Number.parseInt(notificationsRoot.getAttribute('data-refresh-interval'), 10) || 60000;
+
+        let refreshTimer = null;
+        let controller = null;
+        let isLoading = false;
+
+        const setBadgeCount = (count) => {
+            if (notificationsBadge) {
+                if (count > 0) {
+                    notificationsBadge.textContent = count > 99 ? '99+' : String(count);
+                    notificationsBadge.hidden = false;
+                } else {
+                    notificationsBadge.textContent = '';
+                    notificationsBadge.hidden = true;
+                }
+            }
+            if (notificationsTotal) {
+                if (count > 0) {
+                    notificationsTotal.textContent = String(count);
+                    notificationsTotal.hidden = false;
+                } else {
+                    notificationsTotal.textContent = '0';
+                    notificationsTotal.hidden = true;
+                }
+            }
+        };
+
+        const showMessage = (message, className) => {
+            if (!notificationsList) {
+                return;
+            }
+            notificationsList.innerHTML = '';
+            const placeholder = document.createElement('div');
+            placeholder.className = className;
+            placeholder.textContent = message;
+            notificationsList.appendChild(placeholder);
+        };
+
+        const renderItems = (items) => {
+            if (!notificationsList) {
+                return;
+            }
+            notificationsList.innerHTML = '';
+            const fragment = document.createDocumentFragment();
+            if (!Array.isArray(items) || items.length === 0) {
+                showMessage('Nessuna notifica disponibile.', 'topbar-notifications-empty text-muted small');
+                return;
+            }
+            items.forEach((item) => {
+                const elementTag = item.url ? 'a' : 'div';
+                const wrapper = document.createElement(elementTag);
+                wrapper.className = 'topbar-notification-item';
+                if (item.url) {
+                    wrapper.href = item.url;
+                }
+                wrapper.dataset.notificationId = item.id || '';
+
+                const icon = document.createElement('span');
+                icon.className = 'topbar-notification-icon';
+                const iconInner = document.createElement('i');
+                iconInner.className = `fa-solid ${item.icon || 'fa-bell'}`;
+                iconInner.setAttribute('aria-hidden', 'true');
+                icon.appendChild(iconInner);
+                wrapper.appendChild(icon);
+
+                const content = document.createElement('span');
+                content.className = 'topbar-notification-content';
+
+                const title = document.createElement('span');
+                title.className = 'topbar-notification-title';
+                title.textContent = item.title || 'Notifica';
+                content.appendChild(title);
+
+                if (item.message) {
+                    const message = document.createElement('span');
+                    message.className = 'topbar-notification-message';
+                    message.textContent = item.message;
+                    content.appendChild(message);
+                }
+
+                const metaParts = [];
+                if (item.meta) {
+                    metaParts.push(item.meta);
+                }
+                if (item.timeLabel) {
+                    metaParts.push(item.timeLabel);
+                }
+                if (metaParts.length > 0) {
+                    const meta = document.createElement('span');
+                    meta.className = 'topbar-notification-meta';
+                    meta.textContent = metaParts.join(' | ');
+                    content.appendChild(meta);
+                }
+
+                wrapper.appendChild(content);
+                fragment.appendChild(wrapper);
+            });
+            notificationsList.appendChild(fragment);
+        };
+
+        const updateUpdatedLabel = (isoString) => {
+            if (!notificationsUpdated) {
+                return;
+            }
+            if (!isoString) {
+                notificationsUpdated.textContent = 'Aggiornamento non disponibile';
+                return;
+            }
+            const parsed = new Date(isoString);
+            if (Number.isNaN(parsed.getTime())) {
+                notificationsUpdated.textContent = `Aggiornato ${isoString}`;
+                return;
+            }
+            const formatted = parsed.toLocaleString('it-IT', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            notificationsUpdated.textContent = `Aggiornato ${formatted}`;
+        };
+
+        const refresh = async (fromUser = false) => {
+            if (isLoading) {
+                return;
+            }
+            if (controller) {
+                controller.abort();
+            }
+            controller = new AbortController();
+            isLoading = true;
+            if (refreshButton) {
+                refreshButton.disabled = true;
+            }
+            try {
+                const response = await fetch(`${endpoint}?limit=${limit}`, {
+                    headers: {
+                        Accept: 'application/json'
+                    },
+                    credentials: 'same-origin',
+                    signal: controller.signal
+                });
+                if (!response.ok) {
+                    throw new Error(`Request failed: ${response.status}`);
+                }
+                const payload = await response.json();
+                const items = Array.isArray(payload.items) ? payload.items : [];
+                renderItems(items);
+                setBadgeCount(payload.total ?? items.length ?? 0);
+                updateUpdatedLabel(payload.refreshedAt || '');
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    return;
+                }
+                console.error('Notifications refresh failed', error);
+                if (fromUser) {
+                    showMessage('Impossibile aggiornare le notifiche.', 'topbar-notifications-error text-danger small');
+                }
+            } finally {
+                if (refreshButton) {
+                    refreshButton.disabled = false;
+                }
+                isLoading = false;
+                controller = null;
+            }
+        };
+
+        const scheduleRefresh = () => {
+            if (refreshTimer) {
+                window.clearInterval(refreshTimer);
+            }
+            if (refreshInterval > 0) {
+                refreshTimer = window.setInterval(() => {
+                    refresh(false);
+                }, refreshInterval);
+            }
+        };
+
+        refreshButton?.addEventListener('click', () => {
+            refresh(true);
+        });
+
+        toggleButton?.addEventListener('show.bs.dropdown', () => {
+            refresh(false);
+        });
+
+        scheduleRefresh();
+        refresh(false);
+    }
+
     const dashboardRoot = document.querySelector('[data-dashboard-root]');
     if (dashboardRoot) {
         const endpoint = dashboardRoot.getAttribute('data-dashboard-endpoint') || 'api/dashboard.php';
