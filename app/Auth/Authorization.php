@@ -19,6 +19,7 @@ final class Authorization
         ],
         'Manager' => [
             'settings.view',
+            'users.manage',
             'clients.manage',
             'documents.manage',
             'services.manage',

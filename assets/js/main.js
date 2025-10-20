@@ -191,6 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const minChars = 2;
         const groups = [
             { key: 'clients', label: 'Clienti', icon: 'fa-users' },
+            { key: 'users', label: 'Utenti', icon: 'fa-user-gear' },
             { key: 'tickets', label: 'Ticket', icon: 'fa-life-ring' },
             { key: 'documents', label: 'Documenti', icon: 'fa-file-lines' },
             { key: 'loyalty', label: 'Fedeltà', icon: 'fa-gift' },
@@ -283,14 +284,24 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const renderResults = (payload) => {
+            const results = payload?.results ?? {};
+            const warningList = Array.isArray(payload?.warnings) ? payload.warnings : [];
+            const hasWarnings = warningList.length > 0;
             resultsPanel.innerHTML = '';
             let hasAny = false;
             clearActiveResult();
             focusableItems = [];
             itemIdSequence = 0;
 
+            if (hasWarnings) {
+                const warningEl = document.createElement('div');
+                warningEl.className = 'live-search-warning text-warning small px-3 py-2';
+                warningEl.textContent = warningList.join(' ');
+                resultsPanel.appendChild(warningEl);
+            }
+
             groups.forEach((group) => {
-                const items = Array.isArray(payload?.[group.key]) ? payload[group.key] : [];
+                const items = Array.isArray(results?.[group.key]) ? results[group.key] : [];
                 if (!items.length) {
                     return;
                 }
@@ -361,6 +372,12 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (!hasAny) {
+                if (hasWarnings) {
+                    resultsPanel.hidden = false;
+                    liveSearch.classList.add('is-open');
+                    input?.setAttribute('aria-expanded', 'true');
+                    return;
+                }
                 showMessage('Nessun risultato trovato.');
                 return;
             }
@@ -385,7 +402,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 if (!response.ok) {
-                    throw new Error('Response not ok');
+                    if (response.status === 403) {
+                        let errorPayload = null;
+                        try {
+                            errorPayload = await response.json();
+                        } catch (parseError) {
+                            // ignore json parse failures
+                        }
+                        showMessage(errorPayload?.error || 'Ricerca non disponibile per il tuo ruolo.');
+                        return;
+                    }
+                    throw new Error(`Response not ok (${response.status})`);
                 }
 
                 const data = await response.json();
@@ -393,7 +420,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     showMessage(data.error);
                     return;
                 }
-                renderResults(data?.results ?? {});
+                renderResults(data);
             } catch (error) {
                 if (error.name === 'AbortError') {
                     return;

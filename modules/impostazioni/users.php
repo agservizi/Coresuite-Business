@@ -366,7 +366,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                 <tbody>
                                 <?php foreach ($users as $user): ?>
                                     <?php $isCurrentUser = (int)$user['id'] === (int)($_SESSION['user_id'] ?? 0); ?>
-                                    <tr>
+                                    <tr id="user-row-<?php echo (int) $user['id']; ?>">
                                         <td><?php echo sanitize_output(format_user_display_name($user['username'], $user['email'], $user['nome'], $user['cognome'])); ?></td>
                                         <td><?php echo sanitize_output($user['username']); ?></td>
                                         <td><?php echo sanitize_output($user['email']); ?></td>
