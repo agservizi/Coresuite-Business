@@ -20,6 +20,10 @@ if (!$record) {
     exit;
 }
 
+$originalStart = $record['data_inizio'] ?? null;
+$originalStatus = (string) ($record['stato'] ?? '');
+$originalReminderSentAt = $record['reminder_sent_at'] ?? null;
+
 $clients = $pdo->query('SELECT id, nome, cognome FROM clienti ORDER BY cognome, nome')->fetchAll();
 $serviceTypes = ['Consulenza', 'Sopralluogo', 'Supporto tecnico', 'Rinnovo servizio'];
 $statuses = ['Programmato', 'In corso', 'Completato', 'Annullato'];
@@ -99,6 +103,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ':note' => $data['note'] !== '' ? $data['note'] : null,
             ':id' => $id,
         ]);
+
+        if ($originalReminderSentAt !== null) {
+            $shouldResetReminder = false;
+
+            if ($originalStart !== $start->format('Y-m-d H:i:s')) {
+                $shouldResetReminder = true;
+            }
+
+            $now = new DateTimeImmutable('now');
+            $wasActive = in_array($originalStatus, ['Programmato', 'In corso'], true);
+            $isActive = in_array($data['stato'], ['Programmato', 'In corso'], true);
+
+            if (!$wasActive && $isActive) {
+                $shouldResetReminder = true;
+            }
+
+            if ($shouldResetReminder && $start > $now) {
+                $resetStmt = $pdo->prepare('UPDATE servizi_appuntamenti SET reminder_sent_at = NULL WHERE id = :id');
+                $resetStmt->execute([':id' => $id]);
+            }
+        }
+
         header('Location: view.php?id=' . $id . '&updated=1');
         exit;
     }

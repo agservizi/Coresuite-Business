@@ -20,6 +20,40 @@ if (!$record) {
     exit;
 }
 
+$reminderStatus = '<span class="text-muted">Non previsto</span>';
+$reminderSchedule = null;
+try {
+    $isActive = in_array($record['stato'], ['Programmato', 'In corso'], true);
+    $clientHasEmail = !empty($record['email']);
+    if ($isActive && $clientHasEmail) {
+        if (!empty($record['reminder_sent_at'])) {
+            $sentAt = new DateTimeImmutable((string) $record['reminder_sent_at']);
+            $reminderStatus = sprintf(
+                '<span class="text-success">Inviato il %s</span>',
+                sanitize_output($sentAt->format('d/m/Y H:i'))
+            );
+        } elseif (!empty($record['data_inizio'])) {
+            $startAt = new DateTimeImmutable((string) $record['data_inizio']);
+            $scheduledAt = $startAt->sub(new DateInterval('PT2H'));
+            $reminderSchedule = $scheduledAt;
+            $now = new DateTimeImmutable('now');
+
+            if ($scheduledAt <= $now) {
+                $reminderStatus = '<span class="text-warning">In attesa di invio alla prossima esecuzione</span>';
+            } else {
+                $reminderStatus = sprintf(
+                    '<span class="text-muted">Programmato per il %s</span>',
+                    sanitize_output($scheduledAt->format('d/m/Y H:i'))
+                );
+            }
+        }
+    } elseif ($isActive) {
+        $reminderStatus = '<span class="text-danger">Email cliente mancante</span>';
+    }
+} catch (Throwable $exception) {
+    $reminderStatus = '<span class="text-warning">Impossibile determinare lo stato del promemoria</span>';
+}
+
 require_once __DIR__ . '/../../../includes/header.php';
 require_once __DIR__ . '/../../../includes/sidebar.php';
 ?>
@@ -56,6 +90,13 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <dd class="col-sm-7"><?php echo $record['data_fine'] ? sanitize_output(format_datetime_locale($record['data_fine'])) : '<span class="text-muted">—</span>'; ?></dd>
                             <dt class="col-sm-5">Stato</dt>
                             <dd class="col-sm-7"><span class="badge ag-badge text-uppercase"><?php echo sanitize_output($record['stato']); ?></span></dd>
+                            <dt class="col-sm-5">Promemoria email</dt>
+                            <dd class="col-sm-7">
+                                <?php echo $reminderStatus; ?>
+                                <?php if ($reminderSchedule instanceof DateTimeImmutable && empty($record['reminder_sent_at'])): ?>
+                                    <br><small class="text-muted">Invio automatico previsto due ore prima dell'appuntamento.</small>
+                                <?php endif; ?>
+                            </dd>
                             <?php if (!empty($record['note'])): ?>
                                 <dt class="col-sm-5">Note</dt>
                                 <dd class="col-sm-7"><?php echo nl2br(sanitize_output($record['note'])); ?></dd>

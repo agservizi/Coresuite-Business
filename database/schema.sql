@@ -97,6 +97,7 @@ CREATE TABLE IF NOT EXISTS servizi_appuntamenti (
     stato VARCHAR(40) NOT NULL DEFAULT 'Programmato',
     data_inizio DATETIME NOT NULL,
     data_fine DATETIME NULL,
+    reminder_sent_at DATETIME NULL,
     note TEXT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -104,6 +105,7 @@ CREATE TABLE IF NOT EXISTS servizi_appuntamenti (
     INDEX idx_appuntamenti_stato (stato),
     INDEX idx_appuntamenti_responsabile (responsabile),
     INDEX idx_appuntamenti_inizio (data_inizio),
+    INDEX idx_appuntamenti_reminder_sent (reminder_sent_at),
     FOREIGN KEY (cliente_id) REFERENCES clienti(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
