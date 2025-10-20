@@ -14,18 +14,6 @@ $role = $_SESSION['role'] ?? '';
                 </button>
             </div>
 
-            <div class="topbar-search">
-                <div class="live-search" data-live-search>
-                    <span class="live-search-icon"><i class="fa-solid fa-magnifying-glass"></i></span>
-                    <input class="form-control live-search-input" type="search" name="globalSearch" placeholder="Cerca in tutto il portale" autocomplete="off" spellcheck="false" aria-label="Ricerca globale" aria-expanded="false" aria-controls="topbarLiveSearchResults" role="combobox" aria-haspopup="listbox" aria-autocomplete="list">
-                    <button class="btn btn-link live-search-clear" type="button" aria-label="Pulisci ricerca">
-                        <i class="fa-solid fa-xmark"></i>
-                    </button>
-                    <span class="live-search-spinner" aria-hidden="true"></span>
-                    <div class="live-search-results" id="topbarLiveSearchResults" role="listbox" hidden></div>
-                </div>
-            </div>
-
             <div class="topbar-actions">
                 <?php if ($role !== 'Cliente'): ?>
                     <div class="topbar-quick-actions d-none d-md-flex">
