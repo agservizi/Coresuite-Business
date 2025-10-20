@@ -57,15 +57,35 @@ if (!function_exists('maybe_generate_daily_financial_reports')) {
             }
         }
 
+        $mysqlLockAcquired = false;
+        $fileLockHandle = null;
+        $lockFilePath = $rootPath . '/backups/.daily-report.lock';
+
         try {
             $lockStmt = $pdo->prepare('SELECT GET_LOCK(:name, 0)');
             $lockStmt->execute([':name' => $lockName]);
-            if ((int) $lockStmt->fetchColumn() !== 1) {
+            $mysqlLockAcquired = ((int) $lockStmt->fetchColumn() === 1);
+        } catch (Throwable $exception) {
+            error_log('Report giornaliero: impossibile acquisire il lock MySQL - ' . $exception->getMessage());
+            $mysqlLockAcquired = false;
+        }
+
+        if (!$mysqlLockAcquired) {
+            if (!is_dir(dirname($lockFilePath)) && !mkdir(dirname($lockFilePath), 0775, true) && !is_dir(dirname($lockFilePath))) {
+                error_log('Report giornaliero: impossibile creare la cartella per il file di lock.');
                 return;
             }
-        } catch (Throwable $exception) {
-            error_log('Report giornaliero: impossibile acquisire il lock - ' . $exception->getMessage());
-            return;
+
+            $fileLockHandle = @fopen($lockFilePath, 'c');
+            if ($fileLockHandle === false) {
+                error_log('Report giornaliero: impossibile aprire il file di lock: ' . $lockFilePath);
+                return;
+            }
+
+            if (!flock($fileLockHandle, LOCK_EX | LOCK_NB)) {
+                fclose($fileLockHandle);
+                return;
+            }
         }
 
         try {
@@ -104,11 +124,18 @@ if (!function_exists('maybe_generate_daily_financial_reports')) {
         } catch (Throwable $exception) {
             error_log('Report giornaliero: esecuzione fallita - ' . $exception->getMessage());
         } finally {
-            try {
-                $releaseStmt = $pdo->prepare('SELECT RELEASE_LOCK(:name)');
-                $releaseStmt->execute([':name' => $lockName]);
-            } catch (Throwable $releaseException) {
-                error_log('Report giornaliero: rilascio lock fallito - ' . $releaseException->getMessage());
+            if ($mysqlLockAcquired) {
+                try {
+                    $releaseStmt = $pdo->prepare('SELECT RELEASE_LOCK(:name)');
+                    $releaseStmt->execute([':name' => $lockName]);
+                } catch (Throwable $releaseException) {
+                    error_log('Report giornaliero: rilascio lock MySQL fallito - ' . $releaseException->getMessage());
+                }
+            }
+
+            if (is_resource($fileLockHandle)) {
+                flock($fileLockHandle, LOCK_UN);
+                fclose($fileLockHandle);
             }
         }
     }

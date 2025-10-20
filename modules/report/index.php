@@ -72,6 +72,17 @@ $summary = [
     'revenue' => 0.0,
 ];
 
+$dailyReports = [];
+try {
+    $dailyStmt = $pdo->query('SELECT id, report_date, total_entrate, total_uscite, saldo, file_path, generated_at FROM daily_financial_reports ORDER BY report_date DESC LIMIT 30');
+    if ($dailyStmt !== false) {
+        $dailyReports = $dailyStmt->fetchAll();
+    }
+} catch (Throwable $exception) {
+    error_log('Report giornaliero: lettura elenco fallita - ' . $exception->getMessage());
+    $dailyReports = [];
+}
+
 $revenueStmt = $pdo->prepare("SELECT COALESCE(SUM(importo),0) FROM (
     SELECT CASE WHEN tipo_movimento = 'Entrata' THEN importo ELSE -importo END AS importo,
            COALESCE(data_pagamento, data_scadenza, created_at) AS data_riferimento
@@ -182,6 +193,68 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                         </div>
                     <?php endif; ?>
                 </form>
+            </div>
+        </div>
+
+        <div class="card ag-card mb-4">
+            <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Report finanziari giornalieri</h5>
+                <?php if (!empty($dailyReports)): ?>
+                    <span class="text-muted small">Ultimo report: <?php echo sanitize_output(format_date_locale((string) $dailyReports[0]['report_date'])); ?></span>
+                <?php else: ?>
+                    <span class="text-muted small">Nessun report generato</span>
+                <?php endif; ?>
+            </div>
+            <div class="card-body">
+                <?php if ($dailyReports): ?>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Entrate</th>
+                                    <th>Uscite</th>
+                                    <th>Saldo</th>
+                                    <th>Generato il</th>
+                                    <th class="text-end">Azioni</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($dailyReports as $report): ?>
+                                    <?php
+                                        $reportDate = $report['report_date'] ?? '';
+                                        $generatedAt = $report['generated_at'] ?? '';
+                                        $saldoValue = isset($report['saldo']) ? (float) $report['saldo'] : 0.0;
+                                        $saldoClass = $saldoValue >= 0 ? 'text-success fw-semibold' : 'text-danger fw-semibold';
+                                        $filePath = (string) ($report['file_path'] ?? '');
+                                        $fileExists = $filePath !== '' && is_file(public_path($filePath));
+                                        $downloadUrl = base_url('modules/report/download_daily_report.php?id=' . (int) ($report['id'] ?? 0));
+                                    ?>
+                                    <tr>
+                                        <td><?php echo sanitize_output($reportDate ? format_date_locale((string) $reportDate) : '—'); ?></td>
+                                        <td><?php echo sanitize_output(format_currency((float) ($report['total_entrate'] ?? 0))); ?></td>
+                                        <td><?php echo sanitize_output(format_currency((float) ($report['total_uscite'] ?? 0))); ?></td>
+                                        <td class="<?php echo $saldoClass; ?>"><?php echo sanitize_output(format_currency($saldoValue)); ?></td>
+                                        <td><?php echo sanitize_output($generatedAt ? format_datetime_locale((string) $generatedAt) : '—'); ?></td>
+                                        <td class="text-end">
+                                            <?php if ($fileExists): ?>
+                                                <a class="btn btn-sm btn-outline-primary" href="<?php echo sanitize_output($downloadUrl); ?>">
+                                                    <i class="fa-solid fa-download me-1"></i>Scarica
+                                                </a>
+                                            <?php else: ?>
+                                                <span class="badge bg-warning text-dark">File non disponibile</span>
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php else: ?>
+                    <div class="alert alert-info mb-0">
+                        Nessun report giornaliero è stato ancora generato. I report vengono creati automaticamente ogni mattina.
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
 
