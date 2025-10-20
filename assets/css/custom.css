@@ -306,6 +306,10 @@ body.login-body {
     border-radius: 999px;
 }
 
+.topbar-btn.topbar-btn-icon {
+    gap: 0;
+}
+
 .topbar-btn-icon i {
     font-size: 1.05rem;
 }

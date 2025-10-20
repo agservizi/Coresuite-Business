@@ -15,6 +15,85 @@ if (isset($pdo) && $pdo instanceof PDO) {
 }
 
 $notificationsCount = count($notifications);
+
+$renderNotificationsDropdown = static function (string $toggleId, string $extraClasses = '') use ($notifications, $notificationsCount, $notificationsUpdatedLabel): string {
+    $classAttr = trim('dropdown topbar-notifications ' . $extraClasses);
+    $endpoint = base_url('api/notifications.php');
+
+    ob_start();
+    ?>
+    <div class="<?php echo sanitize_output($classAttr); ?>" data-notifications-root data-notifications-endpoint="<?php echo sanitize_output($endpoint); ?>" data-refresh-interval="60000" data-limit="8">
+        <button class="btn topbar-btn topbar-btn-icon position-relative" type="button" id="<?php echo sanitize_output($toggleId); ?>" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-haspopup="true" aria-expanded="false" aria-label="Apri notifiche" data-notifications-toggle>
+            <i class="fa-solid fa-bell" aria-hidden="true"></i>
+            <span class="visually-hidden">Notifiche</span>
+            <span class="topbar-notifications-badge badge rounded-pill bg-danger" data-notifications-badge <?php echo $notificationsCount > 0 ? '' : 'hidden'; ?>>
+                <?php echo $notificationsCount > 99 ? '99+' : (string) $notificationsCount; ?>
+            </span>
+        </button>
+        <div class="dropdown-menu dropdown-menu-end topbar-dropdown topbar-notifications-menu" aria-labelledby="<?php echo sanitize_output($toggleId); ?>">
+            <div class="topbar-notifications-header d-flex justify-content-between align-items-center">
+                <span class="fw-semibold">Notifiche</span>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-light text-dark topbar-notifications-total" data-notifications-total <?php echo $notificationsCount > 0 ? '' : 'hidden'; ?>>
+                        <?php echo (string) $notificationsCount; ?>
+                    </span>
+                    <button class="btn btn-link btn-sm p-0 topbar-notifications-refresh" type="button" data-notifications-refresh>Aggiorna</button>
+                </div>
+            </div>
+            <div class="topbar-notifications-body mt-2" data-notifications-list>
+                <?php if ($notificationsCount === 0): ?>
+                    <div class="topbar-notifications-empty text-muted small" data-notifications-empty>Nessuna notifica disponibile.</div>
+                <?php else: ?>
+                    <?php foreach ($notifications as $notification): ?>
+                        <?php $isLink = !empty($notification['url']); ?>
+                        <?php if ($isLink): ?>
+                            <a
+                                class="topbar-notification-item"
+                                href="<?php echo sanitize_output($notification['url']); ?>"
+                                data-notification-id="<?php echo sanitize_output($notification['id']); ?>">
+                        <?php else: ?>
+                            <div
+                                class="topbar-notification-item"
+                                data-notification-id="<?php echo sanitize_output($notification['id']); ?>">
+                        <?php endif; ?>
+                            <span class="topbar-notification-icon">
+                                <i class="fa-solid <?php echo sanitize_output($notification['icon']); ?>" aria-hidden="true"></i>
+                            </span>
+                            <span class="topbar-notification-content">
+                                <span class="topbar-notification-title"><?php echo sanitize_output($notification['title']); ?></span>
+                                <?php if (!empty($notification['message'])): ?>
+                                    <span class="topbar-notification-message"><?php echo sanitize_output($notification['message']); ?></span>
+                                <?php endif; ?>
+                                <?php
+                                $metaParts = [];
+                                if (!empty($notification['meta'])) {
+                                    $metaParts[] = (string) $notification['meta'];
+                                }
+                                if (!empty($notification['timeLabel'])) {
+                                    $metaParts[] = (string) $notification['timeLabel'];
+                                }
+                                ?>
+                                <?php if ($metaParts): ?>
+                                    <span class="topbar-notification-meta"><?php echo sanitize_output(implode(' | ', $metaParts)); ?></span>
+                                <?php endif; ?>
+                            </span>
+                        <?php if ($isLink): ?>
+                            </a>
+                        <?php else: ?>
+                            </div>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+            <div class="topbar-notifications-footer mt-2 small text-muted" data-notifications-updated>
+                Aggiornato <?php echo sanitize_output($notificationsUpdatedLabel); ?>
+            </div>
+        </div>
+    </div>
+    <?php
+
+    return (string) ob_get_clean();
+};
 ?>
 <header class="topbar border-bottom sticky-top">
     <div class="container-fluid">
@@ -26,69 +105,13 @@ $notificationsCount = count($notifications);
                 <button class="btn topbar-btn topbar-btn-icon d-none d-lg-inline-flex" type="button" id="sidebarToggle" aria-label="Riduci barra laterale" aria-expanded="true">
                     <i class="fa-solid fa-angles-left" aria-hidden="true"></i>
                 </button>
-                <div class="dropdown topbar-notifications" data-notifications-root data-notifications-endpoint="<?php echo base_url('api/notifications.php'); ?>" data-refresh-interval="60000" data-limit="8">
-                    <button class="btn topbar-btn topbar-btn-icon position-relative" type="button" id="topbarNotificationsToggle" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-haspopup="true" aria-expanded="false" aria-label="Apri notifiche" data-notifications-toggle>
-                        <i class="fa-solid fa-bell" aria-hidden="true"></i>
-                        <span class="visually-hidden">Notifiche</span>
-                        <span class="topbar-notifications-badge badge rounded-pill bg-danger" data-notifications-badge <?php echo $notificationsCount > 0 ? '' : 'hidden'; ?>>
-                            <?php echo $notificationsCount > 99 ? '99+' : (string) $notificationsCount; ?>
-                        </span>
-                    </button>
-                    <div class="dropdown-menu dropdown-menu-end topbar-dropdown topbar-notifications-menu" aria-labelledby="topbarNotificationsToggle">
-                        <div class="topbar-notifications-header d-flex justify-content-between align-items-center">
-                            <span class="fw-semibold">Notifiche</span>
-                            <div class="d-flex align-items-center gap-2">
-                                <span class="badge bg-light text-dark topbar-notifications-total" data-notifications-total <?php echo $notificationsCount > 0 ? '' : 'hidden'; ?>>
-                                    <?php echo (string) $notificationsCount; ?>
-                                </span>
-                                <button class="btn btn-link btn-sm p-0 topbar-notifications-refresh" type="button" data-notifications-refresh>Aggiorna</button>
-                            </div>
-                        </div>
-                        <div class="topbar-notifications-body mt-2" data-notifications-list>
-                            <?php if ($notificationsCount === 0): ?>
-                                <div class="topbar-notifications-empty text-muted small" data-notifications-empty>Nessuna notifica disponibile.</div>
-                            <?php else: ?>
-                                <?php foreach ($notifications as $notification): ?>
-                                    <?php $isLink = !empty($notification['url']); ?>
-                                    <<?php echo $isLink ? 'a' : 'div'; ?>
-                                        class="topbar-notification-item"
-                                        <?php if ($isLink): ?>href="<?php echo sanitize_output($notification['url']); ?>"<?php endif; ?>
-                                        data-notification-id="<?php echo sanitize_output($notification['id']); ?>">
-                                        <span class="topbar-notification-icon">
-                                            <i class="fa-solid <?php echo sanitize_output($notification['icon']); ?>" aria-hidden="true"></i>
-                                        </span>
-                                        <span class="topbar-notification-content">
-                                            <span class="topbar-notification-title"><?php echo sanitize_output($notification['title']); ?></span>
-                                            <?php if (!empty($notification['message'])): ?>
-                                                <span class="topbar-notification-message"><?php echo sanitize_output($notification['message']); ?></span>
-                                            <?php endif; ?>
-                                            <?php
-                                            $metaParts = [];
-                                            if (!empty($notification['meta'])) {
-                                                $metaParts[] = (string) $notification['meta'];
-                                            }
-                                            if (!empty($notification['timeLabel'])) {
-                                                $metaParts[] = (string) $notification['timeLabel'];
-                                            }
-                                            ?>
-                                            <?php if ($metaParts): ?>
-                                                <span class="topbar-notification-meta"><?php echo sanitize_output(implode(' | ', $metaParts)); ?></span>
-                                            <?php endif; ?>
-                                        </span>
-                                    </<?php echo $isLink ? 'a' : 'div'; ?>>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                        </div>
-                        <div class="topbar-notifications-footer mt-2 small text-muted" data-notifications-updated>
-                            Aggiornato <?php echo sanitize_output($notificationsUpdatedLabel); ?>
-                        </div>
-                    </div>
-                </div>
+                <?php echo $renderNotificationsDropdown('topbarNotificationsToggleMobile', 'd-md-none'); ?>
             </div>
 
             <div class="topbar-actions">
                 <?php if ($role !== 'Cliente'): ?>
                     <div class="topbar-quick-actions d-none d-md-flex">
+                        <?php echo $renderNotificationsDropdown('topbarNotificationsToggleDesktop'); ?>
                         <a class="btn topbar-btn topbar-btn-action" href="<?php echo base_url('modules/clienti/create.php'); ?>" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="Nuovo cliente" data-bs-tooltip="global" aria-label="Crea un nuovo cliente">
                             <i class="fa-solid fa-user-plus topbar-btn-icon-lead" aria-hidden="true"></i>
                             <span class="topbar-btn-label d-none d-xxl-inline">Nuovo cliente</span>

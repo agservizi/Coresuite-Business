@@ -183,62 +183,75 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    const notificationsRoot = document.querySelector('[data-notifications-root]');
-    if (notificationsRoot) {
-        const notificationsList = notificationsRoot.querySelector('[data-notifications-list]');
-        const notificationsBadge = notificationsRoot.querySelector('[data-notifications-badge]');
-        const notificationsTotal = notificationsRoot.querySelector('[data-notifications-total]');
-        const notificationsUpdated = notificationsRoot.querySelector('[data-notifications-updated]');
-        const refreshButton = notificationsRoot.querySelector('[data-notifications-refresh]');
-        const toggleButton = notificationsRoot.querySelector('[data-notifications-toggle]');
-        const endpoint = notificationsRoot.getAttribute('data-notifications-endpoint') || 'api/notifications.php';
-        const limit = Number.parseInt(notificationsRoot.getAttribute('data-limit'), 10) || 8;
-        const refreshInterval = Number.parseInt(notificationsRoot.getAttribute('data-refresh-interval'), 10) || 60000;
+    const notificationsRoots = Array.from(document.querySelectorAll('[data-notifications-root]'));
+    if (notificationsRoots.length > 0) {
+        const configs = notificationsRoots.map((root) => ({
+            root,
+            list: root.querySelector('[data-notifications-list]'),
+            badge: root.querySelector('[data-notifications-badge]'),
+            total: root.querySelector('[data-notifications-total]'),
+            updated: root.querySelector('[data-notifications-updated]'),
+            refreshButton: root.querySelector('[data-notifications-refresh]'),
+            toggleButton: root.querySelector('[data-notifications-toggle]'),
+            limit: Number.parseInt(root.getAttribute('data-limit'), 10) || 8,
+            refreshInterval: Number.parseInt(root.getAttribute('data-refresh-interval'), 10) || 60000
+        }));
+
+        const endpoint = configs.find((config) => config.root.getAttribute('data-notifications-endpoint'))?.root.getAttribute('data-notifications-endpoint') || 'api/notifications.php';
+        const limitCandidates = configs
+            .map((config) => config.limit)
+            .filter((value) => Number.isFinite(value) && value > 0);
+        const limit = limitCandidates.length > 0 ? Math.max(...limitCandidates) : 8;
+
+        const intervalCandidates = configs
+            .map((config) => config.refreshInterval)
+            .filter((value) => Number.isFinite(value) && value > 0);
+        const refreshInterval = intervalCandidates.length > 0 ? Math.min(...intervalCandidates) : 60000;
 
         let refreshTimer = null;
         let controller = null;
         let isLoading = false;
 
-        const setBadgeCount = (count) => {
-            if (notificationsBadge) {
+        const setBadgeCount = (config, count) => {
+            if (config.badge) {
                 if (count > 0) {
-                    notificationsBadge.textContent = count > 99 ? '99+' : String(count);
-                    notificationsBadge.hidden = false;
+                    config.badge.textContent = count > 99 ? '99+' : String(count);
+                    config.badge.hidden = false;
                 } else {
-                    notificationsBadge.textContent = '';
-                    notificationsBadge.hidden = true;
+                    config.badge.textContent = '';
+                    config.badge.hidden = true;
                 }
             }
-            if (notificationsTotal) {
+            if (config.total) {
                 if (count > 0) {
-                    notificationsTotal.textContent = String(count);
-                    notificationsTotal.hidden = false;
+                    config.total.textContent = String(count);
+                    config.total.hidden = false;
                 } else {
-                    notificationsTotal.textContent = '0';
-                    notificationsTotal.hidden = true;
+                    config.total.textContent = '0';
+                    config.total.hidden = true;
                 }
             }
         };
 
-        const showMessage = (message, className) => {
-            if (!notificationsList) {
+        const showMessage = (config, message, className) => {
+            if (!config.list) {
                 return;
             }
-            notificationsList.innerHTML = '';
+            config.list.innerHTML = '';
             const placeholder = document.createElement('div');
             placeholder.className = className;
             placeholder.textContent = message;
-            notificationsList.appendChild(placeholder);
+            config.list.appendChild(placeholder);
         };
 
-        const renderItems = (items) => {
-            if (!notificationsList) {
+        const renderItems = (config, items) => {
+            if (!config.list) {
                 return;
             }
-            notificationsList.innerHTML = '';
+            config.list.innerHTML = '';
             const fragment = document.createDocumentFragment();
             if (!Array.isArray(items) || items.length === 0) {
-                showMessage('Nessuna notifica disponibile.', 'topbar-notifications-empty text-muted small');
+                showMessage(config, 'Nessuna notifica disponibile.', 'topbar-notifications-empty text-muted small');
                 return;
             }
             items.forEach((item) => {
@@ -290,20 +303,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 wrapper.appendChild(content);
                 fragment.appendChild(wrapper);
             });
-            notificationsList.appendChild(fragment);
+            config.list.appendChild(fragment);
         };
 
-        const updateUpdatedLabel = (isoString) => {
-            if (!notificationsUpdated) {
+        const updateUpdatedLabel = (config, isoString) => {
+            if (!config.updated) {
                 return;
             }
             if (!isoString) {
-                notificationsUpdated.textContent = 'Aggiornamento non disponibile';
+                config.updated.textContent = 'Aggiornamento non disponibile';
                 return;
             }
             const parsed = new Date(isoString);
             if (Number.isNaN(parsed.getTime())) {
-                notificationsUpdated.textContent = `Aggiornato ${isoString}`;
+                config.updated.textContent = `Aggiornato ${isoString}`;
                 return;
             }
             const formatted = parsed.toLocaleString('it-IT', {
@@ -313,7 +326,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 hour: '2-digit',
                 minute: '2-digit'
             });
-            notificationsUpdated.textContent = `Aggiornato ${formatted}`;
+            config.updated.textContent = `Aggiornato ${formatted}`;
         };
 
         const refresh = async (fromUser = false) => {
@@ -325,9 +338,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             controller = new AbortController();
             isLoading = true;
-            if (refreshButton) {
-                refreshButton.disabled = true;
-            }
+            configs.forEach((config) => {
+                if (config.refreshButton) {
+                    config.refreshButton.disabled = true;
+                }
+            });
             try {
                 const response = await fetch(`${endpoint}?limit=${limit}`, {
                     headers: {
@@ -341,21 +356,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 const payload = await response.json();
                 const items = Array.isArray(payload.items) ? payload.items : [];
-                renderItems(items);
-                setBadgeCount(payload.total ?? items.length ?? 0);
-                updateUpdatedLabel(payload.refreshedAt || '');
+                const totalCount = payload.total ?? items.length ?? 0;
+                configs.forEach((config) => {
+                    renderItems(config, items);
+                    setBadgeCount(config, totalCount);
+                    updateUpdatedLabel(config, payload.refreshedAt || '');
+                });
             } catch (error) {
                 if (error.name === 'AbortError') {
                     return;
                 }
                 console.error('Notifications refresh failed', error);
                 if (fromUser) {
-                    showMessage('Impossibile aggiornare le notifiche.', 'topbar-notifications-error text-danger small');
+                    configs.forEach((config) => {
+                        showMessage(config, 'Impossibile aggiornare le notifiche.', 'topbar-notifications-error text-danger small');
+                    });
                 }
             } finally {
-                if (refreshButton) {
-                    refreshButton.disabled = false;
-                }
+                configs.forEach((config) => {
+                    if (config.refreshButton) {
+                        config.refreshButton.disabled = false;
+                    }
+                });
                 isLoading = false;
                 controller = null;
             }
@@ -372,12 +394,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
-        refreshButton?.addEventListener('click', () => {
-            refresh(true);
-        });
+        configs.forEach((config) => {
+            config.refreshButton?.addEventListener('click', () => {
+                refresh(true);
+            });
 
-        toggleButton?.addEventListener('show.bs.dropdown', () => {
-            refresh(false);
+            config.toggleButton?.addEventListener('show.bs.dropdown', () => {
+                refresh(false);
+            });
         });
 
         scheduleRefresh();
