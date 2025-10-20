@@ -1,7 +1,5 @@
 <?php
 
-use PDO;
-
 if (!function_exists('recalculate_loyalty_balances')) {
     /**
      * Recalculate running balance for loyalty movements of a given customer.
