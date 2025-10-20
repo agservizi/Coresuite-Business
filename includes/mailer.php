@@ -4,6 +4,7 @@ require_once __DIR__ . '/env.php';
 function send_system_mail(string $to, string $subject, string $htmlBody): bool
 {
     load_env(__DIR__ . '/../.env');
+    configure_timezone();
 
     $fromAddress = trim((string) env('MAIL_FROM_ADDRESS', 'no-reply@example.com'));
     $fromName = trim((string) env('MAIL_FROM_NAME', 'Coresuite Business'));

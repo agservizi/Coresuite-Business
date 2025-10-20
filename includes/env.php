@@ -69,3 +69,18 @@ if (!function_exists('env')) {
         return $value;
     }
 }
+
+if (!function_exists('configure_timezone')) {
+    function configure_timezone(): void
+    {
+        $timezone = env('APP_TIMEZONE', 'Europe/Rome');
+        if ($timezone === null || $timezone === '') {
+            return;
+        }
+
+        if (@date_default_timezone_set($timezone) === false) {
+            error_log('Timezone non valida configurata: ' . $timezone);
+            date_default_timezone_set('Europe/Rome');
+        }
+    }
+}

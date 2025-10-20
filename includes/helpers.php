@@ -3,6 +3,7 @@ require_once __DIR__ . '/../bootstrap/autoload.php';
 require_once __DIR__ . '/env.php';
 
 load_env(__DIR__ . '/../.env');
+configure_timezone();
 
 $debugFlag = filter_var(env('APP_DEBUG', false), FILTER_VALIDATE_BOOL);
 $displayFlag = filter_var(env('PHP_DISPLAY_ERRORS', false), FILTER_VALIDATE_BOOL);

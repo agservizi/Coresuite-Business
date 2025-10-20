@@ -3,6 +3,7 @@ require_once __DIR__ . '/../bootstrap/autoload.php';
 require_once __DIR__ . '/env.php';
 
 load_env(__DIR__ . '/../.env');
+configure_timezone();
 
 $database = [
     'host' => env('DB_HOST'),
