@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../bootstrap/autoload.php';
 require_once __DIR__ . '/env.php';
 
 load_env(__DIR__ . '/../.env');
@@ -69,3 +70,5 @@ try {
 
 require_once __DIR__ . '/appointment_scheduler.php';
 maybe_dispatch_appointment_reminders($pdo);
+require_once __DIR__ . '/daily_report_scheduler.php';
+maybe_generate_daily_financial_reports($pdo);
