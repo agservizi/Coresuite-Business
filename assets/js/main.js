@@ -192,7 +192,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const groups = [
             { key: 'clients', label: 'Clienti', icon: 'fa-users' },
             { key: 'tickets', label: 'Ticket', icon: 'fa-life-ring' },
-            { key: 'documents', label: 'Documenti', icon: 'fa-file-lines' }
+            { key: 'documents', label: 'Documenti', icon: 'fa-file-lines' },
+            { key: 'loyalty', label: 'Fedeltà', icon: 'fa-gift' },
+            { key: 'finance', label: 'Entrate/Uscite', icon: 'fa-scale-balanced' },
+            { key: 'appointments', label: 'Appuntamenti', icon: 'fa-calendar-check' },
+            { key: 'telefonia', label: 'Telefonia', icon: 'fa-phone' },
+            { key: 'shipments', label: 'Logistica', icon: 'fa-truck' }
         ];
 
         let debounceId;
