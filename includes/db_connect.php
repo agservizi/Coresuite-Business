@@ -66,3 +66,6 @@ try {
     echo $message;
     exit;
 }
+
+require_once __DIR__ . '/appointment_scheduler.php';
+maybe_dispatch_appointment_reminders($pdo);
