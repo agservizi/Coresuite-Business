@@ -1,12 +1,6 @@
 <?php
 declare(strict_types=1);
 
-use DateTimeImmutable;
-use DateTimeInterface;
-use Exception;
-use PDO;
-use PDOException;
-
 if (!function_exists('fetch_global_notifications')) {
     /**
      * Recupera un elenco di notifiche globali dalle principali aree applicative.
