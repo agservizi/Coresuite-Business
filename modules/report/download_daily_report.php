@@ -43,7 +43,7 @@ if (!is_file($fullPath) || $normalizedRoot === '' || strncmp($normalizedFull, $n
     exit('File del report non trovato.');
 }
 
-$filesize = filesize($fullPath);
+$filesize = @filesize($fullPath);
 $downloadName = 'report_finanziario_' . ($report['report_date'] ?? date('Y_m_d')) . '.pdf';
 
 header('Content-Type: application/pdf');
@@ -55,16 +55,15 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
 header('Pragma: no-cache');
 header('Expires: 0');
 
-$handle = fopen($fullPath, 'rb');
-if ($handle === false) {
+if (function_exists('ob_get_level')) {
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
+}
+
+if (@readfile($fullPath) === false) {
     http_response_code(500);
-    exit('Impossibile aprire il file del report.');
+    exit('Impossibile leggere il file del report.');
 }
 
-while (!feof($handle)) {
-    echo fread($handle, 8192);
-    flush();
-}
-
-fclose($handle);
 exit;
