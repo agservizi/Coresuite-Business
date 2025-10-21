@@ -61,17 +61,20 @@ foreach ($serviziItems as $item) {
         break;
     }
 }
+
+$sidebarLogoRelative = 'uploads/branding/sidebar-logo.png';
+$sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
 ?>
 <nav id="sidebarMenu" class="sidebar border-end" aria-label="Menu principale">
     <div class="px-3 py-4 sidebar-inner">
         <div class="sidebar-brand mb-4">
             <a class="sidebar-brand-link" href="<?php echo base_url('dashboard.php'); ?>" aria-label="Coresuite Business">
                 <span class="sidebar-logo" aria-hidden="true">
-                    <svg class="sidebar-logo-mark" viewBox="0 0 64 64" role="presentation" focusable="false">
-                        <path class="sidebar-logo-arrow" d="M18 42l14-14 7.4 7.4L50 20" fill="none"></path>
-                        <path class="sidebar-logo-bars" d="M21 48V30a2.5 2.5 0 0 1 5 0v18zm12 0V26a2.5 2.5 0 0 1 5 0v22zm12-8V20a2.5 2.5 0 0 1 5 0v20z"></path>
-                        <polygon class="sidebar-logo-arrowhead" points="46 15 60 12 57 26"></polygon>
-                    </svg>
+                    <?php if ($sidebarLogoAvailable): ?>
+                        <img class="sidebar-logo-img" src="<?php echo asset($sidebarLogoRelative); ?>" alt="">
+                    <?php else: ?>
+                        <i class="fa-solid fa-building"></i>
+                    <?php endif; ?>
                 </span>
             </a>
         </div>
