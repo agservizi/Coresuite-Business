@@ -64,14 +64,17 @@ foreach ($serviziItems as $item) {
 ?>
 <nav id="sidebarMenu" class="sidebar border-end" aria-label="Menu principale">
     <div class="px-3 py-4 sidebar-inner">
-        <div class="d-flex align-items-center mb-4">
-            <span class="sidebar-logo rounded-circle d-inline-flex justify-content-center align-items-center me-2" aria-hidden="true">
-                <i class="fa-solid fa-building"></i>
-            </span>
-            <div class="sidebar-brand-text">
-                <span class="fw-semibold text-uppercase small">Coresuite Business</span>
-                <div class="text-muted small">CRM Aziendale</div>
-            </div>
+        <div class="sidebar-brand mb-4">
+            <a class="sidebar-brand-link" href="<?php echo base_url('dashboard.php'); ?>" aria-label="Coresuite Business">
+                <span class="sidebar-logo" aria-hidden="true">
+                    <svg class="sidebar-logo-mark" viewBox="0 0 64 64" role="presentation" focusable="false">
+                        <circle class="sidebar-logo-ring" cx="28" cy="32" r="24"></circle>
+                        <path class="sidebar-logo-arrow" d="M22 36.5l9.5-9.5 6.8 6.8L50 18" fill="none"></path>
+                        <path class="sidebar-logo-bars" d="M22 44V30a2 2 0 0 1 4 0v14zm10 0V26a2 2 0 0 1 4 0v18zm10-6V20a2 2 0 0 1 4 0v18z"></path>
+                        <polygon class="sidebar-logo-arrowhead" points="45 15 59 12 56 26"></polygon>
+                    </svg>
+                </span>
+            </a>
         </div>
         <ul class="nav nav-pills flex-column gap-1" role="list">
             <?php $dashboardActive = nav_active('dashboard.php', $currentPath); ?>

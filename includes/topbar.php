@@ -12,6 +12,10 @@ $role = $_SESSION['role'] ?? '';
                 <button class="btn topbar-btn topbar-btn-icon d-none d-lg-inline-flex" type="button" id="sidebarToggle" aria-label="Riduci barra laterale" aria-expanded="true">
                     <i class="fa-solid fa-angles-left" aria-hidden="true"></i>
                 </button>
+                <div class="topbar-brand" role="presentation">
+                    <span class="topbar-brand-title">Coresuite Business</span>
+                    <span class="topbar-brand-subtitle">CRM Aziendale</span>
+                </div>
             </div>
 
             <div class="topbar-actions">
