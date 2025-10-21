@@ -65,6 +65,46 @@ if (function_exists('ob_get_level')) {
     }
 }
 
+$streamFile = static function (string $path, int $start = 0, ?int $end = null): void {
+    $handle = fopen($path, 'rb');
+    if ($handle === false) {
+        http_response_code(500);
+        exit('Impossibile aprire il file del report.');
+    }
+
+    if ($start > 0) {
+        fseek($handle, $start);
+    }
+
+    $bytesToSend = $end !== null ? ($end - $start + 1) : null;
+    $bufferSize = 8192;
+
+    while (!feof($handle)) {
+        if ($bytesToSend !== null && $bytesToSend <= 0) {
+            break;
+        }
+
+        $chunkSize = $bytesToSend !== null ? min($bufferSize, $bytesToSend) : $bufferSize;
+        $data = fread($handle, $chunkSize);
+        if ($data === false) {
+            break;
+        }
+
+        echo $data;
+        flush();
+
+        if ($bytesToSend !== null) {
+            $bytesToSend -= strlen($data);
+        }
+
+        if (connection_status() !== CONNECTION_NORMAL) {
+            break;
+        }
+    }
+
+    fclose($handle);
+};
+
 if ($filesize !== false && !empty($_SERVER['HTTP_RANGE'])) {
     $rangeHeader = (string) $_SERVER['HTTP_RANGE'];
     if (preg_match('/bytes=([0-9]*)-([0-9]*)/', $rangeHeader, $matches)) {
@@ -84,31 +124,7 @@ if ($filesize !== false && !empty($_SERVER['HTTP_RANGE'])) {
         header('Content-Length: ' . $length);
         header('Content-Range: bytes ' . $start . '-' . $end . '/' . $filesize);
 
-        $handle = fopen($fullPath, 'rb');
-        if ($handle === false) {
-            http_response_code(500);
-            exit('Impossibile aprire il file del report.');
-        }
-
-        try {
-            fseek($handle, $start);
-            $bufferSize = 8192;
-            $bytesLeft = $length;
-            while ($bytesLeft > 0 && !feof($handle)) {
-                $readLength = $bytesLeft < $bufferSize ? $bytesLeft : $bufferSize;
-                $data = fread($handle, $readLength);
-                if ($data === false) {
-                    break;
-                }
-                echo $data;
-                $bytesLeft -= strlen($data);
-                if (connection_status() !== CONNECTION_NORMAL) {
-                    break;
-                }
-            }
-        } finally {
-            fclose($handle);
-        }
+        $streamFile($fullPath, $start, $end);
         exit;
     }
 }
@@ -117,9 +133,6 @@ if ($filesize !== false) {
     header('Content-Length: ' . $filesize);
 }
 
-if (@readfile($fullPath) === false) {
-    http_response_code(500);
-    exit('Impossibile leggere il file del report.');
-}
+$streamFile($fullPath);
 
 exit;
