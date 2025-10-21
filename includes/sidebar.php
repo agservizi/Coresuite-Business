@@ -171,5 +171,8 @@ $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
                 </a>
             </li>
         </ul>
+        <div class="sidebar-footer" aria-label="Versione applicazione">
+            v. 1.0.0
+        </div>
     </div>
 </nav>
