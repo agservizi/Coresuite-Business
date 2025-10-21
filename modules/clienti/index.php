@@ -23,8 +23,17 @@ $params = [];
 $conditions = [];
 
 if ($searchTerm !== '') {
-    $conditions[] = '(nome LIKE :term OR cognome LIKE :term OR email LIKE :term OR cf_piva LIKE :term)';
-    $params[':term'] = "%{$searchTerm}%";
+    $conditions[] = '(
+        nome LIKE :term_nome OR
+        cognome LIKE :term_cognome OR
+        email LIKE :term_email OR
+        cf_piva LIKE :term_cf
+    )';
+    $likeTerm = "%{$searchTerm}%";
+    $params[':term_nome'] = $likeTerm;
+    $params[':term_cognome'] = $likeTerm;
+    $params[':term_email'] = $likeTerm;
+    $params[':term_cf'] = $likeTerm;
 }
 
 if ($createdFrom) {
