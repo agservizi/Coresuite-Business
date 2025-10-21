@@ -68,10 +68,9 @@ foreach ($serviziItems as $item) {
             <a class="sidebar-brand-link" href="<?php echo base_url('dashboard.php'); ?>" aria-label="Coresuite Business">
                 <span class="sidebar-logo" aria-hidden="true">
                     <svg class="sidebar-logo-mark" viewBox="0 0 64 64" role="presentation" focusable="false">
-                        <circle class="sidebar-logo-ring" cx="28" cy="32" r="24"></circle>
-                        <path class="sidebar-logo-arrow" d="M22 36.5l9.5-9.5 6.8 6.8L50 18" fill="none"></path>
-                        <path class="sidebar-logo-bars" d="M22 44V30a2 2 0 0 1 4 0v14zm10 0V26a2 2 0 0 1 4 0v18zm10-6V20a2 2 0 0 1 4 0v18z"></path>
-                        <polygon class="sidebar-logo-arrowhead" points="45 15 59 12 56 26"></polygon>
+                        <path class="sidebar-logo-arrow" d="M18 42l14-14 7.4 7.4L50 20" fill="none"></path>
+                        <path class="sidebar-logo-bars" d="M21 48V30a2.5 2.5 0 0 1 5 0v18zm12 0V26a2.5 2.5 0 0 1 5 0v22zm12-8V20a2.5 2.5 0 0 1 5 0v20z"></path>
+                        <polygon class="sidebar-logo-arrowhead" points="46 15 60 12 57 26"></polygon>
                     </svg>
                 </span>
             </a>
