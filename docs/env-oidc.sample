@@ -1,0 +1,24 @@
+# Copia questi valori nel tuo file .env e sostituisci i placeholder con i dati reali del provider OIDC
+
+APP_DEBUG=false
+APP_URL=https://business.coresuite.it
+APP_TIMEZONE=Europe/Rome
+
+# Configurazione OpenID Connect / OAuth2
+OIDC_ENABLED=true
+OIDC_PROVIDER_NAME="Azure AD"
+OIDC_ISSUER="https://login.microsoftonline.com/<tenant-id>/v2.0"
+OIDC_CLIENT_ID="<client-id>"
+OIDC_CLIENT_SECRET="<client-secret>"
+OIDC_REDIRECT_URI="https://business.coresuite.it/sso/callback.php"
+OIDC_SCOPES="openid profile email"
+OIDC_PROMPT="login"
+OIDC_MAX_AGE=3600
+OIDC_VERIFY_HOST=true
+OIDC_VERIFY_PEER=true
+OIDC_END_SESSION_ENDPOINT="https://login.microsoftonline.com/<tenant-id>/oauth2/v2.0/logout"
+OIDC_POST_LOGOUT_REDIRECT_URI="https://business.coresuite.it/index.php"
+
+# Altri esempi utili
+# BACKUP_ENCRYPTION_KEY="<chiave-aes-32-bytes>"
+# BACKUP_ENCRYPTION_CIPHER="AES-256-CBC"

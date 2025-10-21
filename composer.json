@@ -2,7 +2,9 @@
     "name": "coresuite/business",
     "description": "Coresuite Business platform",
     "type": "project",
-    "require": {},
+    "require": {
+        "jumbojett/openid-connect-php": "^0.9"
+    },
     "autoload": {
         "psr-4": {
             "App\\": "app/"
