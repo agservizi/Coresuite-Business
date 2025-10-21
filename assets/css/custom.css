@@ -116,7 +116,7 @@ body.login-body {
     font-weight: 500;
     gap: 0.75rem;
     position: relative;
-}
+    background: transparent;
 
 .sidebar .text-muted {
     color: rgba(255, 255, 255, 0.65) !important;
@@ -133,7 +133,7 @@ body.login-body {
     align-items: center;
     justify-content: center;
     width: 1.65rem;
-    height: 1.65rem;
+    filter: none;
     color: inherit;
     flex-shrink: 0;
     transition: transform 0.2s ease;
@@ -270,6 +270,31 @@ body.login-body {
 
 .sidebar::-webkit-scrollbar-track {
     background: transparent;
+}
+
+.sidebar.collapsed {
+    width: 88px;
+}
+
+.sidebar.collapsed .sidebar-brand-link {
+    justify-content: center;
+}
+
+.sidebar.collapsed .sidebar-logo {
+    margin-inline: auto;
+}
+
+.sidebar.collapsed .nav-link {
+    justify-content: center;
+    padding-inline: 0.75rem;
+}
+
+.sidebar.collapsed .nav-icon {
+    margin-right: 0;
+}
+
+.sidebar.collapsed .nav-link-toggle {
+    justify-content: center;
 }
 
 .topbar {
