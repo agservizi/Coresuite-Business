@@ -75,6 +75,20 @@ body.login-body {
     font-size: 1rem;
 }
 
+.sidebar {
+    width: 260px;
+    min-height: 100vh;
+    transition: width 0.3s ease;
+    background-color: #0b2f6b !important;
+    color: #f8f9ff;
+    box-shadow: 0 0 24px rgba(8, 28, 60, 0.28);
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    flex-shrink: 0;
+}
+
 .sidebar-brand {
     display: flex;
     align-items: center;
