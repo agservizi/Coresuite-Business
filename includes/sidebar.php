@@ -62,7 +62,7 @@ foreach ($serviziItems as $item) {
     }
 }
 
-$sidebarLogoRelative = 'uploads/branding/sidebar-logo.png';
+$sidebarLogoRelative = 'assets/uploads/branding/sidebar-logo.png';
 $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
 ?>
 <nav id="sidebarMenu" class="sidebar border-end" aria-label="Menu principale">
