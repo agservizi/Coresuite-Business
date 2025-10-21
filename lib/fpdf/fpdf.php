@@ -369,7 +369,7 @@ class FPDF
                 $fontResources[] = sprintf('/%s %d 0 R', $key, $number);
             }
 
-            $objects[] = sprintf('%d 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 %.2F %.2F] /Resources << /Font << %s >> >> /Contents %d 0 R >> endobj', $pageObjNum, $this->wPt, $this->hPt, implode(' ', $fontResources), $contentObjNum);
+            $objects[] = sprintf('%d 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 %.2F %.2F] /Resources << /ProcSet [/PDF /Text] /Font << %s >> >> /Contents %d 0 R >> endobj', $pageObjNum, $this->wPt, $this->hPt, implode(' ', $fontResources), $contentObjNum);
 
             $stream = $contentObjects[$index];
             $objects[] = sprintf('%d 0 obj << /Length %d >> stream\n%s\nendstream endobj', $contentObjNum, strlen($stream), $stream);
