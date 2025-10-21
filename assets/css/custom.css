@@ -162,13 +162,12 @@ body.login-body {
 }
 
 .sidebar-logo {
-    width: 3.5rem;
-    height: 3.5rem;
-    background: rgba(255, 255, 255, 0.18);
+    width: 4rem;
+    height: 4rem;
+    background: transparent;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 0.75rem;
     overflow: hidden;
 }
 
