@@ -76,6 +76,10 @@ $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
                         <i class="fa-solid fa-building"></i>
                     <?php endif; ?>
                 </span>
+                <span class="sidebar-brand-text">
+                    <span class="sidebar-brand-title">Coresuite Business</span>
+                    <span class="sidebar-brand-subtitle">CRM Aziendale</span>
+                </span>
             </a>
         </div>
         <ul class="nav nav-pills flex-column gap-1" role="list">
