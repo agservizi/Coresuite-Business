@@ -27,30 +27,35 @@ $serviziItems = [
         'label' => 'Entrate/Uscite',
         'icon' => 'fa-solid fa-arrow-trend-up',
         'href' => base_url('modules/servizi/entrate-uscite/index.php'),
+        'color' => 'sky',
     ],
     [
         'needle' => 'modules/servizi/ricariche',
         'label' => 'Appuntamenti',
         'icon' => 'fa-solid fa-calendar-check',
         'href' => base_url('modules/servizi/ricariche/index.php'),
+        'color' => 'violet',
     ],
     [
         'needle' => 'modules/servizi/fedelta',
         'label' => 'Programma Fedeltà',
         'icon' => 'fa-solid fa-gift',
         'href' => base_url('modules/servizi/fedelta/index.php'),
+        'color' => 'amber',
     ],
     [
         'needle' => 'modules/servizi/telefonia',
         'label' => 'Telefonia',
         'icon' => 'fa-solid fa-phone-volume',
         'href' => base_url('modules/servizi/telefonia/index.php'),
+        'color' => 'emerald',
     ],
     [
         'needle' => 'modules/servizi/logistici',
         'label' => 'Servizi Logistici',
         'icon' => 'fa-solid fa-truck-fast',
         'href' => base_url('modules/servizi/logistici/index.php'),
+        'color' => 'orange',
     ],
 ];
 
@@ -121,7 +126,9 @@ $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
                                 <?php $itemActive = nav_active($item['needle'], $currentPath); ?>
                                 <li>
                                     <a class="nav-link d-flex align-items-center <?php echo $itemActive; ?>" href="<?php echo $item['href']; ?>"<?php echo $itemActive ? ' aria-current="page"' : ''; ?>>
-                                        <i class="<?php echo htmlspecialchars($item['icon'], ENT_QUOTES, 'UTF-8'); ?> me-2" aria-hidden="true"></i>
+                                        <span class="nav-subicon" data-color="<?php echo htmlspecialchars($item['color'], ENT_QUOTES, 'UTF-8'); ?>" aria-hidden="true">
+                                            <i class="<?php echo htmlspecialchars($item['icon'], ENT_QUOTES, 'UTF-8'); ?>"></i>
+                                        </span>
                                         <span><?php echo htmlspecialchars($item['label'], ENT_QUOTES, 'UTF-8'); ?></span>
                                     </a>
                                 </li>

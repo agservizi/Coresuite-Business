@@ -161,6 +161,18 @@ body.login-body {
     transition: transform 0.2s ease;
 }
 
+.sidebar .nav-subicon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.4rem;
+    height: 1.4rem;
+    margin-right: 0.65rem;
+    color: inherit;
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+}
+
 .sidebar-logo {
     width: 4rem;
     height: 4rem;
@@ -176,8 +188,19 @@ body.login-body {
     transform: translateX(2px);
 }
 
+.sidebar .nav-link:hover .nav-subicon,
+.sidebar .nav-link.active .nav-subicon {
+    transform: translateX(2px);
+}
+
 .sidebar .nav-icon i {
     font-size: 1.05rem;
+    color: inherit;
+    transition: color 0.2s ease;
+}
+
+.sidebar .nav-subicon i {
+    font-size: 0.95rem;
     color: inherit;
     transition: color 0.2s ease;
 }
@@ -187,31 +210,38 @@ body.login-body {
     filter: brightness(1.1);
 }
 
-.sidebar .nav-icon[data-color="amber"] {
+.sidebar .nav-icon[data-color="amber"],
+.sidebar .nav-subicon[data-color="amber"] {
     color: #ffd166;
 }
 
-.sidebar .nav-icon[data-color="emerald"] {
+.sidebar .nav-icon[data-color="emerald"],
+.sidebar .nav-subicon[data-color="emerald"] {
     color: #8ce99a;
 }
 
-.sidebar .nav-icon[data-color="sky"] {
+.sidebar .nav-icon[data-color="sky"],
+.sidebar .nav-subicon[data-color="sky"] {
     color: #74c0fc;
 }
 
-.sidebar .nav-icon[data-color="violet"] {
+.sidebar .nav-icon[data-color="violet"],
+.sidebar .nav-subicon[data-color="violet"] {
     color: #b197fc;
 }
 
-.sidebar .nav-icon[data-color="crimson"] {
+.sidebar .nav-icon[data-color="crimson"],
+.sidebar .nav-subicon[data-color="crimson"] {
     color: #ff8787;
 }
 
-.sidebar .nav-icon[data-color="teal"] {
+.sidebar .nav-icon[data-color="teal"],
+.sidebar .nav-subicon[data-color="teal"] {
     color: #63e6be;
 }
 
-.sidebar .nav-icon[data-color="orange"] {
+.sidebar .nav-icon[data-color="orange"],
+.sidebar .nav-subicon[data-color="orange"] {
     color: #ffa94d;
 }
 
