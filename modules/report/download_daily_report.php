@@ -51,14 +51,11 @@ $downloadName = 'report_finanziario_' . ($report['report_date'] ?? date('Y_m_d')
 
 header('Content-Type: application/pdf');
 header('Content-Disposition: ' . ($inline ? 'inline' : 'attachment') . '; filename="' . $downloadName . '"');
-if ($filesize !== false) {
-    header('Content-Length: ' . $filesize);
-}
-header('Cache-Control: no-store, no-cache, must-revalidate');
+header('Cache-Control: private, max-age=0, must-revalidate');
 header('Pragma: no-cache');
 header('Expires: 0');
 header('Content-Transfer-Encoding: binary');
-if ($inline) {
+if ($filesize !== false) {
     header('Accept-Ranges: bytes');
 }
 
@@ -66,6 +63,58 @@ if (function_exists('ob_get_level')) {
     while (ob_get_level() > 0) {
         ob_end_clean();
     }
+}
+
+if ($filesize !== false && !empty($_SERVER['HTTP_RANGE'])) {
+    $rangeHeader = (string) $_SERVER['HTTP_RANGE'];
+    if (preg_match('/bytes=([0-9]*)-([0-9]*)/', $rangeHeader, $matches)) {
+        $start = $matches[1] !== '' ? (int) $matches[1] : 0;
+        $end = $matches[2] !== '' ? (int) $matches[2] : ($filesize - 1);
+        if ($end >= $filesize) {
+            $end = $filesize - 1;
+        }
+        if ($start > $end || $start >= $filesize) {
+            header('Content-Range: bytes */' . $filesize);
+            http_response_code(416);
+            exit;
+        }
+
+        $length = ($end - $start) + 1;
+        header('HTTP/1.1 206 Partial Content');
+        header('Content-Length: ' . $length);
+        header('Content-Range: bytes ' . $start . '-' . $end . '/' . $filesize);
+
+        $handle = fopen($fullPath, 'rb');
+        if ($handle === false) {
+            http_response_code(500);
+            exit('Impossibile aprire il file del report.');
+        }
+
+        try {
+            fseek($handle, $start);
+            $bufferSize = 8192;
+            $bytesLeft = $length;
+            while ($bytesLeft > 0 && !feof($handle)) {
+                $readLength = $bytesLeft < $bufferSize ? $bytesLeft : $bufferSize;
+                $data = fread($handle, $readLength);
+                if ($data === false) {
+                    break;
+                }
+                echo $data;
+                $bytesLeft -= strlen($data);
+                if (connection_status() !== CONNECTION_NORMAL) {
+                    break;
+                }
+            }
+        } finally {
+            fclose($handle);
+        }
+        exit;
+    }
+}
+
+if ($filesize !== false) {
+    header('Content-Length: ' . $filesize);
 }
 
 if (@readfile($fullPath) === false) {
