@@ -43,17 +43,24 @@ if (!is_file($fullPath) || $normalizedRoot === '' || strncmp($normalizedFull, $n
     exit('File del report non trovato.');
 }
 
+$mode = filter_input(INPUT_GET, 'mode', FILTER_UNSAFE_RAW) ?: '';
+$inline = strtolower((string) $mode) === 'inline';
+
 $filesize = @filesize($fullPath);
 $downloadName = 'report_finanziario_' . ($report['report_date'] ?? date('Y_m_d')) . '.pdf';
 
 header('Content-Type: application/pdf');
-header('Content-Disposition: attachment; filename="' . $downloadName . '"');
+header('Content-Disposition: ' . ($inline ? 'inline' : 'attachment') . '; filename="' . $downloadName . '"');
 if ($filesize !== false) {
     header('Content-Length: ' . $filesize);
 }
 header('Cache-Control: no-store, no-cache, must-revalidate');
 header('Pragma: no-cache');
 header('Expires: 0');
+header('Content-Transfer-Encoding: binary');
+if ($inline) {
+    header('Accept-Ranges: bytes');
+}
 
 if (function_exists('ob_get_level')) {
     while (ob_get_level() > 0) {

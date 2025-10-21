@@ -228,7 +228,9 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                         $saldoClass = $saldoValue >= 0 ? 'text-success fw-semibold' : 'text-danger fw-semibold';
                                         $filePath = (string) ($report['file_path'] ?? '');
                                         $fileExists = $filePath !== '' && is_file(public_path($filePath));
-                                        $downloadUrl = base_url('modules/report/download_daily_report.php?id=' . (int) ($report['id'] ?? 0));
+                                        $reportId = (int) ($report['id'] ?? 0);
+                                        $downloadUrl = base_url('modules/report/download_daily_report.php?id=' . $reportId);
+                                        $previewUrl = base_url('modules/report/download_daily_report.php?id=' . $reportId . '&mode=inline');
                                     ?>
                                     <tr>
                                         <td><?php echo sanitize_output($reportDate ? format_date_locale((string) $reportDate) : '—'); ?></td>
@@ -238,6 +240,9 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                         <td><?php echo sanitize_output($generatedAt ? format_datetime_locale((string) $generatedAt) : '—'); ?></td>
                                         <td class="text-end">
                                             <?php if ($fileExists): ?>
+                                                <a class="btn btn-sm btn-outline-secondary me-2" href="<?php echo sanitize_output($previewUrl); ?>" target="_blank" rel="noopener">
+                                                    <i class="fa-solid fa-eye me-1"></i>Anteprima
+                                                </a>
                                                 <a class="btn btn-sm btn-outline-primary" href="<?php echo sanitize_output($downloadUrl); ?>">
                                                     <i class="fa-solid fa-download me-1"></i>Scarica
                                                 </a>
