@@ -1217,44 +1217,6 @@ a.link-warning:hover {
     font-size: 0.875rem;
 }
 
-.login-divider {
-    position: relative;
-    text-align: center;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.18em;
-    color: var(--ag-muted);
-}
-
-.login-divider::before,
-.login-divider::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    width: 30%;
-    height: 1px;
-    background: rgba(11, 47, 107, 0.18);
-}
-
-.login-divider::before {
-    left: 0;
-}
-
-.login-divider::after {
-    right: 0;
-}
-
-.sso-login-btn {
-    --bs-btn-color: #0b2f6b;
-    --bs-btn-border-color: rgba(11, 47, 107, 0.3);
-    --bs-btn-hover-bg: rgba(11, 47, 107, 0.08);
-    --bs-btn-hover-border-color: rgba(11, 47, 107, 0.4);
-    --bs-btn-active-bg: rgba(11, 47, 107, 0.16);
-    --bs-btn-active-border-color: rgba(11, 47, 107, 0.48);
-    font-weight: 600;
-    padding: 0.7rem 1rem;
-}
-
 .auth-wrapper {
     width: 100%;
     max-width: 520px;

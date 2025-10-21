@@ -1,5 +1,4 @@
 <?php
-use App\Auth\OidcAuthenticator;
 use App\Security\SecurityAuditLogger;
 
 session_start();
@@ -13,8 +12,6 @@ if (isset($_SESSION['user_id'])) {
 
 $csrfToken = csrf_token();
 $auditLogger = new SecurityAuditLogger($pdo);
-$oidcAuthenticator = new OidcAuthenticator($pdo);
-$oidcEnabled = $oidcAuthenticator->isEnabled();
 
 $maxAttempts = 5;
 $lockSeconds = 300;
@@ -27,11 +24,6 @@ if ($lockedUntil > time()) {
 } else {
     unset($_SESSION['login_locked_until']);
     $_SESSION['login_attempts'] = $_SESSION['login_attempts'] ?? 0;
-}
-
-if (isset($_SESSION['sso_error'])) {
-    $errors[] = $_SESSION['sso_error'];
-    unset($_SESSION['sso_error']);
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$errors) {
@@ -145,17 +137,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$errors) {
                         <button type="submit" class="btn btn-warning fw-semibold">Entra in Coresuite Business</button>
                     </div>
                 </form>
-                <?php if ($oidcEnabled): ?>
-                    <div class="login-divider mt-4 mb-3">
-                        <span>oppure</span>
-                    </div>
-                    <div class="d-grid">
-                        <a class="btn btn-outline-primary sso-login-btn" href="<?php echo base_url('sso/callback.php'); ?>">
-                            <i class="fa-solid fa-shield-halved me-2"></i>
-                            Accedi con Single Sign-On
-                        </a>
-                    </div>
-                <?php endif; ?>
                 <div class="login-meta mt-5">
                     Accesso riservato al personale autorizzato. Ogni attività viene registrata per motivi di sicurezza e compliance.
                 </div>

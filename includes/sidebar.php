@@ -124,13 +124,12 @@ $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
                         <ul class="nav flex-column ms-3 border-start ps-3" role="list">
                             <?php foreach ($serviziItems as $item): ?>
                                 <?php $itemActive = nav_active($item['needle'], $currentPath); ?>
-                                <?php $itemLabel = htmlspecialchars($item['label'], ENT_QUOTES, 'UTF-8'); ?>
                                 <li>
-                                    <a class="nav-link d-flex align-items-center <?php echo $itemActive; ?>" href="<?php echo $item['href']; ?>" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="<?php echo $itemLabel; ?>" aria-label="<?php echo $itemLabel; ?>"<?php echo $itemActive ? ' aria-current="page"' : ''; ?>>
+                                    <a class="nav-link d-flex align-items-center <?php echo $itemActive; ?>" href="<?php echo $item['href']; ?>"<?php echo $itemActive ? ' aria-current="page"' : ''; ?>>
                                         <span class="nav-subicon" data-color="<?php echo htmlspecialchars($item['color'], ENT_QUOTES, 'UTF-8'); ?>" aria-hidden="true">
                                             <i class="<?php echo htmlspecialchars($item['icon'], ENT_QUOTES, 'UTF-8'); ?>"></i>
                                         </span>
-                                        <span class="nav-sub-label"><?php echo $itemLabel; ?></span>
+                                        <span class="nav-sub-label"><?php echo htmlspecialchars($item['label'], ENT_QUOTES, 'UTF-8'); ?></span>
                                     </a>
                                 </li>
                             <?php endforeach; ?>
