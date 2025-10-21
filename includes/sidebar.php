@@ -129,7 +129,7 @@ $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
                                         <span class="nav-subicon" data-color="<?php echo htmlspecialchars($item['color'], ENT_QUOTES, 'UTF-8'); ?>" aria-hidden="true">
                                             <i class="<?php echo htmlspecialchars($item['icon'], ENT_QUOTES, 'UTF-8'); ?>"></i>
                                         </span>
-                                        <span><?php echo htmlspecialchars($item['label'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                        <span class="nav-sub-label"><?php echo htmlspecialchars($item['label'], ENT_QUOTES, 'UTF-8'); ?></span>
                                     </a>
                                 </li>
                             <?php endforeach; ?>
