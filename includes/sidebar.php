@@ -82,7 +82,7 @@ $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
             <?php $dashboardActive = nav_active('dashboard.php', $currentPath); ?>
             <li class="nav-item">
                 <a class="nav-link d-flex align-items-center <?php echo $dashboardActive; ?>" href="<?php echo base_url('dashboard.php'); ?>" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Dashboard" aria-label="Dashboard"<?php echo $dashboardActive ? ' aria-current="page"' : ''; ?>>
-                    <span class="nav-icon" aria-hidden="true">
+                    <span class="nav-icon" data-color="sky" aria-hidden="true">
                         <i class="fa-solid fa-gauge-high"></i>
                     </span>
                     <span class="nav-label">Dashboard</span>
@@ -93,7 +93,7 @@ $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
                 <?php $clientiActive = nav_active('modules/clienti', $currentPath); ?>
                 <li class="nav-item">
                     <a class="nav-link d-flex align-items-center <?php echo $clientiActive; ?>" href="<?php echo base_url('modules/clienti/index.php'); ?>" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Clienti" aria-label="Clienti"<?php echo $clientiActive ? ' aria-current="page"' : ''; ?>>
-                        <span class="nav-icon" aria-hidden="true">
+                        <span class="nav-icon" data-color="emerald" aria-hidden="true">
                             <i class="fa-solid fa-users"></i>
                         </span>
                         <span class="nav-label">Clienti</span>
@@ -103,7 +103,7 @@ $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
                 <?php $serviziButtonActive = $serviziMenuOpen ? 'active' : ''; ?>
                 <li class="nav-item">
                     <button class="nav-link nav-link-toggle d-flex align-items-center w-100 text-start <?php echo $serviziButtonActive; ?>" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarServices" aria-expanded="<?php echo $serviziMenuOpen ? 'true' : 'false'; ?>" aria-controls="sidebarServices" data-bs-placement="right" data-bs-title="Servizi" aria-label="Servizi">
-                        <span class="nav-icon" aria-hidden="true">
+                        <span class="nav-icon" data-color="violet" aria-hidden="true">
                             <i class="fa-solid fa-briefcase"></i>
                         </span>
                         <span class="nav-label">Servizi</span>
@@ -129,7 +129,7 @@ $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
                 <?php $documentiActive = nav_active('modules/documenti', $currentPath); ?>
                 <li class="nav-item">
                     <a class="nav-link d-flex align-items-center <?php echo $documentiActive; ?>" href="<?php echo base_url('modules/documenti/index.php'); ?>" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Documenti" aria-label="Documenti"<?php echo $documentiActive ? ' aria-current="page"' : ''; ?>>
-                        <span class="nav-icon" aria-hidden="true">
+                        <span class="nav-icon" data-color="amber" aria-hidden="true">
                             <i class="fa-solid fa-folder-open"></i>
                         </span>
                         <span class="nav-label">Documenti</span>
@@ -139,7 +139,7 @@ $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
                 <?php $ticketActive = nav_active('modules/ticket', $currentPath); ?>
                 <li class="nav-item">
                     <a class="nav-link d-flex align-items-center <?php echo $ticketActive; ?>" href="<?php echo base_url('modules/ticket/index.php'); ?>" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Ticket" aria-label="Ticket"<?php echo $ticketActive ? ' aria-current="page"' : ''; ?>>
-                        <span class="nav-icon" aria-hidden="true">
+                        <span class="nav-icon" data-color="crimson" aria-hidden="true">
                             <i class="fa-solid fa-life-ring"></i>
                         </span>
                         <span class="nav-label">Ticket</span>
@@ -149,7 +149,7 @@ $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
                 <?php $reportActive = nav_active('modules/report', $currentPath); ?>
                 <li class="nav-item">
                     <a class="nav-link d-flex align-items-center <?php echo $reportActive; ?>" href="<?php echo base_url('modules/report/index.php'); ?>" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Report" aria-label="Report"<?php echo $reportActive ? ' aria-current="page"' : ''; ?>>
-                        <span class="nav-icon" aria-hidden="true">
+                        <span class="nav-icon" data-color="teal" aria-hidden="true">
                             <i class="fa-solid fa-chart-pie"></i>
                         </span>
                         <span class="nav-label">Report</span>
@@ -160,7 +160,7 @@ $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
             <?php $settingsActive = nav_active('modules/impostazioni', $currentPath); ?>
             <li class="nav-item">
                 <a class="nav-link d-flex align-items-center <?php echo $settingsActive; ?>" href="<?php echo base_url('modules/impostazioni/index.php'); ?>" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Impostazioni" aria-label="Impostazioni"<?php echo $settingsActive ? ' aria-current="page"' : ''; ?>>
-                    <span class="nav-icon" aria-hidden="true">
+                    <span class="nav-icon" data-color="orange" aria-hidden="true">
                         <i class="fa-solid fa-gear"></i>
                     </span>
                     <span class="nav-label">Impostazioni</span>

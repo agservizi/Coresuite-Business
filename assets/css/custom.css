@@ -75,20 +75,6 @@ body.login-body {
     font-size: 1rem;
 }
 
-.sidebar {
-    width: 260px;
-    min-height: 100vh;
-    transition: width 0.3s ease;
-    background-color: #0b2f6b !important;
-    color: #f8f9ff;
-    box-shadow: 0 0 24px rgba(8, 28, 60, 0.28);
-    position: sticky;
-    top: 0;
-    height: 100vh;
-    overflow-y: auto;
-    flex-shrink: 0;
-}
-
 .sidebar-brand {
     display: flex;
     align-items: center;
@@ -110,15 +96,84 @@ body.login-body {
     border-radius: 999px;
 }
 
-.sidebar-logo {
-    width: 3.5rem;
-    height: 3.5rem;
-    background: rgba(255, 255, 255, 0.18);
-    display: flex;
+.sidebar .nav-link {
+    color: rgba(255, 255, 255, 0.9);
+    border-radius: 0.6rem;
+    font-weight: 500;
+    gap: 0.75rem;
+    position: relative;
+}
+
+.sidebar .text-muted {
+    color: rgba(255, 255, 255, 0.65) !important;
+}
+
+.sidebar .nav-link:hover,
+.sidebar .nav-link.active {
+    background: rgba(255, 255, 255, 0.16);
+    color: #ffffff;
+}
+
+.sidebar .nav-icon {
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: 0.75rem;
+    width: 1.65rem;
+    height: 1.65rem;
+    color: inherit;
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+}
+
+.sidebar .nav-link:hover .nav-icon,
+.sidebar .nav-link.active .nav-icon {
+    transform: translateX(2px);
+}
+
+.sidebar .nav-icon i {
+    font-size: 1.05rem;
+    color: inherit;
+    transition: color 0.2s ease;
+}
+
+.sidebar .nav-link:hover .nav-icon i,
+.sidebar .nav-link.active .nav-icon i {
+    filter: brightness(1.1);
+}
+
+.sidebar .nav-icon[data-color="amber"] {
+    color: #ffd166;
+}
+
+.sidebar .nav-icon[data-color="emerald"] {
+    color: #8ce99a;
+}
+
+.sidebar .nav-icon[data-color="sky"] {
+    color: #74c0fc;
+}
+
+.sidebar .nav-icon[data-color="violet"] {
+    color: #b197fc;
+}
+
+.sidebar .nav-icon[data-color="crimson"] {
+    color: #ff8787;
+}
+
+.sidebar .nav-icon[data-color="teal"] {
+    color: #63e6be;
+}
+
+.sidebar .nav-icon[data-color="orange"] {
+    color: #ffa94d;
+}
+
+.sidebar .nav-label {
+    flex: 1;
+    white-space: nowrap;
     overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .sidebar-logo i {
@@ -143,54 +198,6 @@ body.login-body {
 
 .sidebar.collapsed {
     width: 88px;
-}
-
-.sidebar .nav-link {
-    color: rgba(255, 255, 255, 0.88);
-    border-radius: 0.6rem;
-    font-weight: 500;
-    gap: 0.75rem;
-    position: relative;
-}
-
-.sidebar .text-muted {
-    color: rgba(255, 255, 255, 0.65) !important;
-}
-
-.sidebar .nav-link:hover,
-.sidebar .nav-link.active {
-    background: rgba(255, 255, 255, 0.16);
-    color: #ffffff;
-}
-
-.sidebar .nav-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 2rem;
-    height: 2rem;
-    border-radius: 0.75rem;
-    background: rgba(255, 255, 255, 0.09);
-    color: #ffffff;
-    transition: background 0.2s ease, color 0.2s ease;
-    flex-shrink: 0;
-}
-
-.sidebar .nav-icon i {
-    font-size: 1rem;
-}
-
-.sidebar .nav-link:hover .nav-icon,
-.sidebar .nav-link.active .nav-icon {
-    background: rgba(255, 255, 255, 0.24);
-    color: #ffffff;
-}
-
-.sidebar .nav-label {
-    flex: 1;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 
 .sidebar .nav-caret {
