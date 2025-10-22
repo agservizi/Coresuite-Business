@@ -82,16 +82,39 @@ document.addEventListener('DOMContentLoaded', () => {
             fallbackPlacements
         };
 
+        const popperModifiers = [];
+
+        if (fallbackPlacements.length > 0) {
+            popperModifiers.push({
+                name: 'flip',
+                options: {
+                    fallbackPlacements,
+                    allowedAutoPlacements: fallbackPlacements
+                }
+            });
+        }
+
+        popperModifiers.push({
+            name: 'preventOverflow',
+            options: {
+                boundary: 'viewport',
+                padding: 4,
+                altAxis: false
+            }
+        });
+
         if (offset) {
+            popperModifiers.push({
+                name: 'offset',
+                options: {
+                    offset
+                }
+            });
+        }
+
+        if (popperModifiers.length > 0) {
             config.popperConfig = {
-                modifiers: [
-                    {
-                        name: 'offset',
-                        options: {
-                            offset
-                        }
-                    }
-                ]
+                modifiers: popperModifiers
             };
         }
 
