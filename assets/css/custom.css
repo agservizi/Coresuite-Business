@@ -372,6 +372,16 @@ body.login-body {
     background: transparent;
 }
 
+.tooltip-sidebar.bs-tooltip-end .tooltip-arrow,
+.tooltip-sidebar.bs-tooltip-right .tooltip-arrow {
+    left: 0;
+}
+
+.tooltip-sidebar.bs-tooltip-end .tooltip-arrow::before,
+.tooltip-sidebar.bs-tooltip-right .tooltip-arrow::before {
+    left: 0;
+}
+
 .topbar {
     -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);

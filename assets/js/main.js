@@ -61,7 +61,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const fallbackFromAttr = parseFallbackPlacements(element.getAttribute('data-bs-fallback'));
         const fallbackPlacements = fallbackFromAttr.length > 0
             ? fallbackFromAttr
-            : overrides.fallbackPlacements || [placement];
+            : (Array.isArray(overrides.fallbackPlacements)
+                ? overrides.fallbackPlacements
+                : [placement]);
         const offset = parseOffset(element.getAttribute('data-bs-offset'))
             || overrides.offset;
 
@@ -80,17 +82,24 @@ document.addEventListener('DOMContentLoaded', () => {
             fallbackPlacements
         };
 
+        const popperModifiers = [];
         if (offset) {
+            popperModifiers.push({
+                name: 'offset',
+                options: { offset }
+            });
+        }
+        if (Array.isArray(overrides.popperModifiers)) {
+            popperModifiers.push(...overrides.popperModifiers);
+        }
+        if (popperModifiers.length > 0) {
             config.popperConfig = {
-                modifiers: [
-                    {
-                        name: 'offset',
-                        options: {
-                            offset
-                        }
-                    }
-                ]
+                modifiers: popperModifiers
             };
+        }
+
+        if (overrides.customClass) {
+            config.customClass = overrides.customClass;
         }
 
         // eslint-disable-next-line no-undef
@@ -117,8 +126,18 @@ document.addEventListener('DOMContentLoaded', () => {
         sidebarTooltipInstances = elements.map((element) => ensureTooltipInstance(element, {
             placement: 'right',
             container: document.body,
-            fallbackPlacements: ['right', 'left', 'top', 'bottom'],
-            offset: [0, 12]
+            fallbackPlacements: ['right-start', 'right-end', 'left'],
+            offset: [0, 12],
+            customClass: 'tooltip-sidebar',
+            popperModifiers: [
+                {
+                    name: 'preventOverflow',
+                    options: {
+                        boundary: document.body,
+                        padding: 8
+                    }
+                }
+            ]
         }));
     };
 
