@@ -74,6 +74,23 @@ $accountLabel = str_replace(':', ' ', $accountLabel);
 $totp->setLabel($accountLabel);
 $totp->setIssuer('Coresuite Business');
 $otpauthUri = $totp->getProvisioningUri();
+$qrSvg = null;
+$rendererClass = '\\BaconQrCode\\Renderer\\ImageRenderer';
+$rendererStyleClass = '\\BaconQrCode\\Renderer\\RendererStyle\\RendererStyle';
+$backendClass = '\\BaconQrCode\\Renderer\\Image\\SvgImageBackEnd';
+$writerClass = '\\BaconQrCode\\Writer';
+
+if (class_exists($rendererClass) && class_exists($rendererStyleClass) && class_exists($backendClass) && class_exists($writerClass)) {
+    try {
+        $renderer = new $rendererClass(new $rendererStyleClass(240), new $backendClass());
+        $writer = new $writerClass($renderer);
+        $qrSvg = $writer->writeString($otpauthUri);
+    } catch (Throwable $qrException) {
+        error_log('QR generation failed: ' . $qrException->getMessage());
+    }
+} else {
+    error_log('QR generation classes not available.');
+}
 $displaySecret = chunk_split(strtoupper($secret), 4, ' ');
 
 $csrfToken = csrf_token();
@@ -190,8 +207,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <?php endif; ?>
 
                 <div class="mfa-qr-wrapper text-center mb-4">
-                    <img src="https://chart.googleapis.com/chart?chs=240x240&amp;cht=qr&amp;chl=<?php echo urlencode($otpauthUri); ?>" alt="QR Code MFA" class="img-fluid rounded-3 shadow-sm border border-light">
-                    <div class="mt-3 small text-secondary">Scansiona con l'app Authenticator</div>
+                    <?php if ($qrSvg !== null): ?>
+                        <div class="d-inline-block bg-white p-3 rounded-3 shadow-sm border border-light">
+                            <?php echo $qrSvg; ?>
+                        </div>
+                        <div class="mt-3 small text-secondary">Scansiona con l'app Authenticator</div>
+                    <?php else: ?>
+                        <div class="alert alert-warning" role="alert">
+                            Impossibile generare il QR code automaticamente. Usa la chiave manuale qui sotto.
+                        </div>
+                    <?php endif; ?>
                 </div>
 
                 <div class="card bg-body-secondary border-0 mb-4">

@@ -16,6 +16,7 @@
         "test": "phpunit"
     },
     "require": {
-        "spomky-labs/otphp": "^11"
+        "spomky-labs/otphp": "^11",
+        "bacon/bacon-qr-code": "^2.0"
     }
 }
