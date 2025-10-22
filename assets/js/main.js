@@ -145,7 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
     globalTooltipElements.forEach((element) => {
         ensureTooltipInstance(element, {
             placement: element.getAttribute('data-bs-placement') || 'top',
-            fallbackPlacements: ['top', 'bottom', 'left', 'right'],
+            fallbackPlacements: ['top', 'bottom'],
             offset: [0, 12]
         });
     });
