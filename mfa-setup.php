@@ -69,7 +69,9 @@ if (empty($_SESSION['mfa_setup']['secret'])) {
 
 $secret = (string) $_SESSION['mfa_setup']['secret'];
 $totp = $totpClass::create($secret, 30, 'sha1', 6);
-$totp->setLabel('Coresuite Business:' . $sessionUser['username']);
+$accountLabel = $sessionUser['username'] !== '' ? $sessionUser['username'] : ('utente-' . $sessionUser['id']);
+$accountLabel = str_replace(':', ' ', $accountLabel);
+$totp->setLabel($accountLabel);
 $totp->setIssuer('Coresuite Business');
 $otpauthUri = $totp->getProvisioningUri();
 $displaySecret = chunk_split(strtoupper($secret), 4, ' ');
