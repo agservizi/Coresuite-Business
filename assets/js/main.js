@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (title && !element.getAttribute('data-bs-title')) {
             element.setAttribute('data-bs-title', title);
         }
-        const container = element.getAttribute('data-bs-container') || '#sidebarMenu';
+        const container = element.getAttribute('data-bs-container') || document.body;
         // eslint-disable-next-line no-undef
         return bootstrap.Tooltip.getOrCreateInstance(element, {
             trigger: 'hover focus',
@@ -19,7 +19,17 @@ document.addEventListener('DOMContentLoaded', () => {
             title: element.getAttribute('data-bs-title') || element.getAttribute('title') || '',
             container,
             boundary: 'viewport',
-            fallbackPlacements: [placement]
+            fallbackPlacements: [placement],
+            popperConfig: {
+                modifiers: [
+                    {
+                        name: 'offset',
+                        options: {
+                            offset: [0, 12]
+                        }
+                    }
+                ]
+            }
         });
     });
 
@@ -46,6 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (enableTooltips) {
                 instance.enable();
+                instance.update();
             } else {
                 instance.hide();
                 instance.disable();
