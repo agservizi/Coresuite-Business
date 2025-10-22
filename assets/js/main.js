@@ -116,7 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const elements = getSidebarTooltipElements();
         sidebarTooltipInstances = elements.map((element) => ensureTooltipInstance(element, {
             placement: 'right',
-            container: sidebar,
+            container: document.body,
             fallbackPlacements: ['right', 'left', 'top', 'bottom'],
             offset: [0, 12]
         }));
