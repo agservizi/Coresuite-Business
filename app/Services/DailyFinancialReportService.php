@@ -112,19 +112,18 @@ SQL;
      */
     private function storePdf(DateTimeImmutable $date, array $movements, float $entrate, float $uscite, float $saldo): string
     {
-        $this->ensurePdfLibraryLoaded();
         $this->ensureStorageDirectory();
 
-    $pdf = $this->createPdfInstance();
+        $pdf = $this->createPdfInstance();
         $pdf->SetMargins(15.0, 15.0, 15.0);
         $pdf->SetAutoPageBreak(true, 20.0);
         $pdf->AddPage();
 
         $pdf->SetTextColor(11, 47, 107);
-        $pdf->SetFont('Arial', 'B', 18);
+    $pdf->SetFont('DejaVu Sans', 'B', 18);
         $pdf->Cell(0, 10, $this->pdfText('Report Finanziario Giornaliero'), 0, 1, 'L');
 
-        $pdf->SetFont('Arial', '', 12);
+    $pdf->SetFont('DejaVu Sans', '', 12);
         $pdf->SetTextColor(28, 37, 52);
         $pdf->Cell(0, 7, $this->pdfText('Data report: ' . $date->format('d/m/Y')), 0, 1, 'L');
         $pdf->Cell(0, 7, $this->pdfText('Generato il: ' . (new DateTimeImmutable('now'))->format('d/m/Y H:i')), 0, 1, 'L');
@@ -141,7 +140,7 @@ SQL;
             ['width' => 24.0, 'title' => 'Importo', 'align' => 'R'],
         ];
 
-        $pdf->SetFont('Arial', 'B', 10);
+    $pdf->SetFont('DejaVu Sans', 'B', 10);
         $pdf->SetFillColor(11, 47, 107);
         $pdf->SetTextColor(255, 255, 255);
         foreach ($columns as $column) {
@@ -149,7 +148,7 @@ SQL;
         }
         $pdf->Ln();
 
-        $pdf->SetFont('Arial', '', 9);
+    $pdf->SetFont('DejaVu Sans', '', 9);
         $pdf->SetTextColor(28, 37, 52);
 
         if (!$movements) {
@@ -169,48 +168,32 @@ SQL;
         }
 
         $pdf->Ln(4);
-        $pdf->SetFont('Arial', 'B', 11);
+    $pdf->SetFont('DejaVu Sans', 'B', 11);
         $pdf->Cell(60, 7, $this->pdfText('Totale Entrate'), 0, 0, 'L');
-        $pdf->SetFont('Arial', '', 11);
+    $pdf->SetFont('DejaVu Sans', '', 11);
         $pdf->Cell(40, 7, $this->pdfText($this->formatCurrency($entrate)), 0, 1, 'L');
 
-        $pdf->SetFont('Arial', 'B', 11);
+    $pdf->SetFont('DejaVu Sans', 'B', 11);
         $pdf->Cell(60, 7, $this->pdfText('Totale Uscite'), 0, 0, 'L');
-        $pdf->SetFont('Arial', '', 11);
+    $pdf->SetFont('DejaVu Sans', '', 11);
         $pdf->Cell(40, 7, $this->pdfText($this->formatCurrency($uscite)), 0, 1, 'L');
 
-        $pdf->SetFont('Arial', 'B', 11);
+    $pdf->SetFont('DejaVu Sans', 'B', 11);
         $pdf->Cell(60, 7, $this->pdfText('Saldo'), 0, 0, 'L');
         if ($saldo >= 0) {
             $pdf->SetTextColor(21, 87, 36);
         } else {
             $pdf->SetTextColor(114, 28, 36);
         }
-        $pdf->SetFont('Arial', '', 11);
+    $pdf->SetFont('DejaVu Sans', '', 11);
         $pdf->Cell(40, 7, $this->pdfText($this->formatCurrency($saldo)), 0, 1, 'L');
         $pdf->SetTextColor(28, 37, 52);
 
         $fileName = sprintf('report_finanziario_%s.pdf', $date->format('Ymd'));
         $fullPath = $this->storagePath . DIRECTORY_SEPARATOR . $fileName;
-        $pdf->Output('F', $fullPath, true);
+    $pdf->Output($fullPath, 'F');
 
         return 'backups/daily-reports/' . $fileName;
-    }
-
-    private function ensurePdfLibraryLoaded(): void
-    {
-        static $loaded = false;
-        if ($loaded) {
-            return;
-        }
-
-        $libraryPath = $this->rootPath . DIRECTORY_SEPARATOR . 'lib' . DIRECTORY_SEPARATOR . 'fpdf' . DIRECTORY_SEPARATOR . 'fpdf.php';
-        if (!is_file($libraryPath)) {
-            throw new RuntimeException('Libreria FPDF non trovata. Verifica la cartella lib/fpdf.');
-        }
-
-        require_once $libraryPath;
-        $loaded = true;
     }
 
     private function ensureStorageDirectory(): void
@@ -222,15 +205,20 @@ SQL;
     
     private function createPdfInstance(): object
     {
-        $this->ensurePdfLibraryLoaded();
-        
-        $className = 'FPDF';
+        $className = '\\Mpdf\\Mpdf';
         if (!class_exists($className)) {
-            throw new RuntimeException('Impossibile inizializzare la libreria FPDF.');
+            throw new RuntimeException('Libreria mPDF non disponibile.');
         }
-        
+
         /** @var object $instance */
-        $instance = new $className('P', 'mm', 'A4');
+        $instance = new $className([
+            'format' => 'A4',
+            'margin_left' => 15,
+            'margin_right' => 15,
+            'margin_top' => 15,
+            'margin_bottom' => 20,
+        ]);
+
         return $instance;
     }
 
@@ -318,7 +306,6 @@ SQL;
 
     private function pdfText(string $value): string
     {
-        $converted = @iconv('UTF-8', 'Windows-1252//TRANSLIT', $value);
-        return $converted !== false ? $converted : $value;
+        return $value;
     }
 }

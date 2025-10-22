@@ -17,6 +17,7 @@
     },
     "require": {
         "spomky-labs/otphp": "^11",
-        "bacon/bacon-qr-code": "^2.0"
+        "bacon/bacon-qr-code": "^2.0",
+    "mpdf/mpdf": "^8.2"
     }
 }

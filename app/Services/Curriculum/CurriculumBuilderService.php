@@ -31,14 +31,14 @@ class CurriculumBuilderService
         $curriculum = $this->loadCurriculum($curriculumId);
         $sections = $this->loadSections($curriculumId);
 
-        $this->ensurePdfLibraryLoaded();
         $this->ensureStorageDirectory();
 
         $fileName = sprintf('cv_europass_%s.pdf', $curriculumId . '_' . (new DateTimeImmutable())->format('YmdHis'));
         $fullPath = $this->storagePath . DIRECTORY_SEPARATOR . $fileName;
 
         $pdf = $this->createPdfInstance();
-        $pdf->SetMargins(18.0, 18.0, 18.0);
+    $pdf->SetMargins(18.0, 18.0, 18.0);
+    $pdf->SetAutoPageBreak(true, 18.0);
         $pdf->AddPage();
 
         $this->renderHeader($pdf, $curriculum);
@@ -49,7 +49,7 @@ class CurriculumBuilderService
         $this->renderLanguageSection($pdf, $sections['languages']);
         $this->renderAdditionalInfo($pdf, $curriculum);
 
-        $pdf->Output('F', $fullPath, true);
+    $pdf->Output($fullPath, 'F');
 
         return [
             'relative_path' => 'assets/uploads/curriculum/' . $fileName,
@@ -102,28 +102,28 @@ class CurriculumBuilderService
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
-    private function ensurePdfLibraryLoaded(): void
+    private function createPdfInstance()
     {
-        $fpdfPath = __DIR__ . '/../../../lib/fpdf/fpdf.php';
-        if (!class_exists('FPDF')) {
-            if (!is_file($fpdfPath)) {
-                throw new RuntimeException('Libreria FPDF non disponibile.');
-            }
-            require_once $fpdfPath;
+        $className = '\\Mpdf\\Mpdf';
+        if (!class_exists($className)) {
+            throw new RuntimeException('Libreria mPDF non disponibile.');
         }
+
+        return new $className([
+            'format' => 'A4',
+            'margin_left' => 18,
+            'margin_right' => 18,
+            'margin_top' => 18,
+            'margin_bottom' => 18,
+        ]);
     }
 
-    private function createPdfInstance(): \FPDF
+    private function renderHeader($pdf, array $curriculum): void
     {
-        return new \FPDF();
-    }
-
-    private function renderHeader(\FPDF $pdf, array $curriculum): void
-    {
-        $pdf->SetFont('Arial', 'B', 18);
+    $pdf->SetFont('DejaVu Sans', 'B', 18);
         $pdf->SetTextColor(0, 51, 102);
         $pdf->Cell(0, 12, 'Curriculum Vitae Europass', 0, 1, 'L');
-        $pdf->SetFont('Arial', '', 11);
+    $pdf->SetFont('DejaVu Sans', '', 11);
         $pdf->SetTextColor(51, 51, 51);
         $pdf->Cell(0, 6, trim(($curriculum['nome'] ?? '') . ' ' . ($curriculum['cognome'] ?? '')), 0, 1, 'L');
         if (!empty($curriculum['email'])) {
@@ -135,9 +135,9 @@ class CurriculumBuilderService
         $pdf->Ln(4);
     }
 
-    private function renderSectionTitle(\FPDF $pdf, string $title): void
+    private function renderSectionTitle($pdf, string $title): void
     {
-        $pdf->SetFont('Arial', 'B', 12);
+    $pdf->SetFont('DejaVu Sans', 'B', 12);
         $pdf->SetTextColor(0, 51, 102);
         $pdf->Cell(0, 8, $title, 0, 1, 'L');
         $pdf->SetDrawColor(0, 51, 102);
@@ -146,10 +146,10 @@ class CurriculumBuilderService
         $pdf->Ln(4);
     }
 
-    private function renderPersonalProfile(\FPDF $pdf, array $curriculum): void
+    private function renderPersonalProfile($pdf, array $curriculum): void
     {
         $this->renderSectionTitle($pdf, 'Profilo Personale');
-        $pdf->SetFont('Arial', '', 11);
+    $pdf->SetFont('DejaVu Sans', '', 11);
         $pdf->SetTextColor(51, 51, 51);
         $profile = (string) ($curriculum['professional_summary'] ?? '');
         if ($profile === '') {
@@ -159,10 +159,10 @@ class CurriculumBuilderService
         $pdf->Ln(2);
     }
 
-    private function renderExperienceSection(\FPDF $pdf, array $experiences): void
+    private function renderExperienceSection($pdf, array $experiences): void
     {
         $this->renderSectionTitle($pdf, 'Esperienza Professionale');
-        $pdf->SetFont('Arial', '', 11);
+    $pdf->SetFont('DejaVu Sans', '', 11);
         $pdf->SetTextColor(51, 51, 51);
         if (!$experiences) {
             $pdf->MultiCell(0, 6, 'Nessuna esperienza inserita.');
@@ -171,11 +171,11 @@ class CurriculumBuilderService
         }
         foreach ($experiences as $experience) {
             $dateRange = $this->formatDateRange($experience['start_date'] ?? '', $experience['end_date'] ?? '', (bool) ($experience['is_current'] ?? 0));
-            $pdf->SetFont('Arial', 'B', 11);
+            $pdf->SetFont('DejaVu Sans', 'B', 11);
             $pdf->Cell(0, 6, trim(($experience['role_title'] ?? '') . ' - ' . ($experience['employer'] ?? '')), 0, 1, 'L');
-            $pdf->SetFont('Arial', 'I', 10);
+            $pdf->SetFont('DejaVu Sans', 'I', 10);
             $pdf->Cell(0, 5, $dateRange, 0, 1, 'L');
-            $pdf->SetFont('Arial', '', 10);
+            $pdf->SetFont('DejaVu Sans', '', 10);
             if (!empty($experience['description'])) {
                 $pdf->MultiCell(0, 5, (string) $experience['description']);
             }
@@ -183,10 +183,10 @@ class CurriculumBuilderService
         }
     }
 
-    private function renderEducationSection(\FPDF $pdf, array $education): void
+    private function renderEducationSection($pdf, array $education): void
     {
         $this->renderSectionTitle($pdf, 'Istruzione e Formazione');
-        $pdf->SetFont('Arial', '', 11);
+    $pdf->SetFont('DejaVu Sans', '', 11);
         $pdf->SetTextColor(51, 51, 51);
         if (!$education) {
             $pdf->MultiCell(0, 6, 'Nessun percorso formativo inserito.');
@@ -195,11 +195,11 @@ class CurriculumBuilderService
         }
         foreach ($education as $item) {
             $dateRange = $this->formatDateRange($item['start_date'] ?? '', $item['end_date'] ?? '', false);
-            $pdf->SetFont('Arial', 'B', 11);
+            $pdf->SetFont('DejaVu Sans', 'B', 11);
             $pdf->Cell(0, 6, trim(($item['title'] ?? '') . ' - ' . ($item['institution'] ?? '')), 0, 1, 'L');
-            $pdf->SetFont('Arial', 'I', 10);
+            $pdf->SetFont('DejaVu Sans', 'I', 10);
             $pdf->Cell(0, 5, $dateRange, 0, 1, 'L');
-            $pdf->SetFont('Arial', '', 10);
+            $pdf->SetFont('DejaVu Sans', '', 10);
             if (!empty($item['description'])) {
                 $pdf->MultiCell(0, 5, (string) $item['description']);
             }
@@ -207,10 +207,10 @@ class CurriculumBuilderService
         }
     }
 
-    private function renderSkillsSection(\FPDF $pdf, array $skills): void
+    private function renderSkillsSection($pdf, array $skills): void
     {
         $this->renderSectionTitle($pdf, 'Competenze');
-        $pdf->SetFont('Arial', '', 11);
+    $pdf->SetFont('DejaVu Sans', '', 11);
         $pdf->SetTextColor(51, 51, 51);
         if (!$skills) {
             $pdf->MultiCell(0, 6, 'Nessuna competenza registrata.');
@@ -222,9 +222,9 @@ class CurriculumBuilderService
             if (!empty($skill['level'])) {
                 $line .= ' (' . $skill['level'] . ')';
             }
-            $pdf->SetFont('Arial', 'B', 10);
+            $pdf->SetFont('DejaVu Sans', 'B', 10);
             $pdf->Cell(0, 5, $line, 0, 1, 'L');
-            $pdf->SetFont('Arial', '', 10);
+            $pdf->SetFont('DejaVu Sans', '', 10);
             if (!empty($skill['description'])) {
                 $pdf->MultiCell(0, 5, (string) $skill['description']);
             }
@@ -232,10 +232,10 @@ class CurriculumBuilderService
         }
     }
 
-    private function renderLanguageSection(\FPDF $pdf, array $languages): void
+    private function renderLanguageSection($pdf, array $languages): void
     {
         $this->renderSectionTitle($pdf, 'Competenze Linguistiche');
-        $pdf->SetFont('Arial', '', 11);
+    $pdf->SetFont('DejaVu Sans', '', 11);
         $pdf->SetTextColor(51, 51, 51);
         if (!$languages) {
             $pdf->MultiCell(0, 6, 'Competenze linguistiche non inserite.');
@@ -243,9 +243,9 @@ class CurriculumBuilderService
             return;
         }
         foreach ($languages as $language) {
-            $pdf->SetFont('Arial', 'B', 10);
+            $pdf->SetFont('DejaVu Sans', 'B', 10);
             $pdf->Cell(0, 6, (string) ($language['language'] ?? ''), 0, 1, 'L');
-            $pdf->SetFont('Arial', '', 10);
+            $pdf->SetFont('DejaVu Sans', '', 10);
             $levels = array_filter([
                 'Ascolto: ' . ($language['listening'] ?? ''),
                 'Lettura: ' . ($language['reading'] ?? ''),
@@ -259,17 +259,17 @@ class CurriculumBuilderService
                 $pdf->MultiCell(0, 5, implode(' | ', $levels));
             }
             if (!empty($language['certification'])) {
-                $pdf->SetFont('Arial', 'I', 9);
+                $pdf->SetFont('DejaVu Sans', 'I', 9);
                 $pdf->Cell(0, 5, 'Certificazione: ' . $language['certification'], 0, 1, 'L');
             }
             $pdf->Ln(2);
         }
     }
 
-    private function renderAdditionalInfo(\FPDF $pdf, array $curriculum): void
+    private function renderAdditionalInfo($pdf, array $curriculum): void
     {
         $this->renderSectionTitle($pdf, 'Informazioni Addizionali');
-        $pdf->SetFont('Arial', '', 10);
+    $pdf->SetFont('DejaVu Sans', '', 10);
         $text = [];
         if (!empty($curriculum['key_competences'])) {
             $text[] = 'Competenze chiave: ' . (string) $curriculum['key_competences'];
