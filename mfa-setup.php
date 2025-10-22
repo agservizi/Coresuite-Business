@@ -82,10 +82,16 @@ $writerClass = '\\BaconQrCode\\Writer';
 
 if (class_exists($rendererClass) && class_exists($rendererStyleClass) && class_exists($backendClass) && class_exists($writerClass)) {
     try {
+        $previousReporting = error_reporting();
+        error_reporting($previousReporting & ~E_DEPRECATED);
         $renderer = new $rendererClass(new $rendererStyleClass(240), new $backendClass());
         $writer = new $writerClass($renderer);
         $qrSvg = $writer->writeString($otpauthUri);
+        error_reporting($previousReporting);
     } catch (Throwable $qrException) {
+        if (isset($previousReporting)) {
+            error_reporting($previousReporting);
+        }
         error_log('QR generation failed: ' . $qrException->getMessage());
     }
 } else {
