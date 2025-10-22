@@ -252,7 +252,9 @@ class CurriculumBuilderService
                 'Interazione: ' . ($language['interaction'] ?? ''),
                 'Produzione: ' . ($language['production'] ?? ''),
                 'Scrittura: ' . ($language['writing'] ?? '')
-            ], static fn($item) => !str_ends_with($item, ': '));
+            ], function ($item) {
+                return !$this->stringEndsWith($item, ': ');
+            });
             if ($levels) {
                 $pdf->MultiCell(0, 5, implode(' | ', $levels));
             }
@@ -317,5 +319,17 @@ class CurriculumBuilderService
             return '';
         }
         return $date->format('m/Y');
+    }
+
+    private function stringEndsWith(string $haystack, string $needle): bool
+    {
+        if ($needle === '') {
+            return true;
+        }
+        $needleLength = strlen($needle);
+        if ($needleLength > strlen($haystack)) {
+            return false;
+        }
+        return substr($haystack, -$needleLength) === $needle;
     }
 }
