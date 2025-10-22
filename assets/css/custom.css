@@ -383,15 +383,16 @@ body.login-body {
 }
 
 .tooltip.tooltip-sidebar[data-popper-placement^="right"] .tooltip-arrow {
-    top: 50%;
-    right: 100%;
-    left: auto;
-    transform: translate(0, -50%);
+    top: 50% !important;
+    bottom: auto !important;
+    right: auto !important;
+    left: 0 !important;
+    transform: translate(-100%, -50%) !important;
 }
 
 .tooltip.tooltip-sidebar[data-popper-placement^="right"] .tooltip-arrow::before {
     border-right-color: var(--bs-tooltip-bg);
-    border-width: var(--bs-tooltip-arrow-height) var(--bs-tooltip-arrow-width) var(--bs-tooltip-arrow-height) 0;
+    border-width: var(--bs-tooltip-arrow-height) var(--bs-tooltip-arrow-width) var(--bs-tooltip-arrow-height) 0 !important;
 }
 
 .topbar {
