@@ -374,16 +374,14 @@ body.login-body {
 
 /* Sidebar tooltip tweaks */
 .tooltip.tooltip-sidebar {
-    --bs-tooltip-arrow-width: 0.7rem;
-    --bs-tooltip-arrow-height: 1rem;
-}
-
-.tooltip.tooltip-sidebar.bs-tooltip-end {
-    margin-left: 0.1rem;
+    --bs-tooltip-arrow-width: 0.45rem;
+    --bs-tooltip-arrow-height: 0.32rem;
 }
 
 .tooltip.tooltip-sidebar.bs-tooltip-end .tooltip-arrow {
-    left: -0.35rem;
+    top: 50%;
+    left: 0;
+    transform: translate(-100%, -50%);
 }
 
 .tooltip.tooltip-sidebar.bs-tooltip-end .tooltip-arrow::before {
