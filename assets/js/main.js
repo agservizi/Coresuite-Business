@@ -64,6 +64,8 @@ document.addEventListener('DOMContentLoaded', () => {
             : overrides.fallbackPlacements || [placement];
         const offset = parseOffset(element.getAttribute('data-bs-offset'))
             || overrides.offset;
+        const customClass = element.getAttribute('data-bs-custom-class')
+            || overrides.customClass;
 
         // eslint-disable-next-line no-undef
         const existing = bootstrap.Tooltip.getInstance(element);
@@ -93,6 +95,10 @@ document.addEventListener('DOMContentLoaded', () => {
             };
         }
 
+        if (customClass) {
+            config.customClass = customClass;
+        }
+
         // eslint-disable-next-line no-undef
         return bootstrap.Tooltip.getOrCreateInstance(element, config);
     };
@@ -118,7 +124,8 @@ document.addEventListener('DOMContentLoaded', () => {
             placement: 'right',
             container: document.body,
             fallbackPlacements: ['right', 'left', 'top', 'bottom'],
-            offset: [0, 12]
+            offset: [0, 12],
+            customClass: 'tooltip-sidebar'
         }));
     };
 
@@ -127,7 +134,8 @@ document.addEventListener('DOMContentLoaded', () => {
         ensureTooltipInstance(element, {
             placement: element.getAttribute('data-bs-placement') || 'top',
             fallbackPlacements: ['top', 'bottom', 'left', 'right'],
-            offset: [0, 12]
+            offset: [0, 12],
+            customClass: 'tooltip-global'
         });
     });
 

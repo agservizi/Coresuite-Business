@@ -372,6 +372,24 @@ body.login-body {
     background: transparent;
 }
 
+/* Sidebar tooltip tweaks */
+.tooltip.tooltip-sidebar {
+    --bs-tooltip-arrow-width: 0.7rem;
+    --bs-tooltip-arrow-height: 1rem;
+}
+
+.tooltip.tooltip-sidebar.bs-tooltip-end {
+    margin-left: 0.1rem;
+}
+
+.tooltip.tooltip-sidebar.bs-tooltip-end .tooltip-arrow {
+    left: -0.35rem;
+}
+
+.tooltip.tooltip-sidebar.bs-tooltip-end .tooltip-arrow::before {
+    border-right-color: var(--bs-tooltip-bg);
+}
+
 .topbar {
     -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
