@@ -4,192 +4,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const sidebarMobileToggle = document.getElementById('sidebarMobileToggle');
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
     const mobileBreakpoint = window.matchMedia('(max-width: 991.98px)');
-    const sidebarTooltipSelector = '#sidebarMenu [data-bs-toggle="tooltip"], #sidebarMenu [data-bs-title], #sidebarMenu [aria-label]';
-    // Track sidebar tooltip instances so we can rebuild them cleanly on collapse/expand.
-    let sidebarTooltipInstances = [];
-
-    const resolveTooltipTitle = (element) => (
-        element.getAttribute('data-bs-title')
-        || element.getAttribute('title')
-        || element.getAttribute('aria-label')
-        || ''
-    ).trim();
-
-    const parseOffset = (value) => {
-        if (!value) {
-            return null;
-        }
-        const parts = value.split(',').map((part) => Number.parseInt(part.trim(), 10));
-        if (parts.every((number) => Number.isFinite(number))) {
-            return [parts[0], parts[1] ?? 0];
-        }
-        return null;
-    };
-
-    const parseFallbackPlacements = (value) => {
-        if (!value) {
-            return [];
-        }
-        return value.split(',')
-            .map((part) => part.trim())
-            .filter((part) => part.length > 0);
-    };
-
-    const ensureTooltipInstance = (element, overrides = {}) => {
-        // eslint-disable-next-line no-undef
-        if (!element || typeof bootstrap === 'undefined' || !bootstrap?.Tooltip) {
-            return null;
-        }
-        const resolvedTitle = resolveTooltipTitle(element);
-        if (resolvedTitle && !element.getAttribute('data-bs-title')) {
-            element.setAttribute('data-bs-title', resolvedTitle);
-        }
-        if (element.hasAttribute('title')) {
-            element.removeAttribute('title');
-        }
-
-        const placement = element.getAttribute('data-bs-placement')
-            || overrides.placement
-            || 'top';
-        const trigger = element.getAttribute('data-bs-trigger')
-            || overrides.trigger
-            || 'hover focus';
-        const containerSelector = element.getAttribute('data-bs-container');
-        const container = containerSelector
-            ? document.querySelector(containerSelector) || document.body
-            : overrides.container || document.body;
-        const fallbackFromAttr = parseFallbackPlacements(element.getAttribute('data-bs-fallback'));
-        const fallbackPlacements = fallbackFromAttr.length > 0
-            ? fallbackFromAttr
-            : overrides.fallbackPlacements || [placement];
-        const offset = parseOffset(element.getAttribute('data-bs-offset'))
-            || overrides.offset;
-        const customClass = element.getAttribute('data-bs-custom-class')
-            || overrides.customClass;
-
-        // eslint-disable-next-line no-undef
-        const existing = bootstrap.Tooltip.getInstance(element);
-        if (existing) {
-            existing.dispose();
-        }
-
-        const config = {
-            trigger,
-            placement,
-            title: element.getAttribute('data-bs-title') || resolvedTitle,
-            container,
-            boundary: 'viewport',
-            fallbackPlacements
-        };
-
-        const popperModifiers = [];
-
-        if (fallbackPlacements.length > 0) {
-            popperModifiers.push({
-                name: 'flip',
-                options: {
-                    fallbackPlacements,
-                    allowedAutoPlacements: fallbackPlacements
-                }
-            });
-        }
-
-        popperModifiers.push({
-            name: 'preventOverflow',
-            options: {
-                boundary: 'viewport',
-                padding: 4,
-                altAxis: false
-            }
-        });
-
-        if (offset) {
-            popperModifiers.push({
-                name: 'offset',
-                options: {
-                    offset
-                }
-            });
-        }
-
-        if (popperModifiers.length > 0) {
-            config.popperConfig = {
-                modifiers: popperModifiers
-            };
-        }
-
-        if (customClass) {
-            config.customClass = customClass;
-        }
-
-        // eslint-disable-next-line no-undef
-        return bootstrap.Tooltip.getOrCreateInstance(element, config);
-    };
-
-    const getSidebarTooltipElements = () => Array.from(
-        document.querySelectorAll(sidebarTooltipSelector)
-    ).filter((element) => resolveTooltipTitle(element).length > 0);
-
-    const disposeSidebarTooltips = () => {
-        sidebarTooltipInstances.forEach((instance) => {
-            if (!instance) {
-                return;
-            }
-            instance.hide();
-            instance.dispose();
-        });
-        sidebarTooltipInstances = [];
-    };
-
-    const createSidebarTooltips = () => {
-        const elements = getSidebarTooltipElements();
-        sidebarTooltipInstances = elements.map((element) => ensureTooltipInstance(element, {
-            placement: 'right',
-            container: document.body,
-            fallbackPlacements: [
-                'right',
-                'right-start',
-                'right-end',
-                'left',
-                'left-start',
-                'left-end'
-            ],
-            offset: [0, 12],
-            customClass: 'tooltip-sidebar'
-        }));
-    };
-
-    const globalTooltipElements = Array.from(document.querySelectorAll('[data-bs-tooltip="global"]'));
-    globalTooltipElements.forEach((element) => {
-        ensureTooltipInstance(element, {
-            placement: element.getAttribute('data-bs-placement') || 'top',
-            fallbackPlacements: ['top', 'bottom', 'left', 'right'],
-            offset: [0, 12],
-            customClass: 'tooltip-global'
-        });
-    });
-
-    const syncSidebarTooltips = () => {
-        if (!sidebar) {
-            return;
-        }
-        const isCollapsed = sidebar.classList.contains('collapsed');
-        if (isCollapsed) {
-            if (sidebarTooltipInstances.length === 0) {
-                createSidebarTooltips();
-            }
-            sidebarTooltipInstances.forEach((instance) => {
-                if (!instance) {
-                    return;
-                }
-                instance.enable();
-                instance.update();
-            });
-        } else if (sidebarTooltipInstances.length > 0) {
-            disposeSidebarTooltips();
-        }
-    };
-
     const closeSidebarSubmenus = () => {
         if (!sidebar) {
             return;
@@ -235,7 +49,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 closeSidebarSubmenus();
             }
         }
-        syncSidebarTooltips();
         updateSidebarToggleIcon();
     };
 
@@ -249,8 +62,8 @@ document.addEventListener('DOMContentLoaded', () => {
             sidebarMobileToggle?.setAttribute('aria-expanded', 'false');
             sidebarToggle?.setAttribute('aria-expanded', String(!sidebar.classList.contains('collapsed')));
         }
-        applySidebarState();
-        updateSidebarToggleIcon();
+    applySidebarState();
+    updateSidebarToggleIcon();
     };
 
     syncSidebarMode();
@@ -275,7 +88,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (sidebar.classList.contains('collapsed')) {
             closeSidebarSubmenus();
         }
-        syncSidebarTooltips();
         updateSidebarToggleIcon();
     });
 
@@ -286,7 +98,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const isOpen = sidebar.classList.toggle('open');
         document.body.classList.toggle('offcanvas-active', isOpen);
         sidebarMobileToggle.setAttribute('aria-expanded', String(isOpen));
-        syncSidebarTooltips();
         updateSidebarToggleIcon();
     });
 
@@ -298,7 +109,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 sidebar.classList.remove('open');
                 document.body.classList.remove('offcanvas-active');
-                syncSidebarTooltips();
             });
         });
     }
@@ -646,7 +456,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    syncSidebarTooltips();
 });
 
 const Toast = {
