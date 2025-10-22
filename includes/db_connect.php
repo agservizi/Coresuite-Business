@@ -69,6 +69,18 @@ try {
     exit;
 }
 
+$appTimezone = env('APP_TIMEZONE', 'Europe/Rome');
+if ($appTimezone) {
+    try {
+        $tz = new DateTimeZone($appTimezone);
+        $now = new DateTime('now', $tz);
+        $offset = $now->format('P');
+        $pdo->exec("SET time_zone = '" . $offset . "'");
+    } catch (Throwable $tzException) {
+        error_log('Impossibile impostare il fuso orario MySQL: ' . $tzException->getMessage());
+    }
+}
+
 require_once __DIR__ . '/appointment_scheduler.php';
 maybe_dispatch_appointment_reminders($pdo);
 require_once __DIR__ . '/daily_report_scheduler.php';

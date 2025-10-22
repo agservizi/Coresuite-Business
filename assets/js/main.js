@@ -11,11 +11,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (title && !element.getAttribute('data-bs-title')) {
             element.setAttribute('data-bs-title', title);
         }
+        const container = element.getAttribute('data-bs-container') || '#sidebarMenu';
         // eslint-disable-next-line no-undef
         return bootstrap.Tooltip.getOrCreateInstance(element, {
             trigger: 'hover focus',
             placement,
-            title: element.getAttribute('data-bs-title') || element.getAttribute('title') || ''
+            title: element.getAttribute('data-bs-title') || element.getAttribute('title') || '',
+            container,
+            boundary: 'viewport',
+            fallbackPlacements: [placement]
         });
     });
 
