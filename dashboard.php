@@ -19,7 +19,7 @@ $charts = [
         'values' => [],
     ],
     'services' => [
-        'labels' => ['Entrate/Uscite', 'Appuntamenti', 'Programma Fedeltà', 'Telefonia', 'Logistici'],
+        'labels' => ['Entrate/Uscite', 'Appuntamenti', 'Programma Fedeltà', 'Curriculum', 'Logistici'],
         'values' => [0, 0, 0, 0, 0],
     ],
 ];
@@ -35,7 +35,7 @@ try {
         UNION ALL
         SELECT id FROM servizi_appuntamenti WHERE stato IN ('Programmato', 'In corso')
         UNION ALL
-        SELECT id FROM telefonia WHERE stato IN ('In corso', 'Aperto')
+    SELECT id FROM curriculum WHERE status <> 'Archiviato'
         UNION ALL
         SELECT id FROM spedizioni WHERE stato IN ('In corso', 'Aperto')
     ) AS in_progress");
@@ -73,7 +73,7 @@ try {
         'entrate_uscite' => 0,
         'servizi_appuntamenti' => 0,
         'fedelta_movimenti' => 0,
-        'telefonia' => 0,
+        'curriculum' => 0,
         'spedizioni' => 0,
     ];
 

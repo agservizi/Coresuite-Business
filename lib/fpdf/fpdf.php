@@ -48,8 +48,8 @@ class FPDF
     private bool $autoPageBreak = true;
     private float $pageBreakTrigger = 0.0;
     private bool $inPage = false;
-        // PHP method names are case-insensitive, so we keep only the canonical
-        // studly-cased API surface to avoid duplicate declarations.
+    // PHP method names are case-insensitive, so we keep only the canonical
+    // studly-cased API surface to avoid duplicate declarations.
 
     public function __construct(string $orientation = 'P', string $unit = 'mm', $size = 'A4')
     {
@@ -129,6 +129,55 @@ class FPDF
     public function SetLineWidth(float $width): void
     {
         $this->lineWidth = $width;
+    }
+
+    public function GetX(): float
+    {
+        return $this->x;
+    }
+
+    public function GetY(): float
+    {
+        return $this->y;
+    }
+
+    public function SetXY(float $x, float $y): void
+    {
+        $this->x = $x;
+        $this->y = $y;
+    }
+
+    public function Line(float $x1, float $y1, float $x2, float $y2): void
+    {
+        $this->elements[] = [
+            'type' => 'line',
+            'x1' => $x1,
+            'y1' => $y1,
+            'x2' => $x2,
+            'y2' => $y2,
+            'drawColor' => $this->drawColor,
+            'lineWidth' => $this->lineWidth,
+        ];
+    }
+
+    public function MultiCell(float $w, float $h, string $text, int $border = 0, string $align = 'J', bool $fill = false): void
+    {
+        if ($w <= 0.0) {
+            $w = $this->w - $this->rMargin - $this->x;
+        }
+
+        $lines = $this->wrapTextIntoLines($text, $w);
+        $lineCount = count($lines);
+
+        foreach ($lines as $index => $line) {
+            $lineBorder = $border;
+            if ($border === 1 && $index > 0 && $index < ($lineCount - 1)) {
+                $lineBorder = 0;
+            }
+            $this->Cell($w, $h, $line, $lineBorder, 1, $align === 'J' ? 'L' : $align, $fill);
+        }
+
+        $this->x = $this->lMargin;
     }
 
     public function SetFont(string $family, string $style = '', float $size = 0.0): void
@@ -249,6 +298,7 @@ class FPDF
                 'fill' => $fill,
                 'drawColor' => $this->drawColor,
                 'fillColor' => $this->fillColor,
+                'lineWidth' => $this->lineWidth,
             ];
         }
 
@@ -335,8 +385,7 @@ class FPDF
 
         $contentObjects = [];
         foreach ($this->pages as $pageIndex => $elements) {
-            $content = $this->buildContentStream($elements);
-            $contentObjects[$pageIndex] = $content;
+            $contentObjects[$pageIndex] = $this->buildContentStream($elements);
         }
 
         // 1: Catalog
@@ -411,69 +460,135 @@ class FPDF
         $currentColor = [-1.0, -1.0, -1.0];
         $currentStroke = [-1.0, -1.0, -1.0];
         $currentFill = [-1.0, -1.0, -1.0];
+        $currentLineWidth = -1.0;
 
         foreach ($elements as $element) {
-            if ($element['type'] !== 'text') {
-                if ($element['type'] === 'rect') {
-                    $output .= "ET\n";
-
-                    if ($element['border']) {
-                        if ($element['drawColor'] !== $currentStroke) {
-                            $currentStroke = $element['drawColor'];
-                            $output .= sprintf('%.3F %.3F %.3F RG\n', $currentStroke[0], $currentStroke[1], $currentStroke[2]);
-                        }
-                    }
-
-                    $op = 'S';
-                    if ($element['fill']) {
-                        if ($element['fillColor'] !== $currentFill) {
-                            $currentFill = $element['fillColor'];
-                            $output .= sprintf('%.3F %.3F %.3F rg\n', $currentFill[0], $currentFill[1], $currentFill[2]);
-                        }
-
-                        $op = $element['border'] ? 'B' : 'f';
-                    } elseif ($element['border'] === false) {
-                        $op = 'n';
-                    }
-
-                    $x = $element['x'] * $this->k;
-                    $y = ($this->h - $element['y'] - $element['h']) * $this->k;
-                    $w = $element['w'] * $this->k;
-                    $h = $element['h'] * $this->k;
-                    if ($op !== 'n') {
-                        $output .= sprintf('%.2F %.2F %.2F %.2F re %s\n', $x, $y, $w, $h, $op);
-                    }
-
-                    $output .= "BT\n";
-                    $currentFont = '';
-                    $currentSize = 0.0;
-                    $currentColor = [-1.0, -1.0, -1.0];
+            if ($element['type'] === 'text') {
+                if ($element['font'] !== $currentFont || $element['size'] !== $currentSize) {
+                    $output .= sprintf('/%s %.2F Tf\n', $element['font'], $element['size']);
+                    $currentFont = $element['font'];
+                    $currentSize = $element['size'];
                 }
+
+                if ($element['color'] !== $currentColor) {
+                    $output .= sprintf('%.3F %.3F %.3F rg\n', $element['color'][0], $element['color'][1], $element['color'][2]);
+                    $currentColor = $element['color'];
+                }
+
+                $x = $element['x'] * $this->k;
+                $y = ($this->h - $element['y']) * $this->k;
+                $output .= sprintf('1 0 0 1 %.2F %.2F Tm (%s) Tj\n', $x, $y, $this->escapeText($element['text']));
                 continue;
             }
 
-            $fontKey = $element['font'];
-            $fontSize = $element['size'];
-            $color = $element['color'];
+            $output .= "ET\n";
 
-            if ($fontKey !== $currentFont || $fontSize !== $currentSize) {
-                $output .= sprintf('/%s %.2F Tf\n', $fontKey, $fontSize);
-                $currentFont = $fontKey;
-                $currentSize = $fontSize;
+            if ($element['type'] === 'rect') {
+                if ($element['border']) {
+                    if ($element['drawColor'] !== $currentStroke) {
+                        $currentStroke = $element['drawColor'];
+                        $output .= sprintf('%.3F %.3F %.3F RG\n', $currentStroke[0], $currentStroke[1], $currentStroke[2]);
+                    }
+                    if ($element['lineWidth'] !== $currentLineWidth) {
+                        $currentLineWidth = $element['lineWidth'];
+                        $output .= sprintf('%.3F w\n', max(0.1, $currentLineWidth) * $this->k);
+                    }
+                }
+
+                if ($element['fill']) {
+                    if ($element['fillColor'] !== $currentFill) {
+                        $currentFill = $element['fillColor'];
+                        $output .= sprintf('%.3F %.3F %.3F rg\n', $currentFill[0], $currentFill[1], $currentFill[2]);
+                    }
+                }
+
+                $x = $element['x'] * $this->k;
+                $y = ($this->h - $element['y'] - $element['h']) * $this->k;
+                $w = $element['w'] * $this->k;
+                $h = $element['h'] * $this->k;
+
+                $op = 'n';
+                if ($element['fill'] && $element['border']) {
+                    $op = 'B';
+                } elseif ($element['fill']) {
+                    $op = 'f';
+                } elseif ($element['border']) {
+                    $op = 'S';
+                }
+
+                if ($op !== 'n') {
+                    $output .= sprintf('%.2F %.2F %.2F %.2F re %s\n', $x, $y, $w, $h, $op);
+                }
+
+                $output .= "BT\n";
+                $currentFont = '';
+                $currentSize = 0.0;
+                $currentColor = [-1.0, -1.0, -1.0];
+                continue;
             }
 
-            if ($color !== $currentColor) {
-                $output .= sprintf('%.3F %.3F %.3F rg\n', $color[0], $color[1], $color[2]);
-                $currentColor = $color;
+            if ($element['type'] === 'line') {
+                if ($element['drawColor'] !== $currentStroke) {
+                    $currentStroke = $element['drawColor'];
+                    $output .= sprintf('%.3F %.3F %.3F RG\n', $currentStroke[0], $currentStroke[1], $currentStroke[2]);
+                }
+                if ($element['lineWidth'] !== $currentLineWidth) {
+                    $currentLineWidth = $element['lineWidth'];
+                    $output .= sprintf('%.3F w\n', max(0.1, $currentLineWidth) * $this->k);
+                }
+
+                $x1 = $element['x1'] * $this->k;
+                $y1 = ($this->h - $element['y1']) * $this->k;
+                $x2 = $element['x2'] * $this->k;
+                $y2 = ($this->h - $element['y2']) * $this->k;
+                $output .= sprintf('%.2F %.2F m %.2F %.2F l S\n', $x1, $y1, $x2, $y2);
+
+                $output .= "BT\n";
+                $currentFont = '';
+                $currentSize = 0.0;
+                $currentColor = [-1.0, -1.0, -1.0];
+                continue;
             }
 
-            $x = $element['x'] * $this->k;
-            $y = ($this->h - $element['y']) * $this->k;
-            $escaped = $this->escapeText($element['text']);
-            $output .= sprintf('1 0 0 1 %.2F %.2F Tm (%s) Tj\n', $x, $y, $escaped);
+            $output .= "BT\n";
         }
+
         $output .= "ET";
         return $output;
+    }
+
+    /**
+     * @return array<int,string>
+     */
+    private function wrapTextIntoLines(string $text, float $width): array
+    {
+        $innerWidth = max(1.0, $width - ($this->cMargin * 2));
+        $avgCharWidth = max(0.1, 0.5 * $this->fontSizePt / $this->k);
+        $maxChars = max(1, (int) floor($innerWidth / $avgCharWidth));
+
+        $rawLines = preg_split("/\r\n|\r|\n/", $text) ?: [$text];
+        $lines = [];
+
+        foreach ($rawLines as $rawLine) {
+            if ($rawLine === '') {
+                $lines[] = '';
+                continue;
+            }
+
+            $wrapped = wordwrap($rawLine, $maxChars, "\n", true);
+            $lines = array_merge($lines, explode("\n", $wrapped));
+        }
+
+        if ($lines === []) {
+            $lines[] = '';
+        }
+
+        return array_map(
+            static function (string $line): string {
+                return rtrim($line);
+            },
+            $lines
+        );
     }
 
     private function escapeText(string $text): string

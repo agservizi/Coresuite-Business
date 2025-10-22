@@ -44,10 +44,10 @@ $serviziItems = [
         'color' => 'amber',
     ],
     [
-        'needle' => 'modules/servizi/telefonia',
-        'label' => 'Telefonia',
-        'icon' => 'fa-solid fa-phone-volume',
-        'href' => base_url('modules/servizi/telefonia/index.php'),
+        'needle' => 'modules/servizi/curriculum',
+        'label' => 'Gestione Curriculum',
+        'icon' => 'fa-solid fa-id-card',
+        'href' => base_url('modules/servizi/curriculum/index.php'),
         'color' => 'emerald',
     ],
     [

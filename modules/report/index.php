@@ -37,11 +37,11 @@ $serviceMap = [
         'date_column' => 'data_movimento',
         'label' => 'Programma Fedeltà',
     ],
-    'telefonia' => [
-        'table' => 'telefonia',
-        'columns' => ['operatore', 'tipo_contratto', 'stato', 'created_at'],
-        'date_column' => 'created_at',
-        'label' => 'Telefonia',
+    'curriculum' => [
+        'table' => 'curriculum',
+        'columns' => ['titolo', 'status', 'last_generated_at', 'updated_at'],
+        'date_column' => 'updated_at',
+        'label' => 'Gestione Curriculum',
     ],
     'logistica' => [
         'table' => 'spedizioni',

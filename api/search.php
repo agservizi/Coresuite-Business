@@ -36,7 +36,7 @@ if ($canSeeServices) {
     $allowedResults['loyalty'] = [];
     $allowedResults['finance'] = [];
     $allowedResults['appointments'] = [];
-    $allowedResults['telefonia'] = [];
+    $allowedResults['curriculum'] = [];
     $allowedResults['shipments'] = [];
 }
 
@@ -335,46 +335,45 @@ try {
         }
 
         try {
-            $telefoniaStmt = $pdo->prepare('SELECT t.id, t.operatore, t.tipo_contratto, t.stato, t.created_at, c.nome, c.cognome
-                FROM telefonia t
-                LEFT JOIN clienti c ON c.id = t.cliente_id
-                WHERE t.operatore LIKE :term
-                    OR t.tipo_contratto LIKE :term
-                    OR t.note LIKE :term
+            $curriculumStmt = $pdo->prepare('SELECT cv.id, cv.titolo, cv.status, cv.updated_at, c.nome, c.cognome
+                FROM curriculum cv
+                LEFT JOIN clienti c ON c.id = cv.cliente_id
+                WHERE cv.titolo LIKE :term
+                    OR cv.status LIKE :term
                     OR c.nome LIKE :term
                     OR c.cognome LIKE :term
-                ORDER BY t.updated_at DESC, t.id DESC
+                ORDER BY cv.updated_at DESC, cv.id DESC
                 LIMIT 5');
-            $telefoniaStmt->execute([':term' => $likeTerm]);
-            $telefonia = [];
-            while ($row = $telefoniaStmt->fetch()) {
-                $telefoniaTitle = $row['operatore'] ?? '';
-                if ($telefoniaTitle === '') {
-                    $telefoniaTitle = 'Richiesta #' . $row['id'];
+            $curriculumStmt->execute([':term' => $likeTerm]);
+            $curriculum = [];
+            while ($row = $curriculumStmt->fetch()) {
+                $curriculumTitle = $row['titolo'] ?? '';
+                if ($curriculumTitle === '') {
+                    $curriculumTitle = 'Curriculum #' . $row['id'];
                 }
                 $customerName = trim((string) (($row['cognome'] ?? '') . ' ' . ($row['nome'] ?? '')));
                 $subtitleParts = [];
                 if ($customerName !== '') {
                     $subtitleParts[] = $customerName;
                 }
-                if (!empty($row['tipo_contratto'])) {
-                    $subtitleParts[] = $row['tipo_contratto'];
+                if (!empty($row['status'])) {
+                    $subtitleParts[] = 'Stato: ' . $row['status'];
                 }
-                if (!empty($row['created_at'])) {
-                    $subtitleParts[] = format_date_locale($row['created_at']);
+                if (!empty($row['updated_at'])) {
+                    $subtitleParts[] = format_datetime_locale($row['updated_at']);
                 }
-                $telefonia[] = [
+                $curriculum[] = [
                     'id' => (int) $row['id'],
-                    'title' => $telefoniaTitle,
+                    'title' => $curriculumTitle,
                     'subtitle' => implode(' | ', array_filter($subtitleParts)),
-                    'badge' => $row['stato'] ?? 'Telefonia',
-                    'url' => base_url('modules/servizi/telefonia/view.php?id=' . $row['id']),
+                    'badge' => $row['status'] ?? 'Curriculum',
+                    'url' => base_url('modules/servizi/curriculum/view.php?id=' . $row['id']),
                 ];
             }
-            $results['telefonia'] = $telefonia;
+            $results['curriculum'] = $curriculum;
         } catch (Throwable $subsetException) {
-            $warnings[] = 'Ricerca telefonia temporaneamente non disponibile.';
-            error_log('Live search telefonia failed: ' . $subsetException->getMessage());
+            $warnings[] = 'Ricerca curriculum temporaneamente non disponibile.';
+            error_log('Live search curriculum failed: ' . $subsetException->getMessage());
         }
 
         try {

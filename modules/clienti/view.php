@@ -30,7 +30,7 @@ $serviceSummaryQuery = "SELECT 'Entrate' AS tipo, COUNT(*) AS totale, COALESCE(S
     UNION ALL
     SELECT 'Programma Fedeltà', COUNT(*), COALESCE(SUM(punti), 0) FROM fedelta_movimenti WHERE cliente_id = ?
     UNION ALL
-    SELECT 'Telefonia', COUNT(*), 0 FROM telefonia WHERE cliente_id = ?
+    SELECT 'Curriculum', COUNT(*), 0 FROM curriculum WHERE cliente_id = ?
     UNION ALL
     SELECT 'Logistici', COUNT(*), 0 FROM spedizioni WHERE cliente_id = ?";
 
@@ -52,8 +52,8 @@ $latestPracticesStmt = $pdo->prepare("(
             data_movimento AS data
         FROM fedelta_movimenti WHERE cliente_id = ?
     ) UNION ALL (
-        SELECT 'Telefonia' AS categoria, operatore AS riferimento, stato, created_at AS data
-        FROM telefonia WHERE cliente_id = ?
+    SELECT 'Curriculum' AS categoria, titolo AS riferimento, status AS stato, updated_at AS data
+    FROM curriculum WHERE cliente_id = ?
     ) UNION ALL (
         SELECT 'Logistica' AS categoria, tracking_number AS riferimento, stato, created_at AS data
         FROM spedizioni WHERE cliente_id = ?
