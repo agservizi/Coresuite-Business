@@ -4,34 +4,73 @@ document.addEventListener('DOMContentLoaded', () => {
     const sidebarMobileToggle = document.getElementById('sidebarMobileToggle');
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
     const mobileBreakpoint = window.matchMedia('(max-width: 991.98px)');
-    const tooltipElements = Array.from(document.querySelectorAll('#sidebarMenu [data-bs-toggle="tooltip"], #sidebarMenu [data-bs-title]'));
-    const tooltipInstances = tooltipElements.map((element) => {
-        const placement = element.getAttribute('data-bs-placement') || 'right';
-        const title = element.getAttribute('data-bs-title') || element.getAttribute('title') || '';
-        if (title && !element.getAttribute('data-bs-title')) {
-            element.setAttribute('data-bs-title', title);
-        }
-        const container = element.getAttribute('data-bs-container') || document.body;
-        // eslint-disable-next-line no-undef
-        return bootstrap.Tooltip.getOrCreateInstance(element, {
-            trigger: 'hover focus',
-            placement,
-            title: element.getAttribute('data-bs-title') || element.getAttribute('title') || '',
-            container,
-            boundary: 'viewport',
-            fallbackPlacements: [placement],
-            popperConfig: {
-                modifiers: [
-                    {
-                        name: 'offset',
-                        options: {
-                            offset: [0, 12]
-                        }
-                    }
-                ]
-            }
-        });
+    const sidebarTooltipSelector = '#sidebarMenu [data-bs-toggle="tooltip"], #sidebarMenu [data-bs-title], #sidebarMenu [aria-label]';
+    // Track sidebar tooltip instances so we can rebuild them cleanly on collapse/expand.
+    let sidebarTooltipInstances = [];
+
+    const getSidebarTooltipElements = () => Array.from(
+        document.querySelectorAll(sidebarTooltipSelector)
+    ).filter((element) => {
+        const possibleTitle = element.getAttribute('data-bs-title')
+            || element.getAttribute('title')
+            || element.getAttribute('aria-label')
+            || '';
+        return possibleTitle.trim().length > 0;
     });
+
+    const disposeSidebarTooltips = () => {
+        sidebarTooltipInstances.forEach((instance) => {
+            if (!instance) {
+                return;
+            }
+            instance.hide();
+            instance.dispose();
+        });
+        sidebarTooltipInstances = [];
+    };
+
+    const createSidebarTooltips = () => {
+        const elements = getSidebarTooltipElements();
+        sidebarTooltipInstances = elements.map((element) => {
+            const placement = element.getAttribute('data-bs-placement') || 'right';
+            const trigger = element.getAttribute('data-bs-trigger') || 'hover focus';
+            const containerSelector = element.getAttribute('data-bs-container');
+            const titleSource = element.getAttribute('data-bs-title')
+                || element.getAttribute('title')
+                || element.getAttribute('aria-label')
+                || '';
+            if (titleSource && !element.getAttribute('data-bs-title')) {
+                element.setAttribute('data-bs-title', titleSource);
+            }
+            const container = containerSelector
+                ? document.querySelector(containerSelector) || document.body
+                : document.body;
+            // eslint-disable-next-line no-undef
+            const existing = bootstrap.Tooltip.getInstance(element);
+            if (existing) {
+                existing.dispose();
+            }
+            // eslint-disable-next-line no-undef
+            return bootstrap.Tooltip.getOrCreateInstance(element, {
+                trigger,
+                placement,
+                title: element.getAttribute('data-bs-title') || titleSource,
+                container,
+                boundary: 'viewport',
+                fallbackPlacements: ['right', 'left', 'top', 'bottom'],
+                popperConfig: {
+                    modifiers: [
+                        {
+                            name: 'offset',
+                            options: {
+                                offset: [0, 12]
+                            }
+                        }
+                    ]
+                }
+            });
+        });
+    };
 
     const globalTooltipElements = Array.from(document.querySelectorAll('[data-bs-tooltip="global"]'));
     globalTooltipElements.forEach((element) => {
@@ -49,19 +88,24 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const syncSidebarTooltips = () => {
-        const enableTooltips = !!sidebar && sidebar.classList.contains('collapsed');
-        tooltipInstances.forEach((instance) => {
-            if (!instance) {
-                return;
+        if (!sidebar) {
+            return;
+        }
+        const isCollapsed = sidebar.classList.contains('collapsed');
+        if (isCollapsed) {
+            if (sidebarTooltipInstances.length === 0) {
+                createSidebarTooltips();
             }
-            if (enableTooltips) {
+            sidebarTooltipInstances.forEach((instance) => {
+                if (!instance) {
+                    return;
+                }
                 instance.enable();
                 instance.update();
-            } else {
-                instance.hide();
-                instance.disable();
-            }
-        });
+            });
+        } else if (sidebarTooltipInstances.length > 0) {
+            disposeSidebarTooltips();
+        }
     };
 
     const closeSidebarSubmenus = () => {
