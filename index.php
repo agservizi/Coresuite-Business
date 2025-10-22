@@ -18,6 +18,14 @@ $lockSeconds = 300;
 $lockedUntil = $_SESSION['login_locked_until'] ?? 0;
 
 $errors = [];
+if (isset($_SESSION['login_error']) && $_SESSION['login_error'] !== '') {
+    $errors[] = (string) $_SESSION['login_error'];
+    unset($_SESSION['login_error']);
+}
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    unset($_SESSION['mfa_failed_attempts'], $_SESSION['mfa_challenge'], $_SESSION['mfa_setup']);
+}
 if ($lockedUntil > time()) {
     $remaining = $lockedUntil - time();
     $errors[] = 'Troppi tentativi. Riprova tra ' . ceil($remaining / 60) . ' minuti.';
@@ -40,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$errors) {
         $errors[] = 'La password deve contenere almeno 8 caratteri.';
         $auditLogger->logLoginAttempt(null, $username, false, $ipAddress, $userAgent, 'weak_password');
     } else {
-        $stmt = $pdo->prepare('SELECT id, username, password, ruolo, email, theme_preference, nome, cognome FROM users WHERE username = :username LIMIT 1');
+    $stmt = $pdo->prepare('SELECT id, username, password, ruolo, email, theme_preference, nome, cognome, mfa_enabled, mfa_secret FROM users WHERE username = :username LIMIT 1');
         $stmt->execute([':username' => $username]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -52,20 +60,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$errors) {
             }
             $auditLogger->logLoginAttempt($user['id'] ?? null, $username, false, $ipAddress, $userAgent, $_SESSION['login_attempts'] >= $maxAttempts ? 'locked' : null);
         } else {
-            session_regenerate_id(true);
-            $_SESSION['user_id'] = $user['id'];
-            $_SESSION['username'] = $user['username'];
-            $_SESSION['role'] = $user['ruolo'];
-            $_SESSION['email'] = $user['email'];
-            $_SESSION['first_name'] = $user['nome'] ?? '';
-            $_SESSION['last_name'] = $user['cognome'] ?? '';
-            $_SESSION['display_name'] = format_user_display_name($user['username'], $user['email'], $user['nome'] ?? null, $user['cognome'] ?? null);
-            $_SESSION['theme_preference'] = $user['theme_preference'] ?? 'dark';
-            $_SESSION['login_attempts'] = 0;
-            unset($_SESSION['login_locked_until']);
+            $sessionUser = build_user_session_payload($user);
+            $pendingLogin = [
+                'user' => $sessionUser,
+                'ip' => $ipAddress,
+                'user_agent' => $userAgent,
+                'created_at' => time(),
+            ];
 
-            $auditLogger->logLoginAttempt($user['id'], $username, true, $ipAddress, $userAgent);
-            redirect_by_role($user['ruolo']);
+            $hasMfaSecret = isset($user['mfa_secret']) && $user['mfa_secret'] !== '';
+
+            if ((int) ($user['mfa_enabled'] ?? 0) === 1 && $hasMfaSecret) {
+                $_SESSION['mfa_challenge'] = array_merge($pendingLogin, [
+                    'expires_at' => time() + 300,
+                ]);
+                header('Location: mfa-verify.php');
+                exit;
+            }
+
+            $_SESSION['mfa_setup'] = array_merge($pendingLogin, [
+                'mode' => 'enroll',
+                'expires_at' => time() + 900,
+            ]);
+
+            header('Location: mfa-setup.php');
             exit;
         }
     }

@@ -125,7 +125,13 @@ $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
                             <?php foreach ($serviziItems as $item): ?>
                                 <?php $itemActive = nav_active($item['needle'], $currentPath); ?>
                                 <li>
-                                    <a class="nav-link d-flex align-items-center <?php echo $itemActive; ?>" href="<?php echo $item['href']; ?>"<?php echo $itemActive ? ' aria-current="page"' : ''; ?>>
+                                    <a class="nav-link d-flex align-items-center <?php echo $itemActive; ?>"
+                                       href="<?php echo $item['href']; ?>"
+                                       data-bs-toggle="tooltip"
+                                       data-bs-placement="right"
+                                       data-bs-trigger="hover focus"
+                                       data-bs-container="#sidebarMenu"
+                                       data-bs-title="<?php echo htmlspecialchars($item['label'], ENT_QUOTES, 'UTF-8'); ?>"<?php echo $itemActive ? ' aria-current="page"' : ''; ?>>
                                         <span class="nav-subicon" data-color="<?php echo htmlspecialchars($item['color'], ENT_QUOTES, 'UTF-8'); ?>" aria-hidden="true">
                                             <i class="<?php echo htmlspecialchars($item['icon'], ENT_QUOTES, 'UTF-8'); ?>"></i>
                                         </span>

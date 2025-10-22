@@ -15,7 +15,7 @@ if ($userId <= 0) {
     exit;
 }
 
-$userStmt = $pdo->prepare('SELECT id, username, email, nome, cognome, ruolo, theme_preference, last_login_at, created_at FROM users WHERE id = :id LIMIT 1');
+$userStmt = $pdo->prepare('SELECT id, username, email, nome, cognome, ruolo, theme_preference, last_login_at, created_at, mfa_enabled, mfa_enabled_at, mfa_secret FROM users WHERE id = :id LIMIT 1');
 $userStmt->execute([':id' => $userId]);
 $user = $userStmt->fetch(PDO::FETCH_ASSOC);
 
@@ -163,7 +163,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     }
+
+    if ($action === 'mfa_start') {
+        $_SESSION['mfa_setup'] = [
+            'mode' => 'manage',
+            'user' => build_user_session_payload($user),
+            'ip' => request_ip(),
+            'user_agent' => request_user_agent(),
+            'created_at' => time(),
+            'expires_at' => time() + 900,
+            'return_to' => base_url('modules/impostazioni/profile.php'),
+            'reset' => !empty($_POST['reset']),
+        ];
+
+        add_flash('info', 'Completa la configurazione MFA per proteggere il tuo account.');
+        header('Location: ' . base_url('mfa-setup.php'));
+        exit;
+    }
+
+    if ($action === 'mfa_disable') {
+        if ((int) ($user['mfa_enabled'] ?? 0) !== 1 || empty($user['mfa_secret'])) {
+            $alerts[] = ['type' => 'warning', 'text' => 'L\'autenticazione a due fattori risulta già disattivata.'];
+        } else {
+            $code = preg_replace('/\s+/', '', (string) ($_POST['mfa_code'] ?? ''));
+            if ($code === '') {
+                $alerts[] = ['type' => 'danger', 'text' => 'Inserisci il codice MFA per confermare la disattivazione.'];
+            } elseif (!preg_match('/^[0-9]{6}$/', $code)) {
+                $alerts[] = ['type' => 'danger', 'text' => 'Il codice MFA deve contenere 6 cifre.'];
+            } else {
+                $totpClass = '\\OTPHP\\TOTP';
+                if (!class_exists($totpClass)) {
+                    $alerts[] = ['type' => 'danger', 'text' => 'Libreria MFA non disponibile. Contatta l\'amministratore.'];
+                } else {
+                    $validator = $totpClass::create($user['mfa_secret'], 30, 'sha1', 6);
+                    if (!$validator->verify($code, null, 1)) {
+                        $alerts[] = ['type' => 'danger', 'text' => 'Codice MFA non corretto. Riprova.'];
+                    } else {
+                        $pdo->prepare('UPDATE users SET mfa_secret = NULL, mfa_enabled = 0, mfa_enabled_at = NULL WHERE id = :id')
+                            ->execute([':id' => $userId]);
+
+                        $logStmt = $pdo->prepare('INSERT INTO log_attivita (user_id, modulo, azione, dettagli, created_at) VALUES (:user_id, :modulo, :azione, :dettagli, NOW())');
+                        $logStmt->execute([
+                            ':user_id' => $userId,
+                            ':modulo' => 'Profilo',
+                            ':azione' => 'Disattivazione MFA',
+                            ':dettagli' => json_encode(['reason' => 'user_request'], JSON_UNESCAPED_UNICODE),
+                        ]);
+
+                        unset($_SESSION['mfa_verified_at']);
+                        unset($_SESSION['mfa_setup']);
+                        add_flash('success', 'Autenticazione a due fattori disattivata correttamente.');
+                        header('Location: profile.php');
+                        exit;
+                    }
+                }
+            }
+        }
+    }
 }
+
+$mfaEnabled = (int) ($user['mfa_enabled'] ?? 0) === 1;
+$mfaEnabledAt = $user['mfa_enabled_at'] ?? null;
 
 require_once __DIR__ . '/../../includes/header.php';
 require_once __DIR__ . '/../../includes/sidebar.php';
@@ -263,6 +323,63 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                 <button class="btn btn-outline-warning" type="submit"><i class="fa-solid fa-key me-2"></i>Aggiorna password</button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-xl-6">
+                <div class="card ag-card h-100">
+                    <div class="card-header bg-transparent border-0">
+                        <h5 class="card-title mb-0">Autenticazione a due fattori (MFA)</h5>
+                    </div>
+                    <div class="card-body d-flex flex-column gap-3">
+                        <p class="text-muted mb-0">Aggiungi un secondo passaggio di sicurezza utilizzando Google Authenticator o app compatibili.</p>
+                        <div class="d-flex align-items-center gap-3">
+                            <?php if ($mfaEnabled): ?>
+                                <span class="badge text-bg-success px-3 py-2">Attiva</span>
+                            <?php else: ?>
+                                <span class="badge text-bg-secondary px-3 py-2">Non attiva</span>
+                            <?php endif; ?>
+                            <?php if ($mfaEnabled && $mfaEnabledAt): ?>
+                                <span class="text-muted small">Attiva dal <?php echo sanitize_output(format_datetime($mfaEnabledAt)); ?></span>
+                            <?php endif; ?>
+                        </div>
+
+                        <?php if (!$mfaEnabled): ?>
+                            <p class="mb-0">Consigliato per tutti gli utenti: attiva l'autenticazione a due fattori al prossimo accesso.</p>
+                            <form method="post" class="d-flex flex-column flex-sm-row gap-2">
+                                <input type="hidden" name="action" value="mfa_start">
+                                <input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
+                                <button class="btn btn-warning text-dark flex-fill" type="submit">
+                                    <i class="fa-solid fa-qrcode me-2"></i>Configura con Authenticator
+                                </button>
+                            </form>
+                        <?php else: ?>
+                            <div class="bg-body-secondary border rounded-3 p-3">
+                                <span class="text-muted small d-block mb-2">Disattiva MFA</span>
+                                <form method="post" class="row g-2 align-items-end">
+                                    <input type="hidden" name="action" value="mfa_disable">
+                                    <input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
+                                    <div class="col-sm-7">
+                                        <label class="form-label" for="mfa_code">Codice attuale</label>
+                                        <input class="form-control" id="mfa_code" name="mfa_code" type="text" inputmode="numeric" pattern="[0-9]{6}" placeholder="000000" required>
+                                    </div>
+                                    <div class="col-sm-5">
+                                        <button class="btn btn-outline-warning w-100" type="submit"><i class="fa-solid fa-lock-open me-2"></i>Disattiva</button>
+                                    </div>
+                                </form>
+                                <div class="form-text mt-2">Richiede il codice generato dall'app per confermare l'operazione.</div>
+                            </div>
+                            <form method="post" class="d-flex flex-column flex-sm-row gap-2">
+                                <input type="hidden" name="action" value="mfa_start">
+                                <input type="hidden" name="reset" value="1">
+                                <input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
+                                <button class="btn btn-warning text-dark flex-fill" type="submit">
+                                    <i class="fa-solid fa-arrows-rotate me-2"></i>Rigenera configurazione
+                                </button>
+                            </form>
+                        <?php endif; ?>
+                        <div class="form-text">Durante la configurazione verrà richiesto di scannerizzare un nuovo QR code.</div>
                     </div>
                 </div>
             </div>

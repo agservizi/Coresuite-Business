@@ -272,3 +272,55 @@ function request_user_agent(): string
 {
     return substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? 'unknown'), 0, 500);
 }
+
+function build_user_session_payload(array $user): array
+{
+    return [
+        'id' => (int) ($user['id'] ?? 0),
+        'username' => (string) ($user['username'] ?? ''),
+        'ruolo' => (string) ($user['ruolo'] ?? ''),
+        'email' => (string) ($user['email'] ?? ''),
+        'nome' => (string) ($user['nome'] ?? ''),
+        'cognome' => (string) ($user['cognome'] ?? ''),
+        'theme_preference' => (string) ($user['theme_preference'] ?? 'dark'),
+    ];
+}
+
+function complete_user_login(
+    \PDO $pdo,
+    \App\Security\SecurityAuditLogger $auditLogger,
+    array $userData,
+    string $ipAddress,
+    string $userAgent
+): void {
+    session_regenerate_id(true);
+
+    $_SESSION['user_id'] = $userData['id'];
+    $_SESSION['username'] = $userData['username'];
+    $_SESSION['role'] = $userData['ruolo'];
+    $_SESSION['email'] = $userData['email'];
+    $_SESSION['first_name'] = $userData['nome'];
+    $_SESSION['last_name'] = $userData['cognome'];
+    $_SESSION['display_name'] = format_user_display_name(
+        $userData['username'],
+        $userData['email'],
+        $userData['nome'],
+        $userData['cognome']
+    );
+    $_SESSION['theme_preference'] = $userData['theme_preference'] ?: 'dark';
+    $_SESSION['mfa_verified_at'] = time();
+
+    $_SESSION['login_attempts'] = 0;
+    unset($_SESSION['login_locked_until'], $_SESSION['mfa_failed_attempts'], $_SESSION['mfa_challenge'], $_SESSION['mfa_setup']);
+
+    $stmt = $pdo->prepare('UPDATE users SET last_login_at = NOW() WHERE id = :id');
+    $stmt->execute([':id' => $userData['id']]);
+
+    $auditLogger->logLoginAttempt(
+        $userData['id'],
+        $userData['username'],
+        true,
+        $ipAddress,
+        $userAgent
+    );
+}

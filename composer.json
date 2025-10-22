@@ -14,5 +14,8 @@
     "scripts": {
         "lint": "phpcs --standard=PSR12 modules includes app",
         "test": "phpunit"
+    },
+    "require": {
+        "spomky-labs/otphp": "^11"
     }
 }
