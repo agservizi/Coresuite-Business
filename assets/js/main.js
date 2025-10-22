@@ -33,6 +33,35 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    const initializeTooltips = () => {
+        // eslint-disable-next-line no-undef
+        if (typeof bootstrap === 'undefined' || !bootstrap.Tooltip) {
+            return;
+        }
+        const tooltipElements = document.querySelectorAll('[data-bs-toggle="tooltip"], [data-tooltip="true"]');
+        tooltipElements.forEach((element) => {
+            // eslint-disable-next-line no-undef
+            const existing = bootstrap.Tooltip.getInstance(element);
+            if (existing) {
+                existing.dispose();
+            }
+            const options = { container: 'body' };
+            const trigger = element.getAttribute('data-bs-trigger');
+            if (trigger) {
+                options.trigger = trigger;
+            }
+            const placement = element.getAttribute('data-bs-placement');
+            if (placement) {
+                options.placement = placement;
+            }
+            if (!options.trigger) {
+                options.trigger = 'hover focus';
+            }
+            // eslint-disable-next-line no-undef
+            new bootstrap.Tooltip(element, options);
+        });
+    };
+
     const applySidebarState = () => {
         if (!sidebar) {
             return;
@@ -62,13 +91,18 @@ document.addEventListener('DOMContentLoaded', () => {
             sidebarMobileToggle?.setAttribute('aria-expanded', 'false');
             sidebarToggle?.setAttribute('aria-expanded', String(!sidebar.classList.contains('collapsed')));
         }
-    applySidebarState();
-    updateSidebarToggleIcon();
+        applySidebarState();
+        updateSidebarToggleIcon();
+        initializeTooltips();
     };
 
     syncSidebarMode();
+    initializeTooltips();
     const breakpointListener = mobileBreakpoint.addEventListener ? 'addEventListener' : 'addListener';
-    mobileBreakpoint[breakpointListener]('change', syncSidebarMode);
+    mobileBreakpoint[breakpointListener]('change', () => {
+        syncSidebarMode();
+        initializeTooltips();
+    });
 
     sidebarToggle?.addEventListener('click', () => {
         if (!sidebar) {
@@ -89,6 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
             closeSidebarSubmenus();
         }
         updateSidebarToggleIcon();
+        initializeTooltips();
     });
 
     sidebarMobileToggle?.addEventListener('click', () => {
@@ -99,6 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.classList.toggle('offcanvas-active', isOpen);
         sidebarMobileToggle.setAttribute('aria-expanded', String(isOpen));
         updateSidebarToggleIcon();
+        initializeTooltips();
     });
 
     if (sidebar) {

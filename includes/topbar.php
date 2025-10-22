@@ -21,15 +21,15 @@ $role = $_SESSION['role'] ?? '';
             <div class="topbar-actions">
                 <?php if ($role !== 'Cliente'): ?>
                     <div class="topbar-quick-actions d-none d-md-flex">
-                        <a class="btn topbar-btn topbar-btn-action" href="<?php echo base_url('modules/clienti/create.php'); ?>" aria-label="Crea un nuovo cliente">
+                        <a class="btn topbar-btn topbar-btn-action" href="<?php echo base_url('modules/clienti/create.php'); ?>" aria-label="Crea un nuovo cliente" title="Crea un nuovo cliente" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-trigger="hover focus" data-bs-title="Crea un nuovo cliente">
                             <i class="fa-solid fa-user-plus topbar-btn-icon-lead" aria-hidden="true"></i>
                             <span class="topbar-btn-label d-none d-xxl-inline">Nuovo cliente</span>
                         </a>
-                        <a class="btn topbar-btn topbar-btn-action" href="<?php echo base_url('modules/ticket/create.php'); ?>" aria-label="Apri un nuovo ticket">
+                        <a class="btn topbar-btn topbar-btn-action" href="<?php echo base_url('modules/ticket/create.php'); ?>" aria-label="Apri un nuovo ticket" title="Apri un nuovo ticket" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-trigger="hover focus" data-bs-title="Apri un nuovo ticket">
                             <i class="fa-solid fa-ticket topbar-btn-icon-lead" aria-hidden="true"></i>
                             <span class="topbar-btn-label d-none d-xxl-inline">Nuovo ticket</span>
                         </a>
-                        <a class="btn topbar-btn topbar-btn-action" href="<?php echo base_url('modules/documenti/create.php'); ?>" aria-label="Carica un nuovo documento">
+                        <a class="btn topbar-btn topbar-btn-action" href="<?php echo base_url('modules/documenti/create.php'); ?>" aria-label="Carica un nuovo documento" title="Carica un nuovo documento" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-trigger="hover focus" data-bs-title="Carica un nuovo documento">
                             <i class="fa-solid fa-upload topbar-btn-icon-lead" aria-hidden="true"></i>
                             <span class="topbar-btn-label d-none d-xxl-inline">Carica documento</span>
                         </a>
