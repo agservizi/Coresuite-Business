@@ -395,7 +395,8 @@ class FPDF
         $kids = [];
         $pageCount = count($this->pages);
         for ($i = 0; $i < $pageCount; $i++) {
-            $kids[] = sprintf('%d 0 R', ($i * 2) + 5);
+            $pageObjectNumber = ($i * 2) + 6;
+            $kids[] = sprintf('%d 0 R', $pageObjectNumber);
         }
         $objects[] = sprintf('2 0 obj << /Type /Pages /Kids [ %s ] /Count %d >> endobj', implode(' ', $kids), $pageCount);
 
