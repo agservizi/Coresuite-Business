@@ -378,14 +378,20 @@ body.login-body {
     --bs-tooltip-arrow-height: 0.32rem;
 }
 
-.tooltip.tooltip-sidebar.bs-tooltip-end .tooltip-arrow {
-    top: 50%;
-    left: 0;
-    transform: translate(-100%, -50%);
+.tooltip.tooltip-sidebar[data-popper-placement^="right"] {
+    margin-left: 0.35rem;
 }
 
-.tooltip.tooltip-sidebar.bs-tooltip-end .tooltip-arrow::before {
+.tooltip.tooltip-sidebar[data-popper-placement^="right"] .tooltip-arrow {
+    top: 50%;
+    right: 100%;
+    left: auto;
+    transform: translate(0, -50%);
+}
+
+.tooltip.tooltip-sidebar[data-popper-placement^="right"] .tooltip-arrow::before {
     border-right-color: var(--bs-tooltip-bg);
+    border-width: var(--bs-tooltip-arrow-height) var(--bs-tooltip-arrow-width) var(--bs-tooltip-arrow-height) 0;
 }
 
 .topbar {

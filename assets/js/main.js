@@ -123,7 +123,14 @@ document.addEventListener('DOMContentLoaded', () => {
         sidebarTooltipInstances = elements.map((element) => ensureTooltipInstance(element, {
             placement: 'right',
             container: document.body,
-            fallbackPlacements: ['right', 'left', 'top', 'bottom'],
+            fallbackPlacements: [
+                'right',
+                'right-start',
+                'right-end',
+                'left',
+                'left-start',
+                'left-end'
+            ],
             offset: [0, 12],
             customClass: 'tooltip-sidebar'
         }));
