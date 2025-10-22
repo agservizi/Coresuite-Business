@@ -8,15 +8,98 @@ document.addEventListener('DOMContentLoaded', () => {
     // Track sidebar tooltip instances so we can rebuild them cleanly on collapse/expand.
     let sidebarTooltipInstances = [];
 
+    const resolveTooltipTitle = (element) => (
+        element.getAttribute('data-bs-title')
+        || element.getAttribute('title')
+        || element.getAttribute('aria-label')
+        || ''
+    ).trim();
+
+    const parseOffset = (value) => {
+        if (!value) {
+            return null;
+        }
+        const parts = value.split(',').map((part) => Number.parseInt(part.trim(), 10));
+        if (parts.every((number) => Number.isFinite(number))) {
+            return [parts[0], parts[1] ?? 0];
+        }
+        return null;
+    };
+
+    const parseFallbackPlacements = (value) => {
+        if (!value) {
+            return [];
+        }
+        return value.split(',')
+            .map((part) => part.trim())
+            .filter((part) => part.length > 0);
+    };
+
+    const ensureTooltipInstance = (element, overrides = {}) => {
+        // eslint-disable-next-line no-undef
+        if (!element || typeof bootstrap === 'undefined' || !bootstrap?.Tooltip) {
+            return null;
+        }
+        const resolvedTitle = resolveTooltipTitle(element);
+        if (resolvedTitle && !element.getAttribute('data-bs-title')) {
+            element.setAttribute('data-bs-title', resolvedTitle);
+        }
+        if (element.hasAttribute('title')) {
+            element.removeAttribute('title');
+        }
+
+        const placement = element.getAttribute('data-bs-placement')
+            || overrides.placement
+            || 'top';
+        const trigger = element.getAttribute('data-bs-trigger')
+            || overrides.trigger
+            || 'hover focus';
+        const containerSelector = element.getAttribute('data-bs-container');
+        const container = containerSelector
+            ? document.querySelector(containerSelector) || document.body
+            : overrides.container || document.body;
+        const fallbackFromAttr = parseFallbackPlacements(element.getAttribute('data-bs-fallback'));
+        const fallbackPlacements = fallbackFromAttr.length > 0
+            ? fallbackFromAttr
+            : overrides.fallbackPlacements || [placement];
+        const offset = parseOffset(element.getAttribute('data-bs-offset'))
+            || overrides.offset;
+
+        // eslint-disable-next-line no-undef
+        const existing = bootstrap.Tooltip.getInstance(element);
+        if (existing) {
+            existing.dispose();
+        }
+
+        const config = {
+            trigger,
+            placement,
+            title: element.getAttribute('data-bs-title') || resolvedTitle,
+            container,
+            boundary: 'viewport',
+            fallbackPlacements
+        };
+
+        if (offset) {
+            config.popperConfig = {
+                modifiers: [
+                    {
+                        name: 'offset',
+                        options: {
+                            offset
+                        }
+                    }
+                ]
+            };
+        }
+
+        // eslint-disable-next-line no-undef
+        return bootstrap.Tooltip.getOrCreateInstance(element, config);
+    };
+
     const getSidebarTooltipElements = () => Array.from(
         document.querySelectorAll(sidebarTooltipSelector)
-    ).filter((element) => {
-        const possibleTitle = element.getAttribute('data-bs-title')
-            || element.getAttribute('title')
-            || element.getAttribute('aria-label')
-            || '';
-        return possibleTitle.trim().length > 0;
-    });
+    ).filter((element) => resolveTooltipTitle(element).length > 0);
 
     const disposeSidebarTooltips = () => {
         sidebarTooltipInstances.forEach((instance) => {
@@ -31,59 +114,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const createSidebarTooltips = () => {
         const elements = getSidebarTooltipElements();
-        sidebarTooltipInstances = elements.map((element) => {
-            const placement = element.getAttribute('data-bs-placement') || 'right';
-            const trigger = element.getAttribute('data-bs-trigger') || 'hover focus';
-            const containerSelector = element.getAttribute('data-bs-container');
-            const titleSource = element.getAttribute('data-bs-title')
-                || element.getAttribute('title')
-                || element.getAttribute('aria-label')
-                || '';
-            if (titleSource && !element.getAttribute('data-bs-title')) {
-                element.setAttribute('data-bs-title', titleSource);
-            }
-            const container = containerSelector
-                ? document.querySelector(containerSelector) || document.body
-                : document.body;
-            // eslint-disable-next-line no-undef
-            const existing = bootstrap.Tooltip.getInstance(element);
-            if (existing) {
-                existing.dispose();
-            }
-            // eslint-disable-next-line no-undef
-            return bootstrap.Tooltip.getOrCreateInstance(element, {
-                trigger,
-                placement,
-                title: element.getAttribute('data-bs-title') || titleSource,
-                container,
-                boundary: 'viewport',
-                fallbackPlacements: ['right', 'left', 'top', 'bottom'],
-                popperConfig: {
-                    modifiers: [
-                        {
-                            name: 'offset',
-                            options: {
-                                offset: [0, 12]
-                            }
-                        }
-                    ]
-                }
-            });
-        });
+        sidebarTooltipInstances = elements.map((element) => ensureTooltipInstance(element, {
+            placement: 'right',
+            container: sidebar,
+            fallbackPlacements: ['right', 'left', 'top', 'bottom'],
+            offset: [0, 12]
+        }));
     };
 
     const globalTooltipElements = Array.from(document.querySelectorAll('[data-bs-tooltip="global"]'));
     globalTooltipElements.forEach((element) => {
-        const placement = element.getAttribute('data-bs-placement') || 'top';
-        const title = element.getAttribute('data-bs-title') || element.getAttribute('title') || '';
-        if (title && !element.getAttribute('data-bs-title')) {
-            element.setAttribute('data-bs-title', title);
-        }
-        // eslint-disable-next-line no-undef
-        bootstrap.Tooltip.getOrCreateInstance(element, {
-            trigger: 'hover focus',
-            placement,
-            title: element.getAttribute('data-bs-title') || element.getAttribute('title') || ''
+        ensureTooltipInstance(element, {
+            placement: element.getAttribute('data-bs-placement') || 'top',
+            fallbackPlacements: ['top', 'bottom', 'left', 'right'],
+            offset: [0, 12]
         });
     });
 
