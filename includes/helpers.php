@@ -31,8 +31,12 @@ function redirect_by_role(string $role): void
     }
 }
 
-function sanitize_output(string $value): string
+function sanitize_output(?string $value): string
 {
+    if ($value === null) {
+        return '';
+    }
+
     return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
 }
 
