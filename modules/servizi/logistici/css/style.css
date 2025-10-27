@@ -1,0 +1,132 @@
+/* Coresuite Pickup module custom styles */
+:root {
+    --pickup-blue: #0b2f6b;
+    --pickup-green: #1ea672;
+    --pickup-yellow: #ffb400;
+    --pickup-red: #ff4d4f;
+}
+
+.pickup-module .card {
+    background: rgba(15, 23, 42, 0.85);
+    border-color: rgba(148, 163, 184, 0.16);
+    backdrop-filter: blur(6px);
+}
+
+.pickup-module .card-header {
+    border-bottom-color: rgba(148, 163, 184, 0.14);
+}
+
+.pickup-module .badge-status {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border-radius: 999px;
+    padding: 0.42rem 0.8rem;
+    background: rgba(148, 163, 184, 0.12);
+}
+
+.pickup-module .badge-status[data-status="in_arrivo"] {
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.18);
+}
+
+.pickup-module .badge-status[data-status="consegnato"] {
+    color: var(--pickup-yellow);
+    background: rgba(255, 180, 0, 0.18);
+}
+
+.pickup-module .badge-status[data-status="ritirato"] {
+    color: var(--pickup-green);
+    background: rgba(30, 166, 114, 0.2);
+}
+
+.pickup-module .badge-status[data-status="in_giacenza"] {
+    color: var(--pickup-red);
+    background: rgba(255, 77, 79, 0.18);
+}
+
+.pickup-module .stats-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.pickup-module .stat-card {
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 16px;
+    padding: 1.2rem 1.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.pickup-module .stat-card-title {
+    font-size: 0.9rem;
+    letter-spacing: 0.05em;
+    color: rgba(226, 232, 240, 0.82);
+}
+
+.pickup-module .stat-card-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #f8fafc;
+}
+
+.pickup-module .table td,
+.pickup-module .table th {
+    vertical-align: middle;
+}
+
+.pickup-module .table thead th {
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    color: rgba(226, 232, 240, 0.62);
+    border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.pickup-module .table tbody tr:hover {
+    background: rgba(148, 163, 184, 0.08);
+}
+
+.pickup-module .filters .form-label {
+    text-transform: uppercase;
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    color: rgba(226, 232, 240, 0.6);
+}
+
+.pickup-module .action-buttons .btn {
+    border-radius: 999px;
+}
+
+.pickup-module .modal-content {
+    background: #0f172a;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.pickup-module .modal-header,
+.pickup-module .modal-footer {
+    border-color: rgba(148, 163, 184, 0.12);
+}
+
+.pickup-module .form-control,
+.pickup-module .form-select {
+    background: rgba(15, 23, 42, 0.86);
+    border-color: rgba(148, 163, 184, 0.22);
+    color: #f8fafc;
+}
+
+.pickup-module .form-control:focus,
+.pickup-module .form-select:focus {
+    border-color: var(--pickup-blue);
+    box-shadow: 0 0 0 0.1rem rgba(11, 47, 107, 0.35);
+}
+
+@media (max-width: 768px) {
+    .pickup-module .action-buttons {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+}
