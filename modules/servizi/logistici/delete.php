@@ -20,7 +20,7 @@ try {
     $stmt->execute([':id' => $id]);
     header('Location: index.php?deleted=1');
 } catch (PDOException $e) {
-    error_log('Delete spedizione failed: ' . $e->getMessage());
+    error_log('Delete pickup failed: ' . $e->getMessage());
     header('Location: index.php?error=1');
 }
 exit;

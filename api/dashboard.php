@@ -20,7 +20,7 @@ $response = [
             'values' => [],
         ],
         'services' => [
-            'labels' => ['Entrate/Uscite', 'Appuntamenti', 'Programma Fedeltà', 'Curriculum', 'Logistici'],
+            'labels' => ['Entrate/Uscite', 'Appuntamenti', 'Programma Fedeltà', 'Curriculum', 'Pickup'],
             'values' => [0, 0, 0, 0, 0],
         ],
     ],
@@ -38,7 +38,7 @@ try {
         UNION ALL
     SELECT id FROM curriculum WHERE status <> 'Archiviato'
         UNION ALL
-        SELECT id FROM spedizioni WHERE stato IN ('In corso', 'Aperto')
+    SELECT id FROM spedizioni WHERE stato IN ('Registrato', 'In attesa di ritiro', 'Problema', 'In corso', 'Aperto')
     ) AS in_progress");
     $response['stats']['servicesInProgress'] = (int) $servicesInProgressStmt->fetchColumn();
 

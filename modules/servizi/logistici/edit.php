@@ -4,7 +4,7 @@ require_once __DIR__ . '/../../../includes/db_connect.php';
 require_once __DIR__ . '/../../../includes/helpers.php';
 
 require_role('Admin', 'Operatore', 'Manager');
-$pageTitle = 'Modifica spedizione';
+$pageTitle = 'Modifica pickup';
 
 $id = (int) ($_GET['id'] ?? 0);
 if ($id <= 0) {
@@ -21,8 +21,15 @@ if (!$record) {
 }
 
 $clients = $pdo->query('SELECT id, nome, cognome FROM clienti ORDER BY cognome, nome')->fetchAll();
-$types = ['Pacco', 'Corrispondenza'];
-$statuses = ['Presa in carico', 'In transito', 'Consegnato', 'Problema'];
+$types = ['Deposito pacchi', 'Ritiro pacchi'];
+$statuses = ['Registrato', 'In attesa di ritiro', 'Consegnato', 'Problema'];
+
+if (!in_array($record['tipo_spedizione'], $types, true)) {
+    $types[] = $record['tipo_spedizione'];
+}
+if (!in_array($record['stato'], $statuses, true)) {
+    $statuses[] = $record['stato'];
+}
 
 $data = $record;
 $errors = [];
@@ -37,13 +44,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Seleziona un cliente valido.';
     }
     if (!in_array($data['tipo_spedizione'], $types, true)) {
-        $errors[] = 'Tipo spedizione non valido.';
+        $errors[] = 'Tipo richiesta non valido.';
     }
     if ($data['mittente'] === '' || $data['destinatario'] === '') {
         $errors[] = 'Mittente e destinatario sono obbligatori.';
     }
     if ($data['tracking_number'] === '') {
-        $errors[] = 'Inserisci un tracking number.';
+        $errors[] = 'Inserisci un codice pickup.';
     }
     if (!in_array($data['stato'], $statuses, true)) {
         $errors[] = 'Stato non valido.';
@@ -73,11 +80,11 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
     <?php require_once __DIR__ . '/../../../includes/topbar.php'; ?>
     <main class="content-wrapper">
         <div class="mb-4">
-            <a class="btn btn-outline-warning" href="view.php?id=<?php echo $id; ?>"><i class="fa-solid fa-arrow-left"></i> Dettaglio spedizione</a>
+            <a class="btn btn-outline-warning" href="view.php?id=<?php echo $id; ?>"><i class="fa-solid fa-arrow-left"></i> Dettaglio pickup</a>
         </div>
         <div class="card ag-card">
             <div class="card-header bg-transparent border-0">
-                <h1 class="h4 mb-0">Modifica spedizione</h1>
+                <h1 class="h4 mb-0">Modifica pickup</h1>
             </div>
             <div class="card-body">
                 <?php if ($errors): ?>
@@ -96,7 +103,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             </select>
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label" for="tipo_spedizione">Tipo spedizione</label>
+                            <label class="form-label" for="tipo_spedizione">Tipo richiesta</label>
                             <select class="form-select" id="tipo_spedizione" name="tipo_spedizione">
                                 <?php foreach ($types as $type): ?>
                                     <option value="<?php echo $type; ?>" <?php echo $data['tipo_spedizione'] === $type ? 'selected' : ''; ?>><?php echo $type; ?></option>
@@ -120,7 +127,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <input class="form-control" id="destinatario" name="destinatario" value="<?php echo sanitize_output($data['destinatario']); ?>" required>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label" for="tracking_number">Tracking number</label>
+                            <label class="form-label" for="tracking_number">Codice pickup</label>
                             <input class="form-control" id="tracking_number" name="tracking_number" value="<?php echo sanitize_output($data['tracking_number']); ?>" required>
                         </div>
                         <div class="col-12">

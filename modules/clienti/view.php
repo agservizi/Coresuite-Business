@@ -32,7 +32,7 @@ $serviceSummaryQuery = "SELECT 'Entrate' AS tipo, COUNT(*) AS totale, COALESCE(S
     UNION ALL
     SELECT 'Curriculum', COUNT(*), 0 FROM curriculum WHERE cliente_id = ?
     UNION ALL
-    SELECT 'Logistici', COUNT(*), 0 FROM spedizioni WHERE cliente_id = ?";
+    SELECT 'Pickup', COUNT(*), 0 FROM spedizioni WHERE cliente_id = ?";
 
 $summaryStmt = $pdo->prepare($serviceSummaryQuery);
 $summaryStmt->execute(array_fill(0, 6, $id));
@@ -55,7 +55,7 @@ $latestPracticesStmt = $pdo->prepare("(
     SELECT 'Curriculum' AS categoria, titolo AS riferimento, status AS stato, updated_at AS data
     FROM curriculum WHERE cliente_id = ?
     ) UNION ALL (
-        SELECT 'Logistica' AS categoria, tracking_number AS riferimento, stato, created_at AS data
+    SELECT 'Pickup' AS categoria, tracking_number AS riferimento, stato, created_at AS data
         FROM spedizioni WHERE cliente_id = ?
     ) ORDER BY data DESC LIMIT 10");
 $latestPracticesStmt->execute(array_fill(0, 5, $id));

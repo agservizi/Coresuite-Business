@@ -47,7 +47,7 @@ $serviceMap = [
         'table' => 'spedizioni',
         'columns' => ['tipo_spedizione', 'tracking_number', 'stato', 'created_at'],
         'date_column' => 'created_at',
-        'label' => 'Logistica',
+        'label' => 'Pickup',
     ],
 ];
 

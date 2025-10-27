@@ -52,8 +52,8 @@ $serviziItems = [
     ],
     [
         'needle' => 'modules/servizi/logistici',
-        'label' => 'Servizi Logistici',
-        'icon' => 'fa-solid fa-truck-fast',
+        'label' => 'Pickup Pacchi',
+        'icon' => 'fa-solid fa-box-open',
         'href' => base_url('modules/servizi/logistici/index.php'),
         'color' => 'orange',
     ],

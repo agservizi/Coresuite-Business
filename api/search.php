@@ -393,7 +393,7 @@ try {
             while ($row = $shipmentsStmt->fetch()) {
                 $shipmentTitle = $row['tipo_spedizione'] ?? '';
                 if ($shipmentTitle === '') {
-                    $shipmentTitle = 'Spedizione #' . $row['id'];
+                    $shipmentTitle = 'Pickup #' . $row['id'];
                 }
                 $subtitleParts = [];
                 $recipient = $row['destinatario'] ?? '';
@@ -401,7 +401,7 @@ try {
                     $subtitleParts[] = 'Destinatario: ' . $recipient;
                 }
                 if (!empty($row['tracking_number'])) {
-                    $subtitleParts[] = 'Tracking: ' . $row['tracking_number'];
+                    $subtitleParts[] = 'Codice pickup: ' . $row['tracking_number'];
                 }
                 if (!empty($row['created_at'])) {
                     $subtitleParts[] = format_date_locale($row['created_at']);
@@ -414,13 +414,13 @@ try {
                     'id' => (int) $row['id'],
                     'title' => $shipmentTitle,
                     'subtitle' => implode(' | ', array_filter($subtitleParts)),
-                    'badge' => $row['stato'] ?? 'Logistica',
+                    'badge' => $row['stato'] ?? 'Pickup',
                     'url' => base_url('modules/servizi/logistici/view.php?id=' . $row['id']),
                 ];
             }
             $results['shipments'] = $shipments;
         } catch (Throwable $subsetException) {
-            $warnings[] = 'Ricerca logistica temporaneamente non disponibile.';
+            $warnings[] = 'Ricerca pickup temporaneamente non disponibile.';
             error_log('Live search shipments failed: ' . $subsetException->getMessage());
         }
     }

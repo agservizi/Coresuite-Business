@@ -97,7 +97,7 @@ foreach ($clientRows as $clientRow) {
     ];
 }
 
-$moduleOptions = ['Entrate/Uscite', 'Appuntamenti', 'Programma Fedeltà', 'Gestione Curriculum', 'Logistici', 'Ticket', 'Altro'];
+$moduleOptions = ['Entrate/Uscite', 'Appuntamenti', 'Programma Fedeltà', 'Gestione Curriculum', 'Pickup', 'Ticket', 'Altro'];
 $statuses = ['Bozza', 'Pubblicato', 'Archiviato'];
 $csrfToken = csrf_token();
 $existingTags = [];

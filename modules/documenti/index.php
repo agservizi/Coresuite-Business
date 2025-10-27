@@ -230,7 +230,7 @@ if ($hasTagging) {
     $tagStmt = $pdo->query('SELECT nome FROM document_tags ORDER BY nome');
     $tagOptions = $tagStmt->fetchAll(PDO::FETCH_COLUMN);
 }
-$moduleOptions = ['Entrate/Uscite', 'Appuntamenti', 'Programma Fedeltà', 'Gestione Curriculum', 'Logistici', 'Ticket', 'Altro'];
+$moduleOptions = ['Entrate/Uscite', 'Appuntamenti', 'Programma Fedeltà', 'Gestione Curriculum', 'Pickup', 'Ticket', 'Altro'];
 $statuses = ['Bozza', 'Pubblicato', 'Archiviato'];
 
 require_once __DIR__ . '/../../includes/header.php';
