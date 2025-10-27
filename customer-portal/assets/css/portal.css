@@ -1,0 +1,357 @@
+/* Custom CSS per Pickup Portal */
+
+/* Variabili CSS */
+:root {
+    --pickup-primary: #0d6efd;
+    --pickup-secondary: #6c757d;
+    --pickup-success: #198754;
+    --pickup-warning: #ffc107;
+    --pickup-danger: #dc3545;
+    --pickup-info: #0dcaf0;
+    --pickup-light: #f8f9fa;
+    --pickup-dark: #212529;
+    --pickup-border: #dee2e6;
+    --pickup-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    --pickup-shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.175);
+}
+
+/* Body e layout generale */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--pickup-light);
+}
+
+/* Navbar personalizzata */
+.navbar-brand {
+    font-weight: 700;
+    font-size: 1.5rem;
+}
+
+.nav-link {
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.nav-link:hover {
+    transform: translateY(-1px);
+}
+
+/* Sidebar */
+.sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 100;
+    padding: 48px 0 0;
+    box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+}
+
+.sidebar-sticky {
+    position: sticky;
+    top: 0;
+    height: calc(100vh - 48px);
+    padding-top: .5rem;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+.sidebar .nav-link {
+    font-weight: 500;
+    color: var(--pickup-dark);
+    padding: 0.75rem 1rem;
+    margin: 0.125rem 0.5rem;
+    border-radius: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.sidebar .nav-link:hover {
+    color: var(--pickup-primary);
+    background-color: rgba(13, 110, 253, 0.1);
+}
+
+.sidebar .nav-link.active {
+    color: var(--pickup-primary);
+    background-color: rgba(13, 110, 253, 0.15);
+    font-weight: 600;
+}
+
+.sidebar-heading {
+    font-size: .75rem;
+    text-transform: uppercase;
+}
+
+/* Cards */
+.card {
+    border: none;
+    border-radius: 1rem;
+    box-shadow: var(--pickup-shadow);
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--pickup-shadow-lg);
+}
+
+.card-header {
+    border-radius: 1rem 1rem 0 0 !important;
+    border-bottom: 1px solid var(--pickup-border);
+    font-weight: 600;
+}
+
+/* Buttons */
+.btn {
+    border-radius: 0.75rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+}
+
+.btn-lg {
+    padding: 0.75rem 1.5rem;
+    font-size: 1.1rem;
+}
+
+/* Badges */
+.badge {
+    font-weight: 500;
+    border-radius: 0.5rem;
+}
+
+/* Login page specific */
+.login-step {
+    display: none;
+}
+
+.login-step.active {
+    display: block;
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Notification dropdown */
+.notification-dropdown {
+    width: 350px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.notification-item {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--pickup-border);
+    transition: background-color 0.3s ease;
+}
+
+.notification-item:hover {
+    background-color: var(--pickup-light);
+}
+
+.notification-item:last-child {
+    border-bottom: none;
+}
+
+/* Notification badge */
+.notification-badge {
+    font-size: 0.6rem;
+    min-width: 1.2rem;
+    height: 1.2rem;
+    line-height: 1.2rem;
+}
+
+/* Stats cards */
+.stats-card {
+    background: linear-gradient(135deg, var(--pickup-primary), #084298);
+    color: white;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    box-shadow: var(--pickup-shadow-lg);
+}
+
+.stats-icon {
+    width: 4rem;
+    height: 4rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+/* Package status badges */
+.status-reported { background-color: var(--pickup-warning) !important; }
+.status-confirmed { background-color: var(--pickup-info) !important; }
+.status-arrived { background-color: var(--pickup-success) !important; }
+.status-cancelled { background-color: var(--pickup-secondary) !important; }
+.status-in_arrivo { background-color: var(--pickup-primary) !important; }
+.status-consegnato { background-color: var(--pickup-success) !important; }
+.status-ritirato { background-color: var(--pickup-dark) !important; }
+.status-in_giacenza { background-color: var(--pickup-warning) !important; }
+.status-in_giacenza_scaduto { background-color: var(--pickup-danger) !important; }
+
+/* Form controls */
+.form-control, .form-select {
+    border-radius: 0.75rem;
+    border: 2px solid #e9ecef;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--pickup-primary);
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+.form-control-lg {
+    padding: 0.75rem 1rem;
+    font-size: 1.1rem;
+}
+
+/* Alerts */
+.alert {
+    border-radius: 1rem;
+    border: none;
+    box-shadow: var(--pickup-shadow);
+}
+
+/* Footer */
+footer {
+    margin-top: auto;
+}
+
+/* Responsive */
+@media (max-width: 767.98px) {
+    .sidebar {
+        position: relative;
+        height: auto;
+        padding: 0;
+    }
+    
+    .sidebar-sticky {
+        height: auto;
+        padding-top: 0;
+    }
+    
+    .notification-dropdown {
+        width: 300px;
+    }
+}
+
+/* Loading spinner */
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+}
+
+/* Package list */
+.package-item {
+    padding: 1rem;
+    border-radius: 0.75rem;
+    border: 2px solid var(--pickup-border);
+    transition: all 0.3s ease;
+    margin-bottom: 1rem;
+}
+
+.package-item:hover {
+    border-color: var(--pickup-primary);
+    box-shadow: var(--pickup-shadow);
+    transform: translateY(-1px);
+}
+
+.package-tracking {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+/* Quick info sidebar */
+.quick-info {
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    border-radius: 0.75rem;
+    padding: 1rem;
+}
+
+/* Utility classes */
+.text-truncate-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.border-dashed {
+    border-style: dashed !important;
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(135deg, var(--pickup-primary), #084298);
+}
+
+.bg-gradient-success {
+    background: linear-gradient(135deg, var(--pickup-success), #146c43);
+}
+
+.bg-gradient-warning {
+    background: linear-gradient(135deg, var(--pickup-warning), #997404);
+}
+
+.bg-gradient-info {
+    background: linear-gradient(135deg, var(--pickup-info), #0aa2c0);
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --pickup-light: #1a1a1a;
+        --pickup-dark: #ffffff;
+        --pickup-border: #444;
+    }
+    
+    body {
+        background-color: var(--pickup-light);
+        color: var(--pickup-dark);
+    }
+    
+    .card {
+        background-color: #2d2d2d;
+        color: var(--pickup-dark);
+    }
+    
+    .sidebar {
+        background-color: #2d2d2d;
+    }
+    
+    .form-control, .form-select {
+        background-color: #2d2d2d;
+        border-color: var(--pickup-border);
+        color: var(--pickup-dark);
+    }
+}
+
+/* Print styles */
+@media print {
+    .sidebar,
+    .navbar,
+    footer,
+    .btn,
+    .alert {
+        display: none !important;
+    }
+    
+    .container-fluid {
+        margin: 0;
+        padding: 0;
+    }
+    
+    .card {
+        box-shadow: none;
+        border: 1px solid #000;
+    }
+}
