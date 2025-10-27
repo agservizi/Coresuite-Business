@@ -172,12 +172,12 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <div class="text-muted small">Nessuna notifica inviata per questo pickup.</div>
                             <?php endif; ?>
                             <?php foreach ($notifications as $notification): ?>
-                                <div class="list-group-item bg-transparent border-secondary-subtle text-white-50">
+                                <div class="list-group-item bg-transparent border-secondary-subtle text-body-secondary">
                                     <div class="d-flex justify-content-between">
                                         <span class="text-warning text-uppercase fw-semibold"><?php echo sanitize_output($notification['channel']); ?></span>
                                         <span class="small"><?php echo sanitize_output(format_datetime_locale($notification['created_at'] ?? '')); ?></span>
                                     </div>
-                                    <div class="small mt-2"><?php echo nl2br(sanitize_output($notification['message'])); ?></div>
+                                    <div class="small mt-2 text-body"><?php echo nl2br(sanitize_output($notification['message'])); ?></div>
                                 </div>
                             <?php endforeach; ?>
                         </div>

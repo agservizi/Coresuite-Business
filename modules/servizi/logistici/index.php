@@ -175,7 +175,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $logId = log_notification($packageId, $channel, 'inviata', $message, $meta);
 
             $entryHtml = sprintf(
-                '<div class="list-group-item bg-transparent border-secondary-subtle text-white-50"><div class="d-flex justify-content-between"><span class="text-warning text-uppercase fw-semibold">%s</span><span class="small">%s</span></div><div class="small mt-2">%s</div><div class="small mt-2 text-secondary">%s</div></div>',
+                '<div class="list-group-item bg-transparent border-secondary-subtle text-body-secondary"><div class="d-flex justify-content-between"><span class="text-warning text-uppercase fw-semibold">%s</span><span class="small">%s</span></div><div class="small mt-2 text-body">%s</div><div class="small mt-2 text-secondary">%s</div></div>',
                 sanitize_output(strtoupper($channel)),
                 sanitize_output(format_datetime_locale(date('Y-m-d H:i:s'))),
                 nl2br(sanitize_output($message)),
@@ -327,7 +327,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     </div>
                     <div class="card-body">
                         <div class="table-responsive">
-                            <table class="table table-dark table-hover align-middle">
+                            <table class="table table-hover align-middle">
                                 <thead>
                                     <tr>
                                         <th>Tracking</th>
@@ -352,7 +352,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                                 <div class="small text-muted">Creato <?php echo sanitize_output(format_datetime_locale($package['created_at'] ?? '')); ?></div>
                                             </td>
                                             <td>
-                                                <div class="fw-semibold text-white"><?php echo sanitize_output($package['customer_name']); ?></div>
+                                                <div class="fw-semibold text-body"><?php echo sanitize_output($package['customer_name']); ?></div>
                                                 <div class="small"><a class="link-warning" href="tel:<?php echo sanitize_output(preg_replace('/[^0-9+]/', '', $package['customer_phone'])); ?>"><?php echo sanitize_output($package['customer_phone']); ?></a></div>
                                             </td>
                                             <td>
@@ -468,13 +468,13 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <div class="text-muted small">Nessuna notifica registrata.</div>
                             <?php endif; ?>
                             <?php foreach ($notifications as $notification): ?>
-                                <div class="list-group-item bg-transparent border-secondary-subtle text-white-50">
+                                <div class="list-group-item bg-transparent border-secondary-subtle text-body-secondary">
                                     <div class="d-flex justify-content-between">
                                         <span class="text-warning text-uppercase fw-semibold"><?php echo sanitize_output($notification['channel']); ?></span>
                                         <span class="small"><?php echo sanitize_output(format_datetime_locale($notification['created_at'] ?? '')); ?></span>
                                     </div>
                                     <div class="small text-secondary">Tracking #<?php echo sanitize_output($notification['tracking']); ?></div>
-                                    <div class="small mt-2"><?php echo nl2br(sanitize_output($notification['message'])); ?></div>
+                                    <div class="small mt-2 text-body"><?php echo nl2br(sanitize_output($notification['message'])); ?></div>
                                 </div>
                             <?php endforeach; ?>
                         </div>
