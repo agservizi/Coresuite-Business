@@ -17,6 +17,7 @@ ensure_pickup_tables();
 
 $statuses = pickup_statuses();
 $couriers = get_all_couriers();
+$locations = get_pickup_locations();
 
 $data = [
     'customer_name' => '',
@@ -25,6 +26,7 @@ $data = [
     'tracking' => '',
     'status' => 'in_arrivo',
     'courier_id' => '',
+    'pickup_location_id' => '',
     'expected_at' => '',
     'notes' => '',
 ];
@@ -40,6 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data['tracking'] = trim((string) ($_POST['tracking'] ?? ''));
     $data['status'] = (string) ($_POST['status'] ?? 'in_arrivo');
     $data['courier_id'] = (string) ($_POST['courier_id'] ?? '');
+    $data['pickup_location_id'] = (string) ($_POST['pickup_location_id'] ?? '');
     $data['expected_at'] = trim((string) ($_POST['expected_at'] ?? ''));
     $data['notes'] = trim((string) ($_POST['notes'] ?? ''));
 
@@ -51,6 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'tracking' => $data['tracking'],
             'status' => $data['status'],
             'courier_id' => $data['courier_id'] !== '' ? (int) $data['courier_id'] : null,
+            'pickup_location_id' => $data['pickup_location_id'] !== '' ? (int) $data['pickup_location_id'] : null,
             'expected_at' => $data['expected_at'],
             'notes' => $data['notes'],
         ]);
@@ -118,6 +122,15 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <option value="">Nessuno</option>
                                 <?php foreach ($couriers as $courier): ?>
                                     <option value="<?php echo (int) $courier['id']; ?>" <?php echo (string) $courier['id'] === $data['courier_id'] ? 'selected' : ''; ?>><?php echo sanitize_output($courier['name']); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label" for="pickup_location_id">Punto ritiro</label>
+                            <select class="form-select" id="pickup_location_id" name="pickup_location_id">
+                                <option value="">Seleziona</option>
+                                <?php foreach ($locations as $location): ?>
+                                    <option value="<?php echo (int) $location['id']; ?>" <?php echo (string) $location['id'] === $data['pickup_location_id'] ? 'selected' : ''; ?>><?php echo sanitize_output($location['name']); ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
