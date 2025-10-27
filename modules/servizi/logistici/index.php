@@ -19,6 +19,7 @@ $statusParam = $_GET['status'] ?? '';
 $status = in_array($statusParam, pickup_statuses(), true) ? $statusParam : '';
 
 $courierParam = isset($_GET['courier_id']) ? (int) $_GET['courier_id'] : 0;
+$locationParam = isset($_GET['pickup_location_id']) ? (int) $_GET['pickup_location_id'] : 0;
 $archived = ($_GET['archived'] ?? '') === '1';
 $search = clean_input($_GET['search'] ?? '', 120);
 
@@ -39,6 +40,9 @@ if ($status !== '') {
 if ($courierParam > 0) {
     $filters['courier_id'] = $courierParam;
 }
+if ($locationParam > 0) {
+    $filters['pickup_location_id'] = $locationParam;
+}
 if ($search !== '') {
     $filters['search'] = $search;
 }
@@ -55,6 +59,9 @@ if ($status !== '') {
 }
 if ($courierParam > 0) {
     $exportParams['courier_id'] = (string) $courierParam;
+}
+if ($locationParam > 0) {
+    $exportParams['pickup_location_id'] = (string) $locationParam;
 }
 if ($search !== '') {
     $exportParams['search'] = $search;
@@ -237,10 +244,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $packages = get_all_packages($filters);
 $couriers = get_all_couriers();
+$locations = get_pickup_locations();
 $statusCounts = generate_statistics(array_filter([
-    'from' => $from,
-    'to' => $to,
-]));
+    'from' => $from !== '' ? $from : null,
+    'to' => $to !== '' ? $to : null,
+    'pickup_location_id' => $locationParam > 0 ? $locationParam : null,
+], static fn($value) => $value !== null && $value !== ''));
 $notifications = get_recent_notifications(6);
 $statuses = pickup_statuses();
 $formToken = csrf_token();
@@ -335,6 +344,15 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 </select>
                             </div>
                             <div class="col-sm-6 col-lg-3">
+                                <label class="form-label" for="pickup_location_id">Punto ritiro</label>
+                                <select class="form-select" id="pickup_location_id" name="pickup_location_id">
+                                    <option value="">Tutti</option>
+                                    <?php foreach ($locations as $location): ?>
+                                        <option value="<?php echo (int) $location['id']; ?>" <?php echo (int) $location['id'] === $locationParam ? 'selected' : ''; ?>><?php echo sanitize_output($location['name']); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-sm-6 col-lg-3">
                                 <label class="form-label" for="from">Dal</label>
                                 <input class="form-control" id="from" name="from" type="date" value="<?php echo sanitize_output($from); ?>">
                             </div>
@@ -369,6 +387,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                         <th>Tracking</th>
                                         <th>Cliente</th>
                                         <th>Corriere</th>
+                                        <th>Punto ritiro</th>
                                         <th>Stato</th>
                                         <th>Previsto</th>
                                         <th>Aggiornato</th>
@@ -378,7 +397,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <tbody>
                                     <?php if (!$packages): ?>
                                         <tr>
-                                            <td class="text-center text-muted" colspan="7">Nessun pacco trovato per i filtri selezionati.</td>
+                                            <td class="text-center text-muted" colspan="8">Nessun pacco trovato per i filtri selezionati.</td>
                                         </tr>
                                     <?php endif; ?>
                                     <?php foreach ($packages as $package): ?>
@@ -394,6 +413,16 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                             <td>
                                                 <?php if (!empty($package['courier_name'])): ?>
                                                     <div class="fw-semibold text-warning"><?php echo sanitize_output($package['courier_name']); ?></div>
+                                                <?php else: ?>
+                                                    <span class="text-muted small">N/D</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td>
+                                                <?php if (!empty($package['location_name'])): ?>
+                                                    <div class="fw-semibold text-warning"><?php echo sanitize_output($package['location_name']); ?></div>
+                                                    <?php if (!empty($package['location_address'])): ?>
+                                                        <div class="small text-muted"><?php echo sanitize_output($package['location_address']); ?></div>
+                                                    <?php endif; ?>
                                                 <?php else: ?>
                                                     <span class="text-muted small">N/D</span>
                                                 <?php endif; ?>

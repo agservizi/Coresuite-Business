@@ -67,6 +67,18 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <dd class="col-sm-8">#<?php echo sanitize_output($package['tracking']); ?></dd>
                             <dt class="col-sm-4">Corriere</dt>
                             <dd class="col-sm-8"><?php echo sanitize_output($package['courier_name'] ?? 'N/D'); ?></dd>
+                            <dt class="col-sm-4">Punto ritiro</dt>
+                            <dd class="col-sm-8">
+                                <?php if (!empty($package['location_name'])): ?>
+                                    <?php echo sanitize_output($package['location_name']); ?>
+                                <?php else: ?>
+                                    <span class="text-muted">N/D</span>
+                                <?php endif; ?>
+                            </dd>
+                            <?php if (!empty($package['location_address'])): ?>
+                                <dt class="col-sm-4">Indirizzo ritiro</dt>
+                                <dd class="col-sm-8"><?php echo nl2br(sanitize_output($package['location_address'])); ?></dd>
+                            <?php endif; ?>
                             <dt class="col-sm-4">Previsto</dt>
                             <dd class="col-sm-8"><?php echo sanitize_output($package['expected_at'] ? format_datetime_locale($package['expected_at']) : 'N/D'); ?></dd>
                             <dt class="col-sm-4">Creato</dt>
@@ -126,6 +138,34 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         </dl>
                     </div>
                 </div>
+
+                <?php if (!empty($package['location_name']) || !empty($package['location_address']) || !empty($package['location_phone']) || !empty($package['location_email'])): ?>
+                    <div class="card ag-card mb-4">
+                        <div class="card-header bg-transparent border-0">
+                            <h2 class="h5 mb-0">Contatti punto ritiro</h2>
+                        </div>
+                        <div class="card-body">
+                            <dl class="row mb-0">
+                                <?php if (!empty($package['location_name'])): ?>
+                                    <dt class="col-sm-5">Nome</dt>
+                                    <dd class="col-sm-7"><?php echo sanitize_output($package['location_name']); ?></dd>
+                                <?php endif; ?>
+                                <?php if (!empty($package['location_address'])): ?>
+                                    <dt class="col-sm-5">Indirizzo</dt>
+                                    <dd class="col-sm-7"><?php echo nl2br(sanitize_output($package['location_address'])); ?></dd>
+                                <?php endif; ?>
+                                <?php if (!empty($package['location_phone'])): ?>
+                                    <dt class="col-sm-5">Telefono</dt>
+                                    <dd class="col-sm-7"><a class="link-warning" href="tel:<?php echo sanitize_output(preg_replace('/[^0-9+]/', '', $package['location_phone'])); ?>"><?php echo sanitize_output($package['location_phone']); ?></a></dd>
+                                <?php endif; ?>
+                                <?php if (!empty($package['location_email'])): ?>
+                                    <dt class="col-sm-5">Email</dt>
+                                    <dd class="col-sm-7"><a class="link-warning" href="mailto:<?php echo sanitize_output($package['location_email']); ?>"><?php echo sanitize_output($package['location_email']); ?></a></dd>
+                                <?php endif; ?>
+                            </dl>
+                        </div>
+                    </div>
+                <?php endif; ?>
 
                 <div class="card ag-card mb-4">
                     <div class="card-header bg-transparent border-0">

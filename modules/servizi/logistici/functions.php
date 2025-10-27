@@ -1821,6 +1821,25 @@ function generate_statistics(array $filters = []): array
         $params[':to'] = $filters['to'] . ' 23:59:59';
     }
 
+    if (!empty($filters['pickup_location_id'])) {
+        $locationFilter = $filters['pickup_location_id'];
+        if (is_array($locationFilter)) {
+            $locationIds = array_filter(array_map('intval', $locationFilter), static fn($id) => $id > 0);
+            if ($locationIds) {
+                $placeholders = [];
+                foreach ($locationIds as $index => $locationId) {
+                    $placeholder = ':location_' . $index;
+                    $placeholders[] = $placeholder;
+                    $params[$placeholder] = $locationId;
+                }
+                $conditions[] = 'p.pickup_location_id IN (' . implode(', ', $placeholders) . ')';
+            }
+        } elseif ((int) $locationFilter > 0) {
+            $conditions[] = 'p.pickup_location_id = :location_id';
+            $params[':location_id'] = (int) $locationFilter;
+        }
+    }
+
     $sql = 'SELECT p.status, COUNT(*) AS total FROM pickup_packages p WHERE ' . implode(' AND ', $conditions) . ' GROUP BY p.status';
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
@@ -1848,7 +1867,7 @@ function export_packages_csv(array $filters = []): void
     header('Content-Disposition: attachment; filename="' . $filename . '"');
 
     $output = fopen('php://output', 'w');
-    fputcsv($output, ['ID', 'Tracking', 'Cliente', 'Telefono', 'Email', 'Corriere', 'Stato', 'Creato il', 'Aggiornato il']);
+    fputcsv($output, ['ID', 'Tracking', 'Cliente', 'Telefono', 'Email', 'Corriere', 'Punto ritiro', 'Indirizzo ritiro', 'Stato', 'Creato il', 'Aggiornato il']);
 
     foreach ($rows as $row) {
         fputcsv($output, [
@@ -1858,6 +1877,8 @@ function export_packages_csv(array $filters = []): void
             $row['customer_phone'],
             $row['customer_email'] ?? '',
             $row['courier_name'] ?? 'N/D',
+            $row['location_name'] ?? 'N/D',
+            $row['location_address'] ?? '',
             pickup_status_label($row['status']),
             $row['created_at'],
             $row['updated_at'],
@@ -1886,7 +1907,7 @@ function export_packages_pdf(array $filters = []): void
         return str_pad($value, $length, ' ');
     };
 
-    $lines[] = $pad('ID', 6) . $pad('Tracking', 16) . $pad('Cliente', 24) . $pad('Telefono', 14) . $pad('Email', 24) . $pad('Corriere', 16) . $pad('Stato', 12) . 'Aggiornato';
+    $lines[] = $pad('ID', 6) . $pad('Tracking', 16) . $pad('Cliente', 24) . $pad('Telefono', 14) . $pad('Email', 24) . $pad('Corriere', 16) . $pad('Punto ritiro', 20) . $pad('Stato', 12) . 'Aggiornato';
 
     foreach ($rows as $row) {
         $lines[] = $pad((string) $row['id'], 6)
@@ -1895,6 +1916,7 @@ function export_packages_pdf(array $filters = []): void
             . $pad($row['customer_phone'], 14)
             . $pad($row['customer_email'] ?? 'N/D', 24)
             . $pad($row['courier_name'] ?? 'N/D', 16)
+            . $pad($row['location_name'] ?? 'N/D', 20)
             . $pad(pickup_status_label($row['status']), 12)
             . substr($row['updated_at'], 0, 19);
     }
