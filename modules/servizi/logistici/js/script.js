@@ -20,7 +20,8 @@ document.addEventListener('DOMContentLoaded', () => {
             select.disabled = true;
 
             try {
-                const response = await fetch(form.action, {
+                const targetUrl = typeof form.action === 'string' && form.action.trim() !== '' ? form.action : window.location.href;
+                const response = await fetch(targetUrl, {
                     method: 'POST',
                     headers: {
                         'Accept': 'application/json',
@@ -33,7 +34,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     throw new Error('Aggiornamento stato fallito');
                 }
 
-                const payload = await response.json();
+                const raw = await response.text();
+                let payload;
+                try {
+                    payload = raw ? JSON.parse(raw) : {};
+                } catch (parseError) {
+                    console.error('Pickup status update non-JSON response:', raw);
+                    throw new Error('Risposta non valida dal server.');
+                }
                 if (payload?.success) {
                     const badge = form.closest('tr')?.querySelector('[data-status-badge]');
                     if (badge) {
@@ -70,7 +78,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 submit.disabled = true;
             }
             try {
-                const response = await fetch(form.action, {
+                const targetUrl = typeof form.action === 'string' && form.action.trim() !== '' ? form.action : window.location.href;
+                const response = await fetch(targetUrl, {
                     method: 'POST',
                     headers: {
                         'Accept': 'application/json',
@@ -79,7 +88,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     credentials: 'same-origin',
                 });
 
-                const payload = await response.json();
+                const raw = await response.text();
+                let payload;
+                try {
+                    payload = raw ? JSON.parse(raw) : {};
+                } catch (parseError) {
+                    console.error('Pickup notification non-JSON response:', raw);
+                    throw new Error('Risposta non valida dal server.');
+                }
+
                 if (!response.ok || !payload?.success) {
                     throw new Error(payload?.message || 'Invio notifica fallito');
                 }
@@ -129,7 +146,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     body: formData,
                     credentials: 'same-origin',
                 });
-                const payload = await response.json();
+                const raw = await response.text();
+                let payload;
+                try {
+                    payload = raw ? JSON.parse(raw) : {};
+                } catch (parseError) {
+                    console.error('Pickup archive non-JSON response:', raw);
+                    throw new Error('Risposta non valida dal server.');
+                }
                 if (!response.ok || !payload?.success) {
                     throw new Error(payload?.message || 'Archiviazione non riuscita');
                 }
