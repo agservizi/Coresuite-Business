@@ -213,14 +213,6 @@ CREATE TABLE IF NOT EXISTS pickup_packages (
 SQL;
     $pdo->exec($sql);
 
-    if (!pickup_foreign_key_exists('pickup_packages', 'pickup_packages_courier_fk')) {
-        $pdo->exec('ALTER TABLE pickup_packages ADD CONSTRAINT pickup_packages_courier_fk FOREIGN KEY (courier_id) REFERENCES pickup_couriers(id) ON DELETE SET NULL ON UPDATE CASCADE');
-    }
-
-    if (!pickup_foreign_key_exists('pickup_packages', 'pickup_packages_location_fk')) {
-        $pdo->exec('ALTER TABLE pickup_packages ADD CONSTRAINT pickup_packages_location_fk FOREIGN KEY (pickup_location_id) REFERENCES pickup_locations(id) ON DELETE SET NULL ON UPDATE CASCADE');
-    }
-
     pickup_add_column_if_missing('pickup_packages', 'customer_email', 'VARCHAR(160) NULL AFTER customer_phone');
     pickup_add_column_if_missing('pickup_packages', 'pickup_location_id', 'INT UNSIGNED NULL AFTER courier_id');
     pickup_add_column_if_missing('pickup_packages', 'signature_path', 'VARCHAR(255) NULL AFTER notes');
@@ -228,6 +220,17 @@ SQL;
     pickup_add_column_if_missing('pickup_packages', 'photo_path', 'VARCHAR(255) NULL AFTER signature_captured_at');
     pickup_add_column_if_missing('pickup_packages', 'photo_captured_at', 'DATETIME NULL AFTER photo_path');
     pickup_add_column_if_missing('pickup_packages', 'qr_code_path', 'VARCHAR(255) NULL AFTER photo_captured_at');
+
+    if (!pickup_foreign_key_exists('pickup_packages', 'pickup_packages_courier_fk')) {
+        $pdo->exec('ALTER TABLE pickup_packages ADD CONSTRAINT pickup_packages_courier_fk FOREIGN KEY (courier_id) REFERENCES pickup_couriers(id) ON DELETE SET NULL ON UPDATE CASCADE');
+    }
+
+    if (!pickup_foreign_key_exists('pickup_packages', 'pickup_packages_location_fk')) {
+        if (!pickup_column_exists('pickup_packages', 'pickup_location_id')) {
+            pickup_add_column_if_missing('pickup_packages', 'pickup_location_id', 'INT UNSIGNED NULL AFTER courier_id');
+        }
+        $pdo->exec('ALTER TABLE pickup_packages ADD CONSTRAINT pickup_packages_location_fk FOREIGN KEY (pickup_location_id) REFERENCES pickup_locations(id) ON DELETE SET NULL ON UPDATE CASCADE');
+    }
 }
 
 function create_notifications_table(): void
