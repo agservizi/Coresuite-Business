@@ -73,7 +73,24 @@ window.PickupPortal = {
         const alertMessage = document.getElementById('global-alert-message');
         
         if (!alertContainer || !alertElement || !alertMessage) {
-            console.warn('Alert container not found');
+            const fallbackContainer = document.getElementById('alert-container');
+            if (!fallbackContainer) {
+                console.warn('Alert container not found');
+                return;
+            }
+            const wrapper = document.createElement('div');
+            wrapper.className = `alert alert-${type} alert-dismissible fade show shadow-sm`;
+            wrapper.innerHTML = `
+                <div>${message}</div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Chiudi"></button>
+            `;
+            fallbackContainer.appendChild(wrapper);
+            if (duration > 0) {
+                setTimeout(() => {
+                    wrapper.classList.remove('show');
+                    setTimeout(() => wrapper.remove(), 300);
+                }, duration);
+            }
             return;
         }
         
@@ -368,6 +385,77 @@ function startOtpCountdown(seconds) {
 
 // Inizializzazione generale
 document.addEventListener('DOMContentLoaded', function() {
+    const sidebar = document.getElementById('sidebarMenu');
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const sidebarMobileToggle = document.getElementById('sidebarMobileToggle');
+    const mobileBreakpoint = window.matchMedia('(max-width: 991.98px)');
+
+    const syncSidebarState = () => {
+        if (!sidebar) {
+            return;
+        }
+        if (mobileBreakpoint.matches) {
+            sidebar.classList.remove('collapsed');
+            sidebar.classList.remove('open');
+            document.body.classList.remove('offcanvas-active');
+            sidebarToggle?.setAttribute('aria-expanded', 'false');
+            sidebarMobileToggle?.setAttribute('aria-expanded', 'false');
+        } else {
+            const storedState = localStorage.getItem('pickupPortalSidebar');
+            const shouldCollapse = storedState === 'collapsed';
+            sidebar.classList.toggle('collapsed', shouldCollapse);
+            sidebarToggle?.setAttribute('aria-expanded', String(!shouldCollapse));
+        }
+    };
+
+    const toggleDesktopSidebar = () => {
+        if (!sidebar || mobileBreakpoint.matches) {
+            return;
+        }
+        const shouldCollapse = !sidebar.classList.contains('collapsed');
+        sidebar.classList.toggle('collapsed', shouldCollapse);
+        sidebarToggle?.setAttribute('aria-expanded', String(!shouldCollapse));
+        localStorage.setItem('pickupPortalSidebar', shouldCollapse ? 'collapsed' : 'expanded');
+    };
+
+    const toggleMobileSidebar = () => {
+        if (!sidebar) {
+            return;
+        }
+        const willOpen = !sidebar.classList.contains('open');
+        sidebar.classList.toggle('open', willOpen);
+        document.body.classList.toggle('offcanvas-active', willOpen);
+        sidebarToggle?.setAttribute('aria-expanded', String(willOpen));
+        sidebarMobileToggle?.setAttribute('aria-expanded', String(willOpen));
+    };
+
+    syncSidebarState();
+
+    const breakpointListener = mobileBreakpoint.addEventListener ? 'addEventListener' : 'addListener';
+    mobileBreakpoint[breakpointListener]('change', syncSidebarState);
+
+    sidebarToggle?.addEventListener('click', () => {
+        if (mobileBreakpoint.matches) {
+            toggleMobileSidebar();
+        } else {
+            toggleDesktopSidebar();
+        }
+    });
+
+    sidebarMobileToggle?.addEventListener('click', toggleMobileSidebar);
+
+    sidebar?.querySelectorAll('a').forEach((link) => {
+        link.addEventListener('click', () => {
+            if (!mobileBreakpoint.matches) {
+                return;
+            }
+            sidebar.classList.remove('open');
+            document.body.classList.remove('offcanvas-active');
+            sidebarToggle?.setAttribute('aria-expanded', 'false');
+            sidebarMobileToggle?.setAttribute('aria-expanded', 'false');
+        });
+    });
+
     // Inizializza tooltips Bootstrap
     const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     tooltipTriggerList.map(function (tooltipTriggerEl) {
