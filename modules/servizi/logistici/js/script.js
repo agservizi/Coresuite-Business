@@ -124,6 +124,48 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    const packageSelects = root.querySelectorAll('[data-pickup-package-select]');
+    packageSelects.forEach(select => {
+        const form = select.closest('form');
+        if (!form) {
+            return;
+        }
+        const channelField = form.querySelector('input[name="channel"]');
+        const isWhatsApp = channelField && channelField.value === 'whatsapp';
+        const phoneField = isWhatsApp ? form.querySelector('input[name="recipient"]') : null;
+        const messageField = isWhatsApp ? form.querySelector('textarea[name="message"]') : null;
+
+        const updateFromSelection = () => {
+            const option = select.options[select.selectedIndex];
+            if (!option) {
+                return;
+            }
+
+            if (option.value === '') {
+                if (isWhatsApp) {
+                    if (phoneField) {
+                        phoneField.value = '';
+                    }
+                    if (messageField) {
+                        messageField.value = '';
+                    }
+                }
+                return;
+            }
+
+            if (isWhatsApp && phoneField && option.dataset.phone) {
+                phoneField.value = option.dataset.phone;
+            }
+
+            if (isWhatsApp && messageField && option.dataset.message) {
+                messageField.value = option.dataset.message;
+            }
+        };
+
+        select.addEventListener('change', updateFromSelection);
+        updateFromSelection();
+    });
+
     const archiveButton = document.querySelector('[data-pickup-archive-button]');
     if (archiveButton) {
         archiveButton.addEventListener('click', async event => {

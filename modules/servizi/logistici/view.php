@@ -155,7 +155,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             </div>
                             <div class="mb-3">
                                 <label class="form-label" for="whatsapp_message">Messaggio</label>
-                                <textarea class="form-control" id="whatsapp_message" name="message" rows="3" required></textarea>
+                                <textarea class="form-control" id="whatsapp_message" name="message" rows="3" required><?php echo sanitize_output(pickup_whatsapp_message_template($package)); ?></textarea>
                             </div>
                             <button class="btn btn-outline-warning w-100" type="submit"><i class="fa-brands fa-whatsapp me-1"></i>Invia WhatsApp</button>
                         </form>

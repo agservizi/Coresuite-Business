@@ -745,6 +745,46 @@ function pickup_escape_pdf_text(string $text): string
     return $text;
 }
 
+function pickup_whatsapp_message_template(array $package): string
+{
+    $name = trim((string) ($package['customer_name'] ?? ''));
+    $recipientName = $name !== '' ? $name : 'cliente';
+    $tracking = trim((string) ($package['tracking'] ?? ''));
+    $trackingInfo = $tracking !== '' ? ' (tracking ' . $tracking . ')' : '';
+    $status = $package['status'] ?? 'in_arrivo';
+    $expectedAt = $package['expected_at'] ?? null;
+    $expectedText = '';
+
+    if ($expectedAt) {
+        $formatted = format_datetime_locale($expectedAt);
+        if ($formatted !== '') {
+            $expectedText = $formatted;
+        }
+    }
+
+    $body = '';
+    switch ($status) {
+        case 'consegnato':
+            $body = 'il tuo pacco' . $trackingInfo . ' è arrivato presso il nostro punto pickup ed è pronto per il ritiro. Presentati con il codice per completare il ritiro.';
+            break;
+        case 'ritirato':
+            $body = 'il tuo pacco' . $trackingInfo . ' risulta ritirato. Grazie per aver utilizzato il servizio Coresuite Pickup!';
+            break;
+        case 'in_giacenza':
+            $body = 'il tuo pacco' . $trackingInfo . ' ti aspetta al punto pickup. Ti chiediamo di passare a ritirarlo entro 48 ore.';
+            break;
+        case 'in_arrivo':
+            $body = 'il tuo pacco' . $trackingInfo . ' è in arrivo' . ($expectedText !== '' ? ' e previsto per il ' . $expectedText : '') . '. Ti avviseremo non appena sarà disponibile al ritiro.';
+            break;
+        default:
+            $body = 'abbiamo un aggiornamento sul tuo pacco' . $trackingInfo . '. Ti contatteremo a breve con maggiori dettagli.';
+            break;
+    }
+
+    $message = 'Ciao ' . $recipientName . ', ' . $body . "\n\nGrazie,\nTeam Coresuite Pickup";
+    return trim($message);
+}
+
 function archive_old_packages(int $days = PICKUP_DEFAULT_ARCHIVE_DAYS): int
 {
     $pdo = pickup_db();

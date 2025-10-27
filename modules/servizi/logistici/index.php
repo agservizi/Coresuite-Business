@@ -432,7 +432,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <input type="hidden" name="channel" value="email">
                             <div class="mb-3">
                                 <label class="form-label" for="email_package">Pacco</label>
-                                <select class="form-select" id="email_package" name="package_id" required>
+                                <select class="form-select" id="email_package" name="package_id" required data-pickup-package-select>
                                     <option value="">Seleziona</option>
                                     <?php foreach ($packages as $package): ?>
                                         <option value="<?php echo (int) $package['id']; ?>"><?php echo sanitize_output('#' . $package['tracking'] . ' - ' . $package['customer_name']); ?></option>
@@ -460,10 +460,15 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <input type="hidden" name="channel" value="whatsapp">
                             <div class="mb-3">
                                 <label class="form-label" for="whatsapp_package">Pacco</label>
-                                <select class="form-select" id="whatsapp_package" name="package_id" required>
+                                <select class="form-select" id="whatsapp_package" name="package_id" required data-pickup-package-select>
                                     <option value="">Seleziona</option>
                                     <?php foreach ($packages as $package): ?>
-                                        <option value="<?php echo (int) $package['id']; ?>"><?php echo sanitize_output('#' . $package['tracking'] . ' - ' . $package['customer_name']); ?></option>
+                                        <option
+                                            value="<?php echo (int) $package['id']; ?>"
+                                            data-phone="<?php echo sanitize_output($package['customer_phone']); ?>"
+                                            data-status="<?php echo sanitize_output($package['status']); ?>"
+                                            data-message="<?php echo sanitize_output(pickup_whatsapp_message_template($package)); ?>"
+                                        ><?php echo sanitize_output('#' . $package['tracking'] . ' - ' . $package['customer_name']); ?></option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
