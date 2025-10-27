@@ -9,16 +9,36 @@ require_once CORESUITE_ROOT . 'includes/db_connect.php';
  */
 class PortalDatabase {
     private static ?PDO $connection = null;
+
+    /**
+     * Recupera una variabile d'ambiente con preferenza per i valori del portale.
+     */
+    private static function envValue(string $key, $default = null): ?string
+    {
+        $portalKey = 'PORTAL_' . $key;
+        $value = env($portalKey);
+
+        if ($value === null || $value === '') {
+            $value = env($key, $default);
+        }
+
+        if ($value === null || $value === '') {
+            return $default === null ? null : (string) $default;
+        }
+
+        return is_string($value) ? trim($value) : (string) $value;
+    }
     
     public static function getConnection(): PDO {
         if (self::$connection === null) {
-            $host = env('DB_HOST', '127.0.0.1');
-            $port = env('DB_PORT', '3306');
-            $database = env('DB_DATABASE', 'coresuite');
-            $username = env('DB_USERNAME', 'root');
-            $password = env('DB_PASSWORD', '');
-            
-            $dsn = sprintf('mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4', $host, $port, $database);
+            $host = self::envValue('DB_HOST', '127.0.0.1');
+            $port = self::envValue('DB_PORT', '3306');
+            $database = self::envValue('DB_DATABASE', 'coresuite');
+            $username = self::envValue('DB_USERNAME', 'root');
+            $password = self::envValue('DB_PASSWORD', '');
+            $charset = self::envValue('DB_CHARSET', 'utf8mb4');
+
+            $dsn = sprintf('mysql:host=%s;port=%s;dbname=%s;charset=%s', $host, $port, $database, $charset);
             
             $options = [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
@@ -30,7 +50,8 @@ class PortalDatabase {
             try {
                 self::$connection = new PDO($dsn, $username, $password, $options);
                 self::$connection->exec('SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci');
-                self::$connection->exec('SET time_zone = "+00:00"');
+                $timezone = self::envValue('DB_TIMEZONE', '+00:00');
+                self::$connection->exec(sprintf("SET time_zone = '%s'", addslashes($timezone)));
                 
                 portal_debug_log('Database connection established for portal');
             } catch (PDOException $e) {
