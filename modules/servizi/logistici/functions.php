@@ -1174,6 +1174,17 @@ function notify_customer_event(int $packageId, string $eventType, array $context
         throw new RuntimeException('Pacco non trovato per la notifica evento.');
     }
 
+    if (empty($package['qr_code_path'])) {
+        try {
+            $qrPath = generate_package_qr($packageId);
+            if ($qrPath) {
+                $package['qr_code_path'] = $qrPath;
+            }
+        } catch (Throwable $exception) {
+            error_log('Generazione QR in notifica fallita per pacco ' . $packageId . ': ' . $exception->getMessage());
+        }
+    }
+
     $templates = PICKUP_EVENT_TEMPLATES[$eventType] ?? null;
     if ($templates === null) {
         throw new InvalidArgumentException('Evento notifica non supportato: ' . $eventType);
@@ -1212,7 +1223,9 @@ function notify_customer_event(int $packageId, string $eventType, array $context
     if (in_array('email', $channels, true) && !empty($package['customer_email'])) {
         $subject = pickup_render_template($templates['email_subject'], $data);
         $message = pickup_render_template($templates['email_body'], $data);
-        $success = send_notification_email($package['customer_email'], $subject, $message);
+        $success = send_notification_email($package['customer_email'], $subject, $message, [
+            'qr_url' => $data['qr_url'] ?? '',
+        ]);
         $results['email'] = [
             'success' => $success,
             'recipient' => $package['customer_email'],
@@ -1889,7 +1902,7 @@ function generate_qr_checkin(?int $locationId = null, ?string $callbackUrl = nul
     return pickup_relative_path($destPath);
 }
 
-function send_notification_email(string $email, string $subject, string $message): bool
+function send_notification_email(string $email, string $subject, string $message, array $options = []): bool
 {
     $email = filter_var($email, FILTER_VALIDATE_EMAIL);
     if ($email === false) {
@@ -1901,8 +1914,24 @@ function send_notification_email(string $email, string $subject, string $message
         $subject = 'Aggiornamento pacco pickup';
     }
 
+    $qrUrl = trim((string) ($options['qr_url'] ?? ''));
+    $qrHtml = '';
+    if ($qrUrl !== '') {
+        $qrEscaped = htmlspecialchars($qrUrl, ENT_QUOTES, 'UTF-8');
+        $qrHtml = '<div style="margin-top:24px;text-align:center;">'
+            . '<img src="' . $qrEscaped . '" alt="QR code pickup" style="max-width:200px;height:auto;border:1px solid #f0f0f0;padding:8px;border-radius:8px;" />'
+            . '<p style="font-size:13px;color:#555;margin-top:8px;">Mostra questo QR al punto ritiro per completare il ritiro.</p>'
+            . '</div>';
+    }
+
     $bodyContent = nl2br(htmlspecialchars($message, ENT_QUOTES, 'UTF-8'));
-    $htmlBody = render_mail_template($subject, '<p style="font-size:15px;">' . $bodyContent . '</p>');
+    $htmlSections = [];
+    $htmlSections[] = '<div style="font-size:15px;line-height:1.6;color:#212529;">' . $bodyContent . '</div>';
+    if ($qrHtml !== '') {
+        $htmlSections[] = $qrHtml;
+    }
+
+    $htmlBody = render_mail_template($subject, implode('', $htmlSections));
 
     return send_system_mail($email, $subject, $htmlBody);
 }
@@ -2241,7 +2270,7 @@ function pickup_email_message_template(array $package): string
         $details[] = 'Indirizzo: ' . $locationAddress;
     }
     if ($qrUrl !== '') {
-        $details[] = 'QR Code per il ritiro: ' . $qrUrl;
+        $details[] = 'Mostra il QR in fondo a questa email al punto ritiro.';
     }
 
     $message = 'Gentile ' . $recipientName . ', ' . $body;

@@ -176,7 +176,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new InvalidArgumentException('Destinatario email mancante.');
                 }
 
-                $result = send_notification_email($recipient, $subject, $message);
+                $qrUrl = '';
+                if (empty($package['qr_code_path'])) {
+                    try {
+                        $generatedQr = generate_package_qr($packageId);
+                        if ($generatedQr) {
+                            $package['qr_code_path'] = $generatedQr;
+                        }
+                    } catch (Throwable $qrException) {
+                        error_log('Generazione QR email manuale fallita per pacco ' . $packageId . ': ' . $qrException->getMessage());
+                    }
+                }
+                if (!empty($package['qr_code_path'])) {
+                    $qrUrl = pickup_public_url($package['qr_code_path']);
+                }
+
+                $result = send_notification_email($recipient, $subject, $message, [
+                    'qr_url' => $qrUrl,
+                ]);
                 $meta['recipient'] = $recipient;
                 $meta['subject'] = $subject;
             } elseif ($channel === 'whatsapp') {
