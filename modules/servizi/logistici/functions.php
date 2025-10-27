@@ -141,6 +141,13 @@ function ensure_pickup_tables(): void
     create_notifications_table();
     create_pickup_otps_table();
     create_pickup_history_table();
+    ensure_pickup_default_records();
+}
+
+function ensure_pickup_default_records(): void
+{
+    ensure_default_pickup_location();
+    ensure_default_couriers();
 }
 
 function create_pickup_locations_table(): void
@@ -295,6 +302,67 @@ CREATE TABLE IF NOT EXISTS pickup_package_history (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 SQL;
     $pdo->exec($sql);
+}
+
+function ensure_default_pickup_location(): void
+{
+    $pdo = pickup_db();
+    $defaultName = 'AG SERVIZI VIA PLINIO 72';
+    $defaultAddress = 'VIA PLINIO IL VECCHIO 72 CASTELLAMMARE DI STABIA (NA) 80053';
+
+    $stmt = $pdo->prepare('SELECT id, address FROM pickup_locations WHERE name = :name LIMIT 1');
+    $stmt->execute([':name' => $defaultName]);
+    $existing = $stmt->fetch();
+
+    if ($existing) {
+        if (empty($existing['address']) || strcasecmp((string) $existing['address'], $defaultAddress) !== 0) {
+            $update = $pdo->prepare('UPDATE pickup_locations SET address = :address WHERE id = :id');
+            $update->execute([
+                ':address' => $defaultAddress,
+                ':id' => (int) $existing['id'],
+            ]);
+        }
+        return;
+    }
+
+    $insert = $pdo->prepare('INSERT INTO pickup_locations (name, address) VALUES (:name, :address)');
+    $insert->execute([
+        ':name' => $defaultName,
+        ':address' => $defaultAddress,
+    ]);
+}
+
+function ensure_default_couriers(): void
+{
+    $pdo = pickup_db();
+    $defaults = [
+        ['name' => 'Bartolini (BRT)', 'support_email' => null, 'support_phone' => null],
+        ['name' => 'DHL Express', 'support_email' => null, 'support_phone' => null],
+        ['name' => 'GLS Italy', 'support_email' => null, 'support_phone' => null],
+        ['name' => 'SDA Express Courier', 'support_email' => null, 'support_phone' => null],
+        ['name' => 'Poste Italiane', 'support_email' => null, 'support_phone' => null],
+        ['name' => 'UPS', 'support_email' => null, 'support_phone' => null],
+        ['name' => 'FedEx', 'support_email' => null, 'support_phone' => null],
+        ['name' => 'TNT', 'support_email' => null, 'support_phone' => null],
+        ['name' => 'Nexive', 'support_email' => null, 'support_phone' => null],
+        ['name' => 'Amazon Logistics', 'support_email' => null, 'support_phone' => null],
+    ];
+
+    $select = $pdo->prepare('SELECT id FROM pickup_couriers WHERE name = :name LIMIT 1');
+    $insert = $pdo->prepare('INSERT INTO pickup_couriers (name, support_email, support_phone) VALUES (:name, :support_email, :support_phone)');
+
+    foreach ($defaults as $courier) {
+        $select->execute([':name' => $courier['name']]);
+        if ($select->fetchColumn()) {
+            continue;
+        }
+
+        $insert->execute([
+            ':name' => $courier['name'],
+            ':support_email' => $courier['support_email'],
+            ':support_phone' => $courier['support_phone'],
+        ]);
+    }
 }
 
 function pickup_foreign_key_exists(string $table, string $constraint): bool
