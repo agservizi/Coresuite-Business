@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/database.php';
-require_once CORESUITE_ROOT . 'includes/mailer.php';
+require_once __DIR__ . '/mailer.php';
 
 /**
  * Classe per la gestione dell'autenticazione dei clienti del portale
@@ -334,8 +334,6 @@ class CustomerAuth {
         $body .= "Grazie,\nIl team di " . portal_config('portal_name');
         
         try {
-            // Utilizza la funzione mailer del sistema principale
-            require_once CORESUITE_ROOT . 'includes/mailer.php';
             return send_system_mail($email, $subject, $body);
         } catch (Exception $e) {
             portal_error_log('Email OTP sending failed: ' . $e->getMessage());

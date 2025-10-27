@@ -2,7 +2,6 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/config.php';
-require_once CORESUITE_ROOT . 'includes/db_connect.php';
 
 /**
  * Classe per la gestione della connessione database del portale cliente
@@ -50,8 +49,10 @@ class PortalDatabase {
             try {
                 self::$connection = new PDO($dsn, $username, $password, $options);
                 self::$connection->exec('SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci');
-                $timezone = self::envValue('DB_TIMEZONE', '+00:00');
-                self::$connection->exec(sprintf("SET time_zone = '%s'", addslashes($timezone)));
+                $timezone = self::resolveMysqlTimezone(self::envValue('DB_TIMEZONE', '+00:00'));
+                if ($timezone !== null) {
+                    self::$connection->exec(sprintf("SET time_zone = '%s'", addslashes($timezone)));
+                }
                 
                 portal_debug_log('Database connection established for portal');
             } catch (PDOException $e) {
@@ -182,6 +183,28 @@ class PortalDatabase {
         
         $stmt = self::execute($sql, $where);
         return $stmt->rowCount();
+    }
+
+    private static function resolveMysqlTimezone(?string $timezone): ?string
+    {
+        if ($timezone === null || $timezone === '') {
+            return null;
+        }
+
+        $timezone = trim($timezone);
+
+        if (preg_match('/^[+-]\d{2}:\d{2}$/', $timezone) === 1) {
+            return $timezone;
+        }
+
+        try {
+            $tz = new DateTimeZone($timezone);
+            $now = new DateTime('now', $tz);
+            return $now->format('P');
+        } catch (Exception $e) {
+            portal_error_log('Invalid DB timezone provided: ' . $timezone, ['exception' => $e->getMessage()]);
+            return '+00:00';
+        }
     }
 }
 

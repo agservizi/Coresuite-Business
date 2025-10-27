@@ -7,11 +7,8 @@ const PORTAL_NAME = 'Pickup Portal';
 
 // Percorsi
 const PORTAL_ROOT = __DIR__;
-
-if (!defined('CORESUITE_ROOT')) {
-    define('CORESUITE_ROOT', dirname(__DIR__, 2) . DIRECTORY_SEPARATOR);
-}
-const UPLOADS_DIR = PORTAL_ROOT . '/uploads';
+const PORTAL_BASE_PATH = __DIR__ . '/..';
+const UPLOADS_DIR = PORTAL_BASE_PATH . '/uploads';
 
 // Sicurezza
 const SESSION_TIMEOUT = 1800; // 30 minuti
