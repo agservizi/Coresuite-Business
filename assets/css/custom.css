@@ -597,8 +597,21 @@ body.login-body {
     color: var(--bs-dropdown-link-active-color);
 }
 
+#app {
+    width: 100%;
+    min-height: 100vh;
+}
+
+#app > .flex-grow-1 {
+    min-width: 0;
+    width: 100%;
+}
+
 main.content-wrapper {
     flex: 1 1 auto;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
     padding: 1.75rem;
     position: relative;
     transition: filter 0.2s ease;
