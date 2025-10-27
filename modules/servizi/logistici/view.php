@@ -115,6 +115,14 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <dd class="col-sm-7"><?php echo sanitize_output($package['customer_name']); ?></dd>
                             <dt class="col-sm-5">Telefono</dt>
                             <dd class="col-sm-7"><a class="link-warning" href="tel:<?php echo sanitize_output(preg_replace('/[^0-9+]/', '', $package['customer_phone'])); ?>"><?php echo sanitize_output($package['customer_phone']); ?></a></dd>
+                            <dt class="col-sm-5">Email</dt>
+                            <dd class="col-sm-7">
+                                <?php if (!empty($package['customer_email'])): ?>
+                                    <a class="link-warning" href="mailto:<?php echo sanitize_output($package['customer_email']); ?>"><?php echo sanitize_output($package['customer_email']); ?></a>
+                                <?php else: ?>
+                                    <span class="text-muted small">N/D</span>
+                                <?php endif; ?>
+                            </dd>
                         </dl>
                     </div>
                 </div>
@@ -131,15 +139,15 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <input type="hidden" name="package_id" value="<?php echo $id; ?>">
                             <div class="mb-3">
                                 <label class="form-label" for="email_recipient">Email destinatario</label>
-                                <input class="form-control" id="email_recipient" name="recipient" type="email" placeholder="cliente@example.com" required>
+                                <input class="form-control" id="email_recipient" name="recipient" type="email" placeholder="cliente@example.com" value="<?php echo sanitize_output($package['customer_email'] ?? ''); ?>" required>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label" for="email_subject">Oggetto</label>
-                                <input class="form-control" id="email_subject" name="subject" value="Aggiornamento pickup #<?php echo sanitize_output($package['tracking']); ?>">
+                                <input class="form-control" id="email_subject" name="subject" value="<?php echo sanitize_output(pickup_email_subject_template($package)); ?>">
                             </div>
                             <div class="mb-3">
                                 <label class="form-label" for="email_message">Messaggio</label>
-                                <textarea class="form-control" id="email_message" name="message" rows="3" required></textarea>
+                                <textarea class="form-control" id="email_message" name="message" rows="3" required><?php echo sanitize_output(pickup_email_message_template($package)); ?></textarea>
                             </div>
                             <button class="btn btn-warning text-dark w-100" type="submit">Invia email</button>
                         </form>

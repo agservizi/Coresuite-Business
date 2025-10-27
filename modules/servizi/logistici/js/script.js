@@ -131,9 +131,22 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         const channelField = form.querySelector('input[name="channel"]');
-        const isWhatsApp = channelField && channelField.value === 'whatsapp';
-        const phoneField = isWhatsApp ? form.querySelector('input[name="recipient"]') : null;
-        const messageField = isWhatsApp ? form.querySelector('textarea[name="message"]') : null;
+        const channel = channelField ? channelField.value : '';
+        const recipientField = form.querySelector('input[name="recipient"]');
+        const subjectField = form.querySelector('input[name="subject"]');
+        const messageField = form.querySelector('textarea[name="message"]');
+
+        const clearFields = () => {
+            if (recipientField) {
+                recipientField.value = '';
+            }
+            if (subjectField) {
+                subjectField.value = '';
+            }
+            if (messageField) {
+                messageField.value = '';
+            }
+        };
 
         const updateFromSelection = () => {
             const option = select.options[select.selectedIndex];
@@ -142,23 +155,30 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (option.value === '') {
-                if (isWhatsApp) {
-                    if (phoneField) {
-                        phoneField.value = '';
-                    }
-                    if (messageField) {
-                        messageField.value = '';
-                    }
+                clearFields();
+                return;
+            }
+
+            if (channel === 'whatsapp') {
+                if (recipientField && option.dataset.phone) {
+                    recipientField.value = option.dataset.phone;
+                }
+                if (messageField && option.dataset.message) {
+                    messageField.value = option.dataset.message;
                 }
                 return;
             }
 
-            if (isWhatsApp && phoneField && option.dataset.phone) {
-                phoneField.value = option.dataset.phone;
-            }
-
-            if (isWhatsApp && messageField && option.dataset.message) {
-                messageField.value = option.dataset.message;
+            if (channel === 'email') {
+                if (recipientField && typeof option.dataset.email === 'string') {
+                    recipientField.value = option.dataset.email;
+                }
+                if (subjectField && typeof option.dataset.subject === 'string') {
+                    subjectField.value = option.dataset.subject;
+                }
+                if (messageField && typeof option.dataset.message === 'string') {
+                    messageField.value = option.dataset.message;
+                }
             }
         };
 

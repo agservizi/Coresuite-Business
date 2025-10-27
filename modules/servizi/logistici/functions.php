@@ -90,6 +90,7 @@ CREATE TABLE IF NOT EXISTS pickup_packages (
     tracking VARCHAR(100) NOT NULL,
     customer_name VARCHAR(150) NOT NULL,
     customer_phone VARCHAR(50) NOT NULL,
+    customer_email VARCHAR(160) NULL,
     courier_id INT UNSIGNED NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'in_arrivo',
     expected_at DATETIME NULL,
@@ -109,6 +110,8 @@ SQL;
     if (!pickup_foreign_key_exists('pickup_packages', 'pickup_packages_courier_fk')) {
         $pdo->exec('ALTER TABLE pickup_packages ADD CONSTRAINT pickup_packages_courier_fk FOREIGN KEY (courier_id) REFERENCES pickup_couriers(id) ON DELETE SET NULL ON UPDATE CASCADE');
     }
+
+    pickup_add_column_if_missing('pickup_packages', 'customer_email', 'VARCHAR(160) NULL AFTER customer_phone');
 }
 
 function create_notifications_table(): void
@@ -142,6 +145,27 @@ function pickup_foreign_key_exists(string $table, string $constraint): bool
     return (int) $stmt->fetchColumn() > 0;
 }
 
+function pickup_column_exists(string $table, string $column): bool
+{
+    $pdo = pickup_db();
+    $stmt = $pdo->prepare('SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table AND COLUMN_NAME = :column');
+    $stmt->execute([
+        ':table' => $table,
+        ':column' => $column,
+    ]);
+    return (int) $stmt->fetchColumn() > 0;
+}
+
+function pickup_add_column_if_missing(string $table, string $column, string $definition): void
+{
+    if (pickup_column_exists($table, $column)) {
+        return;
+    }
+
+    $pdo = pickup_db();
+    $pdo->exec(sprintf('ALTER TABLE `%s` ADD COLUMN `%s` %s', $table, $column, $definition));
+}
+
 function add_package(array $data): int
 {
     $pdo = pickup_db();
@@ -149,6 +173,7 @@ function add_package(array $data): int
     $tracking = clean_input($data['tracking'] ?? '', 100);
     $customerName = clean_input($data['customer_name'] ?? '', 150);
     $customerPhone = clean_input($data['customer_phone'] ?? '', 50);
+    $customerEmail = clean_input($data['customer_email'] ?? '', 160);
     $status = clean_input($data['status'] ?? 'in_arrivo', 20);
     $courierId = isset($data['courier_id']) ? (int) $data['courier_id'] : null;
     $expectedAt = clean_input($data['expected_at'] ?? '', 32);
@@ -166,6 +191,10 @@ function add_package(array $data): int
         throw new InvalidArgumentException('Corriere selezionato non valido.');
     }
 
+    if ($customerEmail !== '' && filter_var($customerEmail, FILTER_VALIDATE_EMAIL) === false) {
+        throw new InvalidArgumentException('Email cliente non valida.');
+    }
+
     $stmt = $pdo->prepare('SELECT id FROM pickup_packages WHERE tracking = :tracking LIMIT 1');
     $stmt->execute([':tracking' => $tracking]);
     if ($stmt->fetch()) {
@@ -181,11 +210,12 @@ function add_package(array $data): int
         $expectedDate = $expectedDate->format('Y-m-d H:i:s');
     }
 
-    $stmt = $pdo->prepare('INSERT INTO pickup_packages (tracking, customer_name, customer_phone, courier_id, status, expected_at, notes) VALUES (:tracking, :customer_name, :customer_phone, :courier_id, :status, :expected_at, :notes)');
+    $stmt = $pdo->prepare('INSERT INTO pickup_packages (tracking, customer_name, customer_phone, customer_email, courier_id, status, expected_at, notes) VALUES (:tracking, :customer_name, :customer_phone, :customer_email, :courier_id, :status, :expected_at, :notes)');
     $stmt->execute([
         ':tracking' => $tracking,
         ':customer_name' => $customerName,
         ':customer_phone' => $customerPhone,
+        ':customer_email' => $customerEmail !== '' ? $customerEmail : null,
         ':courier_id' => $courierId ?: null,
         ':status' => $status,
         ':expected_at' => $expectedDate,
@@ -232,6 +262,7 @@ function update_package(int $packageId, array $data): bool
     $tracking = clean_input($data['tracking'] ?? '', 100);
     $customerName = clean_input($data['customer_name'] ?? '', 150);
     $customerPhone = clean_input($data['customer_phone'] ?? '', 50);
+    $customerEmail = clean_input($data['customer_email'] ?? '', 160);
     $status = clean_input($data['status'] ?? $existing['status'], 20);
     $courierId = isset($data['courier_id']) ? (int) $data['courier_id'] : null;
     $expectedAt = clean_input($data['expected_at'] ?? '', 32);
@@ -247,6 +278,10 @@ function update_package(int $packageId, array $data): bool
 
     if ($courierId !== null && $courierId > 0 && !courier_exists($courierId)) {
         throw new InvalidArgumentException('Corriere selezionato non valido.');
+    }
+
+    if ($customerEmail !== '' && filter_var($customerEmail, FILTER_VALIDATE_EMAIL) === false) {
+        throw new InvalidArgumentException('Email cliente non valida.');
     }
 
     if (strcasecmp($tracking, (string) $existing['tracking']) !== 0) {
@@ -269,11 +304,12 @@ function update_package(int $packageId, array $data): bool
         $expectedDate = $expectedDate->format('Y-m-d H:i:s');
     }
 
-    $stmt = $pdo->prepare('UPDATE pickup_packages SET tracking = :tracking, customer_name = :customer_name, customer_phone = :customer_phone, courier_id = :courier_id, status = :status, expected_at = :expected_at, notes = :notes, updated_at = NOW() WHERE id = :id');
+    $stmt = $pdo->prepare('UPDATE pickup_packages SET tracking = :tracking, customer_name = :customer_name, customer_phone = :customer_phone, customer_email = :customer_email, courier_id = :courier_id, status = :status, expected_at = :expected_at, notes = :notes, updated_at = NOW() WHERE id = :id');
     $stmt->execute([
         ':tracking' => $tracking,
         ':customer_name' => $customerName,
         ':customer_phone' => $customerPhone,
+        ':customer_email' => $customerEmail !== '' ? $customerEmail : null,
         ':courier_id' => $courierId ?: null,
         ':status' => $status,
         ':expected_at' => $expectedDate,
@@ -319,7 +355,7 @@ function get_all_packages(array $filters = []): array
 
     if (!empty($filters['search'])) {
         $search = '%' . $filters['search'] . '%';
-        $conditions[] = '(p.tracking LIKE :search OR p.customer_name LIKE :search OR p.customer_phone LIKE :search)';
+    $conditions[] = '(p.tracking LIKE :search OR p.customer_name LIKE :search OR p.customer_phone LIKE :search OR p.customer_email LIKE :search)';
         $params[':search'] = $search;
     }
 
@@ -612,7 +648,7 @@ function export_packages_csv(array $filters = []): void
     header('Content-Disposition: attachment; filename="' . $filename . '"');
 
     $output = fopen('php://output', 'w');
-    fputcsv($output, ['ID', 'Tracking', 'Cliente', 'Telefono', 'Corriere', 'Stato', 'Creato il', 'Aggiornato il']);
+    fputcsv($output, ['ID', 'Tracking', 'Cliente', 'Telefono', 'Email', 'Corriere', 'Stato', 'Creato il', 'Aggiornato il']);
 
     foreach ($rows as $row) {
         fputcsv($output, [
@@ -620,6 +656,7 @@ function export_packages_csv(array $filters = []): void
             $row['tracking'],
             $row['customer_name'],
             $row['customer_phone'],
+            $row['customer_email'] ?? '',
             $row['courier_name'] ?? 'N/D',
             pickup_status_label($row['status']),
             $row['created_at'],
@@ -638,7 +675,7 @@ function export_packages_pdf(array $filters = []): void
 
     $lines = [];
     $lines[] = 'Report pacchi pickup - generato il ' . date('d/m/Y H:i');
-    $lines[] = str_repeat('-', 110);
+    $lines[] = str_repeat('-', 128);
 
     $pad = static function (string $value, int $length): string {
         if (function_exists('mb_substr')) {
@@ -649,14 +686,15 @@ function export_packages_pdf(array $filters = []): void
         return str_pad($value, $length, ' ');
     };
 
-    $lines[] = $pad('ID', 6) . $pad('Tracking', 16) . $pad('Cliente', 26) . $pad('Telefono', 16) . $pad('Corriere', 18) . $pad('Stato', 12) . 'Aggiornato';
+    $lines[] = $pad('ID', 6) . $pad('Tracking', 16) . $pad('Cliente', 24) . $pad('Telefono', 14) . $pad('Email', 24) . $pad('Corriere', 16) . $pad('Stato', 12) . 'Aggiornato';
 
     foreach ($rows as $row) {
         $lines[] = $pad((string) $row['id'], 6)
             . $pad($row['tracking'], 16)
-            . $pad($row['customer_name'], 26)
-            . $pad($row['customer_phone'], 16)
-            . $pad($row['courier_name'] ?? 'N/D', 18)
+            . $pad($row['customer_name'], 24)
+            . $pad($row['customer_phone'], 14)
+            . $pad($row['customer_email'] ?? 'N/D', 24)
+            . $pad($row['courier_name'] ?? 'N/D', 16)
             . $pad(pickup_status_label($row['status']), 12)
             . substr($row['updated_at'], 0, 19);
     }
@@ -745,6 +783,69 @@ function pickup_escape_pdf_text(string $text): string
     return $text;
 }
 
+function pickup_email_subject_template(array $package): string
+{
+    $tracking = trim((string) ($package['tracking'] ?? ''));
+    $status = $package['status'] ?? 'in_arrivo';
+    $base = 'Aggiornamento pickup';
+    if ($tracking !== '') {
+        $base .= ' #' . $tracking;
+    }
+
+    switch ($status) {
+        case 'consegnato':
+            return $base . ' disponibile al ritiro';
+        case 'ritirato':
+            return $base . ' completato';
+        case 'in_giacenza':
+            return $base . ' in giacenza';
+        case 'in_arrivo':
+            return $base . ' in arrivo';
+        default:
+            return $base;
+    }
+}
+
+function pickup_email_message_template(array $package): string
+{
+    $name = trim((string) ($package['customer_name'] ?? ''));
+    $recipientName = $name !== '' ? $name : 'Cliente';
+    $tracking = trim((string) ($package['tracking'] ?? ''));
+    $trackingInfo = $tracking !== '' ? ' (tracking ' . $tracking . ')' : '';
+    $status = $package['status'] ?? 'in_arrivo';
+    $expectedAt = $package['expected_at'] ?? null;
+    $expectedText = '';
+
+    if ($expectedAt) {
+        $formatted = format_datetime_locale($expectedAt);
+        if ($formatted !== '') {
+            $expectedText = $formatted;
+        }
+    }
+
+    $body = '';
+    switch ($status) {
+        case 'consegnato':
+            $body = 'siamo lieti di informarti che il tuo pacco' . $trackingInfo . ' è arrivato presso il nostro punto pickup ed è pronto per il ritiro. Ti aspettiamo in sede con il codice di riferimento.';
+            break;
+        case 'ritirato':
+            $body = 'ti confermiamo che il pacco' . $trackingInfo . ' è stato ritirato correttamente. Grazie per aver scelto il servizio pickup.';
+            break;
+        case 'in_giacenza':
+            $body = 'il tuo pacco' . $trackingInfo . ' è in giacenza presso il nostro punto pickup. Ti invitiamo a passare a ritirarlo entro 48 ore.';
+            break;
+        case 'in_arrivo':
+            $body = 'il tuo pacco' . $trackingInfo . ' è in arrivo' . ($expectedText !== '' ? ' con consegna prevista il ' . $expectedText : '') . '. Ti avviseremo non appena sarà disponibile al ritiro.';
+            break;
+        default:
+            $body = 'abbiamo registrato un aggiornamento relativo al tuo pacco' . $trackingInfo . '. Ti contatteremo con ulteriori dettagli a breve.';
+            break;
+    }
+
+    $message = 'Gentile ' . $recipientName . ', ' . $body . "\n\nCordiali saluti,\nTeam Ag Servizi";
+    return trim($message);
+}
+
 function pickup_whatsapp_message_template(array $package): string
 {
     $name = trim((string) ($package['customer_name'] ?? ''));
@@ -781,7 +882,7 @@ function pickup_whatsapp_message_template(array $package): string
             break;
     }
 
-    $message = 'Ciao ' . $recipientName . ', ' . $body . "\n\nGrazie,\nTeam Coresuite Pickup";
+    $message = 'Ciao ' . $recipientName . ', ' . $body . "\n\nGrazie,\nTeam Ag Servizi";
     return trim($message);
 }
 

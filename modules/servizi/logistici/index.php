@@ -137,12 +137,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $packageId = (int) ($_POST['package_id'] ?? 0);
             $channel = clean_input($_POST['channel'] ?? '', 16);
-            $message = trim((string) ($_POST['message'] ?? ''));
+            $messageInput = trim((string) ($_POST['message'] ?? ''));
+            $message = $messageInput;
             if ($packageId <= 0 || $channel === '') {
                 throw new InvalidArgumentException('Richiesta notifica non valida.');
-            }
-            if ($message === '') {
-                throw new InvalidArgumentException('Il messaggio è obbligatorio.');
             }
 
             $package = get_package_details($packageId);
@@ -156,12 +154,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $fallbackUrl = null;
             if ($channel === 'email') {
                 $recipient = trim((string) ($_POST['recipient'] ?? ''));
+                if ($recipient === '' && !empty($package['customer_email'])) {
+                    $recipient = (string) $package['customer_email'];
+                }
                 $subject = clean_input($_POST['subject'] ?? '', 160);
                 if ($subject === '') {
-                    $subject = 'Aggiornamento pacco pickup #' . $package['tracking'];
+                    $subject = pickup_email_subject_template($package);
                 }
+                $message = $messageInput !== '' ? $messageInput : pickup_email_message_template($package);
+                if ($message === '') {
+                    throw new InvalidArgumentException('Il messaggio è obbligatorio.');
+                }
+                if ($recipient === '') {
+                    throw new InvalidArgumentException('Destinatario email mancante.');
+                }
+
                 $result = send_notification_email($recipient, $subject, $message);
                 $meta['recipient'] = $recipient;
+                $meta['subject'] = $subject;
             } elseif ($channel === 'whatsapp') {
                 $recipientRaw = trim((string) ($_POST['recipient'] ?? $package['customer_phone']));
                 $normalizedRecipient = preg_replace('/[^0-9+]/', '', $recipientRaw);
@@ -170,6 +180,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 $meta['recipient'] = $normalizedRecipient;
+                $message = $messageInput !== '' ? $messageInput : pickup_whatsapp_message_template($package);
+                if ($message === '') {
+                    throw new InvalidArgumentException('Il messaggio è obbligatorio.');
+                }
                 $meta['message_preview'] = $message;
 
                 $apiUrl = env('WHATSAPP_API_URL', '');
@@ -435,7 +449,12 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <select class="form-select" id="email_package" name="package_id" required data-pickup-package-select>
                                     <option value="">Seleziona</option>
                                     <?php foreach ($packages as $package): ?>
-                                        <option value="<?php echo (int) $package['id']; ?>"><?php echo sanitize_output('#' . $package['tracking'] . ' - ' . $package['customer_name']); ?></option>
+                                        <option
+                                            value="<?php echo (int) $package['id']; ?>"
+                                            data-email="<?php echo sanitize_output($package['customer_email'] ?? ''); ?>"
+                                            data-subject="<?php echo sanitize_output(pickup_email_subject_template($package)); ?>"
+                                            data-message="<?php echo sanitize_output(pickup_email_message_template($package)); ?>"
+                                        ><?php echo sanitize_output('#' . $package['tracking'] . ' - ' . $package['customer_name']); ?></option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>

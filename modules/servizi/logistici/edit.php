@@ -34,6 +34,7 @@ $couriers = get_all_couriers();
 $data = [
     'customer_name' => $package['customer_name'] ?? '',
     'customer_phone' => $package['customer_phone'] ?? '',
+    'customer_email' => $package['customer_email'] ?? '',
     'tracking' => $package['tracking'] ?? '',
     'status' => $package['status'] ?? 'in_arrivo',
     'courier_id' => $package['courier_id'] ?? '',
@@ -48,6 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $data['customer_name'] = trim((string) ($_POST['customer_name'] ?? ''));
     $data['customer_phone'] = trim((string) ($_POST['customer_phone'] ?? ''));
+    $data['customer_email'] = trim((string) ($_POST['customer_email'] ?? ''));
     $data['tracking'] = trim((string) ($_POST['tracking'] ?? ''));
     $data['status'] = (string) ($_POST['status'] ?? $data['status']);
     $data['courier_id'] = (string) ($_POST['courier_id'] ?? '');
@@ -58,6 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         update_package($id, [
             'customer_name' => $data['customer_name'],
             'customer_phone' => $data['customer_phone'],
+            'customer_email' => $data['customer_email'],
             'tracking' => $data['tracking'],
             'status' => $data['status'],
             'courier_id' => $data['courier_id'] !== '' ? (int) $data['courier_id'] : null,
@@ -105,6 +108,10 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         <div class="col-md-6">
                             <label class="form-label" for="customer_phone">Telefono cliente</label>
                             <input class="form-control" id="customer_phone" name="customer_phone" value="<?php echo sanitize_output($data['customer_phone']); ?>" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="customer_email">Email cliente</label>
+                            <input class="form-control" id="customer_email" name="customer_email" type="email" value="<?php echo sanitize_output($data['customer_email']); ?>">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label" for="tracking">Codice tracking</label>
