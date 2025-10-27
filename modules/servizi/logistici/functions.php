@@ -78,6 +78,26 @@ function pickup_relative_path(string $absolutePath): string
     return $absolutePath;
 }
 
+function pickup_public_url(?string $path): string
+{
+    $path = trim((string) $path);
+    if ($path === '') {
+        return '';
+    }
+
+    if (preg_match('#^https?://#i', $path)) {
+        return $path;
+    }
+
+    $normalized = '/' . ltrim($path, '/');
+    $baseUrl = rtrim(env('APP_URL', ''), '/');
+    if ($baseUrl === '') {
+        return $normalized;
+    }
+
+    return $baseUrl . $normalized;
+}
+
 function pickup_random_numeric_code(int $length = 6): string
 {
     $length = max(4, min($length, 10));
@@ -1116,10 +1136,12 @@ function notify_customer_event(int $packageId, string $eventType, array $context
         'customer_name' => $package['customer_name'] ?? 'Cliente',
         'tracking' => $package['tracking'] ?? '',
         'location_name' => $package['location_name'] ?? 'il punto ritiro',
+        'location_address' => $package['location_address'] ?? '',
         'otp' => $context['otp'] ?? '',
         'expiration_date' => $expiresAt ? format_datetime_locale($expiresAt) : '',
         'expiration_time' => $expiresAt ? format_datetime_locale($expiresAt) : '',
         'days_in_storage' => $context['days_in_storage'] ?? null,
+        'qr_url' => pickup_public_url($package['qr_code_path'] ?? ''),
     ], $context);
 
     if ($data['days_in_storage'] === null && !empty($package['updated_at'])) {
@@ -2108,6 +2130,9 @@ function pickup_email_message_template(array $package): string
     $status = $package['status'] ?? 'in_arrivo';
     $expectedAt = $package['expected_at'] ?? null;
     $expectedText = '';
+    $locationName = trim((string) ($package['location_name'] ?? ''));
+    $locationAddress = trim((string) ($package['location_address'] ?? ''));
+    $qrUrl = pickup_public_url($package['qr_code_path'] ?? '');
 
     if ($expectedAt) {
         $formatted = format_datetime_locale($expectedAt);
@@ -2135,7 +2160,23 @@ function pickup_email_message_template(array $package): string
             break;
     }
 
-    $message = 'Gentile ' . $recipientName . ', ' . $body . "\n\nCordiali saluti,\nTeam Ag Servizi";
+    $details = [];
+    if ($locationName !== '') {
+        $details[] = 'Punto ritiro: ' . $locationName;
+    }
+    if ($locationAddress !== '') {
+        $details[] = 'Indirizzo: ' . $locationAddress;
+    }
+    if ($qrUrl !== '') {
+        $details[] = 'QR Code per il ritiro: ' . $qrUrl;
+    }
+
+    $message = 'Gentile ' . $recipientName . ', ' . $body;
+    if ($details) {
+        $message .= "\n\n" . implode("\n", $details);
+    }
+
+    $message .= "\n\nCordiali saluti,\nTeam Ag Servizi";
     return trim($message);
 }
 
@@ -2148,6 +2189,9 @@ function pickup_whatsapp_message_template(array $package): string
     $status = $package['status'] ?? 'in_arrivo';
     $expectedAt = $package['expected_at'] ?? null;
     $expectedText = '';
+    $locationName = trim((string) ($package['location_name'] ?? ''));
+    $locationAddress = trim((string) ($package['location_address'] ?? ''));
+    $qrUrl = pickup_public_url($package['qr_code_path'] ?? '');
 
     if ($expectedAt) {
         $formatted = format_datetime_locale($expectedAt);
@@ -2175,7 +2219,23 @@ function pickup_whatsapp_message_template(array $package): string
             break;
     }
 
-    $message = 'Ciao ' . $recipientName . ', ' . $body . "\n\nGrazie,\nTeam Ag Servizi";
+    $details = [];
+    if ($locationName !== '') {
+        $details[] = 'Punto ritiro: ' . $locationName;
+    }
+    if ($locationAddress !== '') {
+        $details[] = 'Indirizzo: ' . $locationAddress;
+    }
+    if ($qrUrl !== '') {
+        $details[] = 'QR Code: ' . $qrUrl;
+    }
+
+    $message = 'Ciao ' . $recipientName . ', ' . $body;
+    if ($details) {
+        $message .= "\n" . implode("\n", $details);
+    }
+
+    $message .= "\n\nGrazie,\nTeam Ag Servizi";
     return trim($message);
 }
 
