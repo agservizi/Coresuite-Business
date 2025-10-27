@@ -1,10 +1,11 @@
 <?php
+declare(strict_types=1);
+
 require_once __DIR__ . '/../../../includes/auth.php';
 require_once __DIR__ . '/../../../includes/db_connect.php';
 require_once __DIR__ . '/../../../includes/helpers.php';
 
 require_role('Admin', 'Operatore', 'Manager');
-$pageTitle = 'Modifica pickup';
 
 $id = (int) ($_GET['id'] ?? 0);
 if ($id <= 0) {
@@ -12,71 +13,75 @@ if ($id <= 0) {
     exit;
 }
 
-$stmt = $pdo->prepare('SELECT * FROM spedizioni WHERE id = :id');
-$stmt->execute([':id' => $id]);
-$record = $stmt->fetch();
-if (!$record) {
-    header('Location: index.php?notfound=1');
+if (!defined('CORESUITE_PICKUP_BOOTSTRAP')) {
+    define('CORESUITE_PICKUP_BOOTSTRAP', true);
+}
+
+require_once __DIR__ . '/functions.php';
+
+ensure_pickup_tables();
+
+$package = get_package_details($id);
+if (!$package) {
+    add_flash('warning', 'Pickup non trovato.');
+    header('Location: index.php');
     exit;
 }
 
-$clients = $pdo->query('SELECT id, nome, cognome FROM clienti ORDER BY cognome, nome')->fetchAll();
-$types = ['Deposito pacchi', 'Ritiro pacchi'];
-$statuses = ['Registrato', 'In attesa di ritiro', 'Consegnato', 'Problema'];
+$statuses = pickup_statuses();
+$couriers = get_all_couriers();
 
-if (!in_array($record['tipo_spedizione'], $types, true)) {
-    $types[] = $record['tipo_spedizione'];
-}
-if (!in_array($record['stato'], $statuses, true)) {
-    $statuses[] = $record['stato'];
-}
+$data = [
+    'customer_name' => $package['customer_name'] ?? '',
+    'customer_phone' => $package['customer_phone'] ?? '',
+    'tracking' => $package['tracking'] ?? '',
+    'status' => $package['status'] ?? 'in_arrivo',
+    'courier_id' => $package['courier_id'] ?? '',
+    'expected_at' => $package['expected_at'] ? substr($package['expected_at'], 0, 10) : '',
+    'notes' => $package['notes'] ?? '',
+];
 
-$data = $record;
 $errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $fields = ['cliente_id', 'tipo_spedizione', 'mittente', 'destinatario', 'tracking_number', 'stato', 'note'];
-    foreach ($fields as $field) {
-        $data[$field] = trim($_POST[$field] ?? '');
-    }
+    require_valid_csrf();
 
-    if ((int) $data['cliente_id'] <= 0) {
-        $errors[] = 'Seleziona un cliente valido.';
-    }
-    if (!in_array($data['tipo_spedizione'], $types, true)) {
-        $errors[] = 'Tipo richiesta non valido.';
-    }
-    if ($data['mittente'] === '' || $data['destinatario'] === '') {
-        $errors[] = 'Mittente e destinatario sono obbligatori.';
-    }
-    if ($data['tracking_number'] === '') {
-        $errors[] = 'Inserisci un codice pickup.';
-    }
-    if (!in_array($data['stato'], $statuses, true)) {
-        $errors[] = 'Stato non valido.';
-    }
+    $data['customer_name'] = trim((string) ($_POST['customer_name'] ?? ''));
+    $data['customer_phone'] = trim((string) ($_POST['customer_phone'] ?? ''));
+    $data['tracking'] = trim((string) ($_POST['tracking'] ?? ''));
+    $data['status'] = (string) ($_POST['status'] ?? $data['status']);
+    $data['courier_id'] = (string) ($_POST['courier_id'] ?? '');
+    $data['expected_at'] = trim((string) ($_POST['expected_at'] ?? ''));
+    $data['notes'] = trim((string) ($_POST['notes'] ?? ''));
 
-    if (!$errors) {
-        $stmt = $pdo->prepare('UPDATE spedizioni SET cliente_id = :cliente_id, tipo_spedizione = :tipo_spedizione, mittente = :mittente, destinatario = :destinatario, tracking_number = :tracking_number, stato = :stato, note = :note WHERE id = :id');
-        $stmt->execute([
-            ':cliente_id' => (int) $data['cliente_id'],
-            ':tipo_spedizione' => $data['tipo_spedizione'],
-            ':mittente' => $data['mittente'],
-            ':destinatario' => $data['destinatario'],
-            ':tracking_number' => $data['tracking_number'],
-            ':stato' => $data['stato'],
-            ':note' => $data['note'],
-            ':id' => $id,
+    try {
+        update_package($id, [
+            'customer_name' => $data['customer_name'],
+            'customer_phone' => $data['customer_phone'],
+            'tracking' => $data['tracking'],
+            'status' => $data['status'],
+            'courier_id' => $data['courier_id'] !== '' ? (int) $data['courier_id'] : null,
+            'expected_at' => $data['expected_at'],
+            'notes' => $data['notes'],
         ]);
-        header('Location: view.php?id=' . $id . '&updated=1');
+
+        add_flash('success', 'Pickup aggiornato correttamente.');
+        header('Location: view.php?id=' . $id);
         exit;
+    } catch (Throwable $exception) {
+        $errors[] = $exception->getMessage();
     }
 }
+
+$pageTitle = 'Modifica pickup';
+$extraStyles = [asset('modules/servizi/logistici/css/style.css')];
+$extraScripts = [asset('modules/servizi/logistici/js/script.js')];
+$formToken = csrf_token();
 
 require_once __DIR__ . '/../../../includes/header.php';
 require_once __DIR__ . '/../../../includes/sidebar.php';
 ?>
-<div class="flex-grow-1 d-flex flex-column min-vh-100">
+<div class="flex-grow-1 d-flex flex-column min-vh-100 pickup-module">
     <?php require_once __DIR__ . '/../../../includes/topbar.php'; ?>
     <main class="content-wrapper">
         <div class="mb-4">
@@ -91,48 +96,44 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     <div class="alert alert-warning"><?php echo implode('<br>', array_map('sanitize_output', $errors)); ?></div>
                 <?php endif; ?>
                 <form method="post" novalidate>
+                    <input type="hidden" name="_token" value="<?php echo $formToken; ?>">
                     <div class="row g-4">
                         <div class="col-md-6">
-                            <label class="form-label" for="cliente_id">Cliente</label>
-                            <select class="form-select" id="cliente_id" name="cliente_id">
-                                <?php foreach ($clients as $client): ?>
-                                    <option value="<?php echo (int) $client['id']; ?>" <?php echo ((int) $data['cliente_id'] === (int) $client['id']) ? 'selected' : ''; ?>>
-                                        <?php echo sanitize_output($client['cognome'] . ' ' . $client['nome']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
+                            <label class="form-label" for="customer_name">Nome cliente</label>
+                            <input class="form-control" id="customer_name" name="customer_name" value="<?php echo sanitize_output($data['customer_name']); ?>" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="customer_phone">Telefono cliente</label>
+                            <input class="form-control" id="customer_phone" name="customer_phone" value="<?php echo sanitize_output($data['customer_phone']); ?>" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="tracking">Codice tracking</label>
+                            <input class="form-control" id="tracking" name="tracking" value="<?php echo sanitize_output($data['tracking']); ?>" required>
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label" for="tipo_spedizione">Tipo richiesta</label>
-                            <select class="form-select" id="tipo_spedizione" name="tipo_spedizione">
-                                <?php foreach ($types as $type): ?>
-                                    <option value="<?php echo $type; ?>" <?php echo $data['tipo_spedizione'] === $type ? 'selected' : ''; ?>><?php echo $type; ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label" for="stato">Stato</label>
-                            <select class="form-select" id="stato" name="stato">
+                            <label class="form-label" for="status">Stato</label>
+                            <select class="form-select" id="status" name="status">
                                 <?php foreach ($statuses as $status): ?>
-                                    <option value="<?php echo $status; ?>" <?php echo $data['stato'] === $status ? 'selected' : ''; ?>><?php echo $status; ?></option>
+                                    <option value="<?php echo $status; ?>" <?php echo $status === $data['status'] ? 'selected' : ''; ?>><?php echo pickup_status_label($status); ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label" for="mittente">Mittente</label>
-                            <input class="form-control" id="mittente" name="mittente" value="<?php echo sanitize_output($data['mittente']); ?>" required>
+                        <div class="col-md-3">
+                            <label class="form-label" for="courier_id">Corriere</label>
+                            <select class="form-select" id="courier_id" name="courier_id">
+                                <option value="">Nessuno</option>
+                                <?php foreach ($couriers as $courier): ?>
+                                    <option value="<?php echo (int) $courier['id']; ?>" <?php echo (string) $courier['id'] === (string) $data['courier_id'] ? 'selected' : ''; ?>><?php echo sanitize_output($courier['name']); ?></option>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label" for="destinatario">Destinatario</label>
-                            <input class="form-control" id="destinatario" name="destinatario" value="<?php echo sanitize_output($data['destinatario']); ?>" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label" for="tracking_number">Codice pickup</label>
-                            <input class="form-control" id="tracking_number" name="tracking_number" value="<?php echo sanitize_output($data['tracking_number']); ?>" required>
+                        <div class="col-md-4">
+                            <label class="form-label" for="expected_at">Data prevista</label>
+                            <input class="form-control" id="expected_at" name="expected_at" type="date" value="<?php echo sanitize_output($data['expected_at']); ?>">
                         </div>
                         <div class="col-12">
-                            <label class="form-label" for="note">Note</label>
-                            <textarea class="form-control" id="note" name="note" rows="4"><?php echo sanitize_output($data['note']); ?></textarea>
+                            <label class="form-label" for="notes">Note interne</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="4"><?php echo sanitize_output($data['notes']); ?></textarea>
                         </div>
                     </div>
                     <div class="d-flex justify-content-end gap-2 mt-4">

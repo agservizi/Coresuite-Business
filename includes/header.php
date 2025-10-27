@@ -16,6 +16,11 @@ $flashMessages = get_flashes();
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" referrerpolicy="no-referrer" />
     <link href="https://cdn.datatables.net/v/bs5/dt-1.13.8/datatables.min.css" rel="stylesheet">
     <link href="<?php echo asset('assets/css/custom.css'); ?>" rel="stylesheet">
+    <?php if (!empty($extraStyles) && is_array($extraStyles)): ?>
+        <?php foreach ($extraStyles as $styleAsset): ?>
+            <link href="<?php echo sanitize_output($styleAsset); ?>" rel="stylesheet">
+        <?php endforeach; ?>
+    <?php endif; ?>
 </head>
 <body class="layout-wrapper">
 <div id="app" class="d-flex">

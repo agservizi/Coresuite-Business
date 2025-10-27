@@ -221,6 +221,69 @@ function update_package_status(int $packageId, string $status): array
     return $details;
 }
 
+function update_package(int $packageId, array $data): bool
+{
+    $pdo = pickup_db();
+    $existing = get_package_details($packageId);
+    if (!$existing) {
+        throw new RuntimeException('Pacco non trovato.');
+    }
+
+    $tracking = clean_input($data['tracking'] ?? '', 100);
+    $customerName = clean_input($data['customer_name'] ?? '', 150);
+    $customerPhone = clean_input($data['customer_phone'] ?? '', 50);
+    $status = clean_input($data['status'] ?? $existing['status'], 20);
+    $courierId = isset($data['courier_id']) ? (int) $data['courier_id'] : null;
+    $expectedAt = clean_input($data['expected_at'] ?? '', 32);
+    $notes = clean_input($data['notes'] ?? '', 500);
+
+    if ($tracking === '' || $customerName === '' || $customerPhone === '') {
+        throw new InvalidArgumentException('Tracking, nome cliente e telefono sono obbligatori.');
+    }
+
+    if (!in_array($status, pickup_statuses(), true)) {
+        throw new InvalidArgumentException('Stato pacco non valido.');
+    }
+
+    if ($courierId !== null && $courierId > 0 && !courier_exists($courierId)) {
+        throw new InvalidArgumentException('Corriere selezionato non valido.');
+    }
+
+    if (strcasecmp($tracking, (string) $existing['tracking']) !== 0) {
+        $stmt = $pdo->prepare('SELECT id FROM pickup_packages WHERE tracking = :tracking AND id <> :id LIMIT 1');
+        $stmt->execute([
+            ':tracking' => $tracking,
+            ':id' => $packageId,
+        ]);
+        if ($stmt->fetch()) {
+            throw new RuntimeException('Tracking già registrato su un altro pacco.');
+        }
+    }
+
+    $expectedDate = null;
+    if ($expectedAt !== '') {
+        $expectedDate = \DateTime::createFromFormat('Y-m-d', $expectedAt) ?: \DateTime::createFromFormat('Y-m-d H:i', $expectedAt);
+        if (!$expectedDate) {
+            throw new InvalidArgumentException('Data prevista non valida.');
+        }
+        $expectedDate = $expectedDate->format('Y-m-d H:i:s');
+    }
+
+    $stmt = $pdo->prepare('UPDATE pickup_packages SET tracking = :tracking, customer_name = :customer_name, customer_phone = :customer_phone, courier_id = :courier_id, status = :status, expected_at = :expected_at, notes = :notes, updated_at = NOW() WHERE id = :id');
+    $stmt->execute([
+        ':tracking' => $tracking,
+        ':customer_name' => $customerName,
+        ':customer_phone' => $customerPhone,
+        ':courier_id' => $courierId ?: null,
+        ':status' => $status,
+        ':expected_at' => $expectedDate,
+        ':notes' => $notes !== '' ? $notes : null,
+        ':id' => $packageId,
+    ]);
+
+    return $stmt->rowCount() > 0;
+}
+
 function delete_package(int $packageId): bool
 {
     $pdo = pickup_db();
@@ -400,7 +463,7 @@ function get_all_couriers(): array
     return $stmt->fetchAll();
 }
 
-function log_notification(int $packageId, string $type, string $status, string $message = '', ?array $meta = null): void
+function log_notification(int $packageId, string $type, string $status, string $message = '', ?array $meta = null): int
 {
     $pdo = pickup_db();
     $metaValue = null;
@@ -420,6 +483,8 @@ function log_notification(int $packageId, string $type, string $status, string $
         ':message' => $message,
         ':meta' => $metaValue,
     ]);
+
+    return (int) $pdo->lastInsertId();
 }
 
 function send_notification_email(string $email, string $subject, string $message): bool
@@ -694,6 +759,16 @@ function get_recent_notifications(int $limit = 10): array
 {
     $pdo = pickup_db();
     $stmt = $pdo->prepare('SELECT n.*, p.tracking FROM pickup_notifications n INNER JOIN pickup_packages p ON p.id = n.package_id ORDER BY n.created_at DESC LIMIT :limit');
+    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $stmt->execute();
+    return $stmt->fetchAll();
+}
+
+function get_notifications_for_package(int $packageId, int $limit = 20): array
+{
+    $pdo = pickup_db();
+    $stmt = $pdo->prepare('SELECT * FROM pickup_notifications WHERE package_id = :package_id ORDER BY created_at DESC LIMIT :limit');
+    $stmt->bindValue(':package_id', $packageId, PDO::PARAM_INT);
     $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
     $stmt->execute();
     return $stmt->fetchAll();
