@@ -88,6 +88,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (logTarget && payload.entryHtml) {
                     logTarget.insertAdjacentHTML('afterbegin', payload.entryHtml);
                 }
+                if (payload.fallbackUrl) {
+                    const opened = window.open(payload.fallbackUrl, '_blank');
+                    if (!opened) {
+                        alert((payload.message || 'Apri WhatsApp per completare l\'invio') + '\n\nLink: ' + payload.fallbackUrl);
+                        return;
+                    }
+                }
                 alert(payload.message || 'Notifica inviata');
             } catch (error) {
                 console.error(error);

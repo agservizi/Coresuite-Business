@@ -152,6 +152,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $meta = ['channel' => $channel];
             $result = false;
+            $notificationStatus = 'inviata';
+            $fallbackUrl = null;
             if ($channel === 'email') {
                 $recipient = trim((string) ($_POST['recipient'] ?? ''));
                 $subject = clean_input($_POST['subject'] ?? '', 160);
@@ -161,9 +163,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $result = send_notification_email($recipient, $subject, $message);
                 $meta['recipient'] = $recipient;
             } elseif ($channel === 'whatsapp') {
-                $recipient = trim((string) ($_POST['recipient'] ?? $package['customer_phone']));
-                $result = send_notification_whatsapp($recipient, $message);
-                $meta['recipient'] = $recipient;
+                $recipientRaw = trim((string) ($_POST['recipient'] ?? $package['customer_phone']));
+                $normalizedRecipient = preg_replace('/[^0-9+]/', '', $recipientRaw);
+                if ($normalizedRecipient === '') {
+                    throw new InvalidArgumentException('Numero di telefono non valido.');
+                }
+
+                $meta['recipient'] = $normalizedRecipient;
+                $meta['message_preview'] = $message;
+
+                $apiUrl = env('WHATSAPP_API_URL', '');
+                $apiToken = env('WHATSAPP_API_TOKEN', '');
+
+                if ($apiUrl === '' || $apiToken === '') {
+                    $waNumber = ltrim($normalizedRecipient, '+');
+                    $fallbackUrl = 'https://wa.me/' . rawurlencode($waNumber) . '?text=' . rawurlencode($message);
+                    $result = true;
+                    $notificationStatus = 'manuale';
+                } else {
+                    $result = send_notification_whatsapp($normalizedRecipient, $message);
+                }
             } else {
                 throw new InvalidArgumentException('Canale di notifica non supportato.');
             }
@@ -172,21 +191,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException('Impossibile inviare la notifica.');
             }
 
-            $logId = log_notification($packageId, $channel, 'inviata', $message, $meta);
+            $logId = log_notification($packageId, $channel, $notificationStatus, $message, $meta);
 
             $entryHtml = sprintf(
-                '<div class="list-group-item bg-transparent border-secondary-subtle text-body-secondary"><div class="d-flex justify-content-between"><span class="text-warning text-uppercase fw-semibold">%s</span><span class="small">%s</span></div><div class="small mt-2 text-body">%s</div><div class="small mt-2 text-secondary">%s</div></div>',
+                '<div class="list-group-item bg-transparent border-secondary-subtle text-body-secondary"><div class="d-flex justify-content-between"><span class="text-warning text-uppercase fw-semibold">%s</span><span class="small">%s</span></div><div class="small text-secondary">Stato: %s</div><div class="small mt-2 text-body">%s</div><div class="small mt-2 text-secondary">%s</div></div>',
                 sanitize_output(strtoupper($channel)),
                 sanitize_output(format_datetime_locale(date('Y-m-d H:i:s'))),
+                sanitize_output(ucfirst($notificationStatus)),
                 nl2br(sanitize_output($message)),
                 sanitize_output('Destinatario: ' . ($meta['recipient'] ?? 'N/D'))
             );
 
             echo json_encode([
                 'success' => true,
-                'message' => 'Notifica inviata con successo.',
+                'message' => $fallbackUrl ? 'API WhatsApp non configurata: apri WhatsApp per completare l\'invio.' : 'Notifica inviata con successo.',
                 'entryHtml' => $entryHtml,
                 'notificationId' => $logId,
+                'fallbackUrl' => $fallbackUrl,
+                'status' => $notificationStatus,
             ], JSON_THROW_ON_ERROR);
         } catch (Throwable $exception) {
             http_response_code(400);
@@ -473,6 +495,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                         <span class="text-warning text-uppercase fw-semibold"><?php echo sanitize_output($notification['channel']); ?></span>
                                         <span class="small"><?php echo sanitize_output(format_datetime_locale($notification['created_at'] ?? '')); ?></span>
                                     </div>
+                                    <div class="small text-secondary">Stato: <?php echo sanitize_output(ucfirst($notification['status'] ?? '')); ?></div>
                                     <div class="small text-secondary">Tracking #<?php echo sanitize_output($notification['tracking']); ?></div>
                                     <div class="small mt-2 text-body"><?php echo nl2br(sanitize_output($notification['message'])); ?></div>
                                 </div>
