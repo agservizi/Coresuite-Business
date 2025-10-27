@@ -270,6 +270,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Monitoraggio pacchi, notifiche clienti e archivio ritiri.</p>
             </div>
             <div class="toolbar-actions d-flex flex-wrap gap-2">
+                <button class="btn btn-outline-warning" type="button" data-bs-toggle="modal" data-bs-target="#pickupCheckinModal"><i class="fa-solid fa-qrcode me-2"></i>Ritiro con codice</button>
                 <a class="btn btn-warning text-dark" href="create.php"><i class="fa-solid fa-circle-plus me-2"></i>Nuovo pickup</a>
                 <a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-rotate"></i></a>
             </div>
@@ -559,5 +560,33 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             </div>
         </div>
     </main>
+</div>
+<div class="modal fade" id="pickupCheckinModal" tabindex="-1" aria-labelledby="pickupCheckinModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="pickupCheckinModalLabel">Conferma ritiro</h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" action="checkin.php" id="pickupCheckinForm">
+                    <input type="hidden" name="_token" value="<?php echo $formToken; ?>">
+                    <div class="mb-3">
+                        <label class="form-label" for="checkin_tracking">Tracking</label>
+                        <input class="form-control" id="checkin_tracking" name="tracking" placeholder="Inserisci tracking" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="checkin_code">Codice OTP / QR</label>
+                        <input class="form-control" id="checkin_code" name="code" placeholder="Codice OTP oppure link QR" required>
+                        <small class="form-text text-muted">Incolla il codice OTP oppure scansiona il QR e inserisci il codice mostrato.</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="submit" form="pickupCheckinForm" class="btn btn-warning text-dark">Conferma ritiro</button>
+            </div>
+        </div>
+    </div>
 </div>
 <?php require_once __DIR__ . '/../../../includes/footer.php'; ?>

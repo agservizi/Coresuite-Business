@@ -98,6 +98,58 @@ function pickup_public_url(?string $path): string
     return $baseUrl . $normalized;
 }
 
+function pickup_extract_package_id_from_code(string $value): ?int
+{
+    $value = trim($value);
+    if ($value === '') {
+        return null;
+    }
+
+    if (preg_match('/^#?(\d{1,10})$/', $value, $matches)) {
+        return (int) $matches[1];
+    }
+
+    if (preg_match('/[?&](?:id|package_id)=([0-9]+)/', $value, $matches)) {
+        return (int) $matches[1];
+    }
+
+    if (preg_match('/pickup[^0-9]*([0-9]+)/i', $value, $matches)) {
+        return (int) $matches[1];
+    }
+
+    $url = $value;
+    if (!preg_match('#^https?://#i', $url)) {
+        $baseUrl = rtrim(env('APP_URL', ''), '/');
+        if ($baseUrl !== '') {
+            $url = $baseUrl . '/' . ltrim($url, '/');
+        } else {
+            $url = 'https://placeholder.local/' . ltrim($url, '/');
+        }
+    }
+
+    $parsed = parse_url($url);
+    if (!$parsed) {
+        return null;
+    }
+
+    $params = [];
+    if (!empty($parsed['query'])) {
+        parse_str($parsed['query'], $params);
+        if (isset($params['id'])) {
+            return (int) $params['id'];
+        }
+        if (isset($params['package_id'])) {
+            return (int) $params['package_id'];
+        }
+    }
+
+    if (!empty($parsed['path']) && preg_match('/(\d+)/', $parsed['path'], $matches)) {
+        return (int) $matches[1];
+    }
+
+    return null;
+}
+
 function pickup_random_numeric_code(int $length = 6): string
 {
     $length = max(4, min($length, 10));
@@ -1317,6 +1369,27 @@ function confirm_pickup_with_otp(int $packageId, string $otp): array
     return [
         'status' => $statusDetails,
         'otp_id' => $otpRow['id'],
+    ];
+}
+
+function confirm_pickup_with_qr(int $packageId): array
+{
+    $package = get_package_details($packageId);
+    if (!$package) {
+        throw new RuntimeException('Pacco non trovato.');
+    }
+
+    $previousStatus = $package['status'] ?? null;
+    $statusDetails = update_package_status($packageId, 'ritirato', [
+        'auto_notify' => false,
+    ]);
+
+    track_package_history($packageId, 'qr_confirmed', $previousStatus, $statusDetails['status'] ?? 'ritirato', []);
+
+    notify_customer_event($packageId, 'picked_up');
+
+    return [
+        'status' => $statusDetails,
     ];
 }
 
