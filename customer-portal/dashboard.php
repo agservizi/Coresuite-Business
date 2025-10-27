@@ -29,191 +29,329 @@ $pageTitle = 'Dashboard';
     <?php include __DIR__ . '/includes/topbar.php'; ?>
 
     <main class="portal-content">
-        <div class="d-flex align-items-start align-items-md-center justify-content-between flex-column flex-md-row gap-3 mb-4">
-            <div>
-                <h1 class="h3 mb-1">Ciao <?= htmlspecialchars($customer['name'] ?? $customer['email'] ?? 'Cliente') ?> 👋</h1>
-                <p class="text-muted-soft mb-0">Qui trovi il riepilogo aggiornato dei tuoi pacchi.</p>
-            </div>
-            <div class="d-flex flex-wrap gap-2">
-                <button type="button" class="btn topbar-btn" data-bs-toggle="modal" data-bs-target="#reportPackageModal">
-                    <i class="fa-solid fa-plus"></i>
-                    <span class="topbar-btn-label">Segnala pacco</span>
-                </button>
-                <a class="btn topbar-btn" href="packages.php">
-                    <i class="fa-solid fa-boxes-stacked"></i>
-                    <span class="topbar-btn-label">Tutti i pacchi</span>
-                </a>
-            </div>
-        </div>
+        <?php
+        $pendingCount = (int) ($stats['pending_packages'] ?? 0);
+        $readyCount = (int) ($stats['ready_packages'] ?? 0);
+        $monthlyCount = (int) ($stats['monthly_delivered'] ?? 0);
+        $totalPackages = (int) ($stats['total_packages'] ?? 0);
+    $reportsCount = count($pendingReports);
+    $unreadCount = count($unreadNotifications);
 
-        <?php if (!empty($unreadNotifications)): ?>
-            <div class="alert alert-info alert-dismissible fade show shadow-sm border-0 mb-4" role="alert">
-                <div class="d-flex align-items-center gap-3">
-                    <span class="portal-stat-icon"><i class="fa-solid fa-bell"></i></span>
-                    <div>
-                        <strong>Hai <?= count($unreadNotifications) ?> notifiche non lette</strong>
-                        <div class="small text-muted">Ti consigliamo di leggerle per non perdere aggiornamenti importanti.</div>
-                    </div>
-                    <a class="btn btn-sm btn-outline-primary ms-auto" href="notifications.php">Apri notifiche</a>
-                </div>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Chiudi"></button>
-            </div>
-        <?php endif; ?>
+        if ($readyCount > 0) {
+            $heroSubtitle = sprintf('Hai %d pacchi pronti per il ritiro: passa in sede quando preferisci.', $readyCount);
+        } elseif ($pendingCount > 0) {
+            $heroSubtitle = sprintf('Ci sono %d segnalazioni in attesa di aggiornamenti dal team Coresuite.', $pendingCount);
+        } elseif ($totalPackages > 0) {
+            $heroSubtitle = "Tieni d'occhio la tua area per scoprire quando i pacchi saranno pronti.";
+        } else {
+            $heroSubtitle = "Inizia segnalando il prossimo pacco: ti aggiorneremo in tempo reale sullo stato.";
+        }
 
-        <div class="row g-4 mb-4">
-            <div class="col-12 col-md-6 col-xl-3">
-                <div class="portal-stat-card h-100">
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                        <span class="portal-stat-icon"><i class="fa-solid fa-box-open"></i></span>
-                        <span class="badge bg-light text-primary">In attesa</span>
-                    </div>
-                    <h2 class="display-6 fw-semibold mb-1"><?= $stats['pending_packages'] ?? 0 ?></h2>
-                    <p class="text-muted mb-0">Pacchi registrati ma non ancora arrivati al pickup point.</p>
-                </div>
-            </div>
-            <div class="col-12 col-md-6 col-xl-3">
-                <div class="portal-stat-card h-100">
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                        <span class="portal-stat-icon"><i class="fa-solid fa-truck-ramp-box"></i></span>
-                        <span class="badge bg-light text-success">Pronti</span>
-                    </div>
-                    <h2 class="display-6 fw-semibold mb-1"><?= $stats['ready_packages'] ?? 0 ?></h2>
-                    <p class="text-muted mb-0">I tuoi pacchi arrivati e pronti al ritiro presso la sede.</p>
-                </div>
-            </div>
-            <div class="col-12 col-md-6 col-xl-3">
-                <div class="portal-stat-card h-100">
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                        <span class="portal-stat-icon"><i class="fa-solid fa-calendar-check"></i></span>
-                        <span class="badge bg-light text-info">Questo mese</span>
-                    </div>
-                    <h2 class="display-6 fw-semibold mb-1"><?= $stats['monthly_delivered'] ?? 0 ?></h2>
-                    <p class="text-muted mb-0">Pacchi ritirati negli ultimi 30 giorni dal tuo account.</p>
-                </div>
-            </div>
-            <div class="col-12 col-md-6 col-xl-3">
-                <div class="portal-stat-card h-100">
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                        <span class="portal-stat-icon"><i class="fa-solid fa-circle-exclamation"></i></span>
-                        <span class="badge bg-light text-warning">Segnalazioni</span>
-                    </div>
-                    <h2 class="display-6 fw-semibold mb-1"><?= count($pendingReports) ?></h2>
-                    <p class="text-muted mb-0">Segnalazioni in attesa di revisione da parte del team Coresuite.</p>
-                </div>
-            </div>
-        </div>
+        $statusIconMap = [
+            'reported' => 'fa-clipboard-list',
+            'confirmed' => 'fa-circle-check',
+            'arrived' => 'fa-box-open',
+            'cancelled' => 'fa-ban',
+            'in_arrivo' => 'fa-truck-loading',
+            'consegnato' => 'fa-boxes-stacked',
+            'ritirato' => 'fa-hand-holding-box',
+            'in_giacenza' => 'fa-warehouse',
+            'in_giacenza_scaduto' => 'fa-triangle-exclamation'
+        ];
+        ?>
 
-        <div class="row g-4">
-            <div class="col-12 col-xl-8">
-                <div class="card mb-4 mb-xl-0">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <div>
-                            <h2 class="h5 mb-0">Ultimi pacchi</h2>
-                            <small class="text-muted">Gli ultimi aggiornamenti sui pacchi registrati</small>
+        <section class="dashboard-hero">
+            <div class="dashboard-hero-content">
+                <span class="dashboard-hero-pill">Aggiornamento operativo</span>
+                <h1 class="dashboard-hero-title">Bentornato <?= htmlspecialchars($customer['name'] ?? $customer['email'] ?? 'Cliente') ?> 👋</h1>
+                <p class="dashboard-hero-subtitle"><?= htmlspecialchars($heroSubtitle) ?></p>
+
+                <div class="dashboard-hero-actions">
+                    <button type="button" class="btn btn-light dashboard-hero-btn" data-bs-toggle="modal" data-bs-target="#reportPackageModal">
+                        <i class="fa-solid fa-plus"></i>
+                        Segnala pacco
+                    </button>
+                    <a class="btn btn-outline-light dashboard-hero-btn" href="packages.php">
+                        <i class="fa-solid fa-boxes-stacked"></i>
+                        Vedi tutti i pacchi
+                    </a>
+                    <a class="btn btn-outline-light dashboard-hero-btn" href="notifications.php">
+                        <i class="fa-solid fa-bell"></i>
+                        Notifiche
+                        <?php if ($unreadCount > 0): ?>
+                            <span class="badge bg-danger-subtle text-danger-emphasis ms-2"><?= $unreadCount ?></span>
+                        <?php endif; ?>
+                    </a>
+                </div>
+            </div>
+            <div class="dashboard-hero-stats">
+                <div class="dashboard-hero-stat">
+                    <span class="dashboard-hero-stat-label">Pronti al ritiro</span>
+                    <span class="dashboard-hero-stat-value"><?= number_format($readyCount, 0, ',', '.') ?></span>
+                    <span class="dashboard-hero-stat-hint">Aggiornato <?= date('d/m') ?></span>
+                </div>
+                <div class="dashboard-hero-stat">
+                    <span class="dashboard-hero-stat-label">Segnalazioni aperte</span>
+                    <span class="dashboard-hero-stat-value"><?= number_format($pendingCount, 0, ',', '.') ?></span>
+                    <span class="dashboard-hero-stat-hint">Monitorate dal team</span>
+                </div>
+                <div class="dashboard-hero-stat">
+                    <span class="dashboard-hero-stat-label">Ritirati nel mese</span>
+                    <span class="dashboard-hero-stat-value"><?= number_format($monthlyCount, 0, ',', '.') ?></span>
+                    <span class="dashboard-hero-stat-hint">Ultimi 30 giorni</span>
+                </div>
+                <div class="dashboard-hero-stat">
+                    <span class="dashboard-hero-stat-label">Totale pacchi</span>
+                    <span class="dashboard-hero-stat-value"><?= number_format($totalPackages, 0, ',', '.') ?></span>
+                    <span class="dashboard-hero-stat-hint">Dal primo accesso</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="dashboard-quick-actions">
+            <a class="dashboard-action-card" href="report.php">
+                <span class="dashboard-action-icon" data-variant="primary"><i class="fa-solid fa-clipboard"></i></span>
+                <div class="dashboard-action-content">
+                    <span class="dashboard-action-label">Nuova segnalazione</span>
+                    <p>Registra un nuovo pacco per iniziare il monitoraggio.</p>
+                </div>
+                <i class="fa-solid fa-arrow-right dashboard-action-arrow"></i>
+            </a>
+            <a class="dashboard-action-card" href="packages.php">
+                <span class="dashboard-action-icon" data-variant="success"><i class="fa-solid fa-box"></i></span>
+                <div class="dashboard-action-content">
+                    <span class="dashboard-action-label">Situazione pacchi</span>
+                    <p>Consulta lo stato dettagliato e scarica i documenti.</p>
+                </div>
+                <i class="fa-solid fa-arrow-right dashboard-action-arrow"></i>
+            </a>
+            <a class="dashboard-action-card" href="notifications.php">
+                <span class="dashboard-action-icon" data-variant="warning"><i class="fa-solid fa-bell"></i></span>
+                <div class="dashboard-action-content">
+                    <span class="dashboard-action-label">Centro notifiche</span>
+                    <p>Rivedi gli avvisi recenti e segna come letti quelli gestiti.</p>
+                </div>
+                <i class="fa-solid fa-arrow-right dashboard-action-arrow"></i>
+            </a>
+        </section>
+
+        <section class="dashboard-metrics">
+            <article class="portal-stat-card">
+                <div class="portal-stat-card-head">
+                    <span class="portal-stat-icon"><i class="fa-solid fa-box-open"></i></span>
+                    <span class="badge bg-light text-primary">In attesa</span>
+                </div>
+                <div class="portal-stat-card-body">
+                    <span class="portal-stat-value"><?= number_format($pendingCount, 0, ',', '.') ?></span>
+                    <p>Pacchi segnalati ma non ancora arrivati al punto Pickup.</p>
+                </div>
+            </article>
+            <article class="portal-stat-card">
+                <div class="portal-stat-card-head">
+                    <span class="portal-stat-icon"><i class="fa-solid fa-truck-ramp-box"></i></span>
+                    <span class="badge bg-light text-success">Pronti</span>
+                </div>
+                <div class="portal-stat-card-body">
+                    <span class="portal-stat-value"><?= number_format($readyCount, 0, ',', '.') ?></span>
+                    <p>Puntiamo a consegnarli entro 48 ore: riceverai un avviso appena disponibili.</p>
+                </div>
+            </article>
+            <article class="portal-stat-card">
+                <div class="portal-stat-card-head">
+                    <span class="portal-stat-icon"><i class="fa-solid fa-calendar-check"></i></span>
+                    <span class="badge bg-light text-info">Ultimi 30 giorni</span>
+                </div>
+                <div class="portal-stat-card-body">
+                    <span class="portal-stat-value"><?= number_format($monthlyCount, 0, ',', '.') ?></span>
+                    <p>Pacchi ritirati recentemente dal tuo team operativo.</p>
+                </div>
+            </article>
+            <article class="portal-stat-card">
+                <div class="portal-stat-card-head">
+                    <span class="portal-stat-icon"><i class="fa-solid fa-circle-exclamation"></i></span>
+                    <span class="badge bg-light text-warning">Follow-up</span>
+                </div>
+                <div class="portal-stat-card-body">
+                    <span class="portal-stat-value"><?= number_format($reportsCount, 0, ',', '.') ?></span>
+                    <p>Segnalazioni con attività aperta: ti aggiorniamo appena ci sono novità.</p>
+                </div>
+            </article>
+        </section>
+
+        <section class="dashboard-grid">
+            <div class="dashboard-column">
+                <div class="card dashboard-panel">
+                    <div class="card-header">
+                        <div class="dashboard-panel-heading">
+                            <div>
+                                <h2 class="dashboard-panel-title">Ultimi pacchi</h2>
+                                <p class="dashboard-panel-subtitle">Monitoriamo gli aggiornamenti in tempo reale</p>
+                            </div>
+                            <a class="btn btn-sm btn-outline-primary" href="packages.php">Vai all'elenco</a>
                         </div>
-                        <a class="btn btn-sm btn-outline-primary" href="packages.php">Vedi tutti</a>
                     </div>
                     <div class="card-body">
                         <?php if (empty($recentPackages)): ?>
-                            <div class="portal-empty-state">
-                                <i class="fa-solid fa-box-open"></i>
-                                <h3 class="h5">Ancora nessun pacco</h3>
-                                <p class="text-muted">Segnala il tuo primo pacco per iniziare a ricevere aggiornamenti.</p>
+                            <div class="dashboard-empty">
+                                <span class="dashboard-empty-icon"><i class="fa-solid fa-box"></i></span>
+                                <h3>Nessun pacco registrato</h3>
+                                <p>Segnala il primo pacco per iniziare a ricevere notifiche e aggiornamenti sul ritiro.</p>
                                 <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#reportPackageModal">
-                                    <i class="fa-solid fa-plus me-1"></i>Segnala pacco
+                                    <i class="fa-solid fa-plus me-2"></i>Segnala ora
                                 </button>
                             </div>
                         <?php else: ?>
-                            <div class="table-responsive">
-                                <table class="table align-middle mb-0">
-                                    <thead>
-                                        <tr class="text-muted">
-                                            <th>Tracking</th>
-                                            <th>Stato</th>
-                                            <th>Corriere</th>
-                                            <th>Registrato</th>
-                                            <th class="text-end">Azioni</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php foreach ($recentPackages as $package): ?>
-                                            <tr>
-                                                <td>
-                                                    <div class="fw-semibold package-tracking"><?= htmlspecialchars($package['tracking_code']) ?></div>
-                                                    <?php if (!empty($package['recipient_name'])): ?>
-                                                        <div class="text-muted small">Destinatario: <?= htmlspecialchars($package['recipient_name']) ?></div>
-                                                    <?php endif; ?>
-                                                </td>
-                                                <td><?= $pickupService->getStatusBadge($package['status']) ?></td>
-                                                <td><?= htmlspecialchars($package['courier_name'] ?? 'N/D') ?></td>
-                                                <td>
-                                                    <div><?= date('d/m/Y', strtotime($package['created_at'])) ?></div>
-                                                    <div class="text-muted small">ore <?= date('H:i', strtotime($package['created_at'])) ?></div>
-                                                </td>
-                                                <td class="text-end">
-                                                    <a class="btn btn-sm btn-outline-primary" href="packages.php?view=<?= (int) $package['id'] ?>" title="Vedi dettagli"><i class="fa-solid fa-eye"></i></a>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                </table>
+                            <div class="dashboard-list">
+                                <?php foreach ($recentPackages as $package): ?>
+                                    <?php
+                                    $status = $package['status'] ?? 'reported';
+                                    $statusIcon = $statusIconMap[$status] ?? 'fa-box';
+                                    ?>
+                                    <article class="dashboard-list-item">
+                                        <span class="dashboard-list-icon" data-status="<?= htmlspecialchars($status) ?>">
+                                            <i class="fa-solid <?= $statusIcon ?>"></i>
+                                        </span>
+                                        <div class="dashboard-list-content">
+                                            <div class="dashboard-list-header">
+                                                <span class="dashboard-list-title"><?= htmlspecialchars($package['tracking_code']) ?></span>
+                                                <span class="dashboard-list-badge"><?= $pickupService->getStatusBadge($status) ?></span>
+                                            </div>
+                                            <div class="dashboard-list-meta">
+                                                <span><i class="fa-solid fa-user"></i><?= htmlspecialchars($package['recipient_name'] ?: 'Destinatario non indicato') ?></span>
+                                                <span><i class="fa-solid fa-truck"></i><?= htmlspecialchars($package['courier_name'] ?? 'Corriere N/D') ?></span>
+                                                <span><i class="fa-regular fa-clock"></i><?= date('d/m H:i', strtotime($package['created_at'])) ?></span>
+                                            </div>
+                                        </div>
+                                        <div class="dashboard-list-actions">
+                                            <a class="btn btn-sm btn-outline-primary" href="packages.php?view=<?= (int) $package['id'] ?>">Dettagli</a>
+                                        </div>
+                                    </article>
+                                <?php endforeach; ?>
                             </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <div class="card dashboard-panel">
+                    <div class="card-header">
+                        <div class="dashboard-panel-heading">
+                            <div>
+                                <h2 class="dashboard-panel-title">Segnalazioni aperte</h2>
+                                <p class="dashboard-panel-subtitle">Pacchi che richiedono ancora un intervento</p>
+                            </div>
+                            <span class="badge bg-primary-subtle text-primary-emphasis"><?= $reportsCount ?></span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <?php if ($reportsCount === 0): ?>
+                            <div class="dashboard-empty dashboard-empty-compact">
+                                <span class="dashboard-empty-icon"><i class="fa-solid fa-circle-check"></i></span>
+                                <p>Tutte le segnalazioni risultano gestite. Ti avviseremo se dovessero presentarsi anomalie.</p>
+                            </div>
+                        <?php else: ?>
+                            <ul class="dashboard-report-list">
+                                <?php foreach ($pendingReports as $report): ?>
+                                    <li>
+                                        <div>
+                                            <strong><?= htmlspecialchars($report['tracking_code']) ?></strong>
+                                            <span class="badge bg-warning-subtle text-warning-emphasis ms-2">In attesa</span>
+                                        </div>
+                                        <div class="dashboard-report-meta">
+                                            <span><i class="fa-regular fa-calendar"></i><?= date('d/m/Y', strtotime($report['created_at'])) ?></span>
+                                            <?php if (!empty($report['notes'])): ?>
+                                                <span><i class="fa-regular fa-note-sticky"></i><?= htmlspecialchars($report['notes']) ?></span>
+                                            <?php endif; ?>
+                                        </div>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
                         <?php endif; ?>
                     </div>
                 </div>
             </div>
 
-            <div class="col-12 col-xl-4">
-                <div class="card mb-4">
+            <div class="dashboard-column dashboard-column-side">
+                <div class="card dashboard-panel">
                     <div class="card-header">
-                        <h2 class="h6 mb-0">Notifiche recenti</h2>
+                        <div class="dashboard-panel-heading">
+                            <div>
+                                <h2 class="dashboard-panel-title">Notifiche recenti</h2>
+                                <p class="dashboard-panel-subtitle">Aggiornamenti e promemoria dal sistema</p>
+                            </div>
+                            <?php if ($unreadCount > 0): ?>
+                                <span class="badge bg-danger-subtle text-danger-emphasis"><?= $unreadCount ?> nuove</span>
+                            <?php endif; ?>
+                        </div>
                     </div>
                     <div class="card-body">
                         <?php if (empty($recentNotifications)): ?>
-                            <p class="text-muted text-center mb-0">Non ci sono notifiche da mostrare.</p>
+                            <div class="dashboard-empty dashboard-empty-compact">
+                                <span class="dashboard-empty-icon"><i class="fa-regular fa-bell"></i></span>
+                                <p>Zero notifiche pendenti. Puoi sempre rivedere la cronologia completa dalla sezione dedicata.</p>
+                            </div>
                         <?php else: ?>
-                            <div class="list-group list-group-flush">
+                            <div class="dashboard-list dashboard-list-compact">
                                 <?php foreach ($recentNotifications as $notification): ?>
-                                    <a class="list-group-item list-group-item-action d-flex gap-3" href="notifications.php#<?= (int) $notification['id'] ?>">
-                                        <span class="portal-stat-icon flex-shrink-0"><i class="fa-solid fa-<?= $pickupService->getNotificationIcon($notification['type']) ?>"></i></span>
-                                        <span class="flex-grow-1">
-                                            <span class="fw-semibold d-block text-truncate"><?= htmlspecialchars($notification['title']) ?></span>
-                                            <span class="text-muted small d-block text-truncate-2"><?= htmlspecialchars($notification['message']) ?></span>
-                                            <span class="text-muted small"><?= date('d/m H:i', strtotime($notification['created_at'])) ?></span>
+                                    <article class="dashboard-list-item">
+                                        <span class="dashboard-list-icon" data-status="notification">
+                                            <i class="fa-solid fa-<?= $pickupService->getNotificationIcon($notification['type']) ?>"></i>
                                         </span>
-                                    </a>
+                                        <div class="dashboard-list-content">
+                                            <div class="dashboard-list-header">
+                                                <span class="dashboard-list-title"><?= htmlspecialchars($notification['title']) ?></span>
+                                                <span class="dashboard-list-time"><?= date('d/m H:i', strtotime($notification['created_at'])) ?></span>
+                                            </div>
+                                            <p class="dashboard-list-text"><?= htmlspecialchars($notification['message']) ?></p>
+                                        </div>
+                                        <div class="dashboard-list-actions">
+                                            <a class="btn btn-sm btn-outline-secondary" href="notifications.php#<?= (int) $notification['id'] ?>">Apri</a>
+                                        </div>
+                                    </article>
                                 <?php endforeach; ?>
                             </div>
                             <div class="text-center mt-3">
-                                <a class="btn btn-sm btn-outline-primary" href="notifications.php">Vedi tutte</a>
+                                <a class="btn btn-sm btn-outline-primary" href="notifications.php">Vai al centro notifiche</a>
                             </div>
                         <?php endif; ?>
                     </div>
                 </div>
 
-                <div class="card">
+                <div class="card dashboard-panel">
                     <div class="card-header">
-                        <h2 class="h6 mb-0">Come funziona</h2>
+                        <h2 class="dashboard-panel-title mb-0">Supporto operativo</h2>
                     </div>
                     <div class="card-body">
-                        <ol class="ps-3 mb-0">
-                            <li class="mb-3">
-                                <strong>Segnala il pacco</strong>
-                                <p class="text-muted small mb-0">Inserisci il tracking appena ricevi l'ordine dal corriere.</p>
-                            </li>
-                            <li class="mb-3">
-                                <strong>Ricevi notifiche</strong>
-                                <p class="text-muted small mb-0">Ti avvisiamo quando il pacco arriva o sta per scadere.</p>
+                        <p class="mb-3">Hai bisogno di assistenza rapida o vuoi segnalare un problema urgente?</p>
+                        <ul class="dashboard-support-list">
+                            <li>
+                                <span class="dashboard-support-icon"><i class="fa-solid fa-headset"></i></span>
+                                <div>
+                                    <strong>Helpdesk Pickup</strong>
+                                    <a href="mailto:support@coresuite.it">support@coresuite.it</a>
+                                    <small>Risposta entro 4 ore lavorative</small>
+                                </div>
                             </li>
                             <li>
-                                <strong>Ritira con il codice OTP</strong>
-                                <p class="text-muted small mb-0">Mostra il codice a 6 cifre per completare il ritiro in sicurezza.</p>
+                                <span class="dashboard-support-icon"><i class="fa-solid fa-phone"></i></span>
+                                <div>
+                                    <strong>Linea operativa</strong>
+                                    <a href="tel:+3903311589468">+39 0331 158 9468</a>
+                                    <small>Lun-Ven · 09:00-18:00</small>
+                                </div>
                             </li>
-                        </ol>
+                            <li>
+                                <span class="dashboard-support-icon"><i class="fa-solid fa-circle-info"></i></span>
+                                <div>
+                                    <strong>Documentazione rapida</strong>
+                                    <a href="help.php">Guide e FAQ</a>
+                                    <small>Procedure passo-passo per il tuo team</small>
+                                </div>
+                            </li>
+                        </ul>
                     </div>
                 </div>
             </div>
-        </div>
+        </section>
     </main>
 </div>
 
@@ -279,9 +417,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!reportForm) {
         return;
     }
+
     reportForm.addEventListener('submit', (event) => {
         event.preventDefault();
         const formData = new FormData(reportForm);
+
         fetch('api/report-package.php', {
             method: 'POST',
             body: formData
@@ -289,18 +429,22 @@ document.addEventListener('DOMContentLoaded', () => {
             .then((response) => response.json())
             .then((data) => {
                 if (!data.success) {
-                    window.PickupPortal.showAlert(data.message || 'Errore durante la segnalazione', 'danger');
+                    window.PickupPortal?.showAlert?.(data.message || 'Errore durante la segnalazione', 'danger');
                     return;
                 }
+
                 const modalElement = document.getElementById('reportPackageModal');
                 const modalInstance = bootstrap.Modal.getInstance(modalElement);
                 modalInstance?.hide();
-                window.PickupPortal.showAlert('Pacco segnalato con successo!', 'success');
+
+                reportForm.reset();
+                window.PickupPortal?.showAlert?.('Segnalazione registrata correttamente. Aggiorniamo i dati...', 'success');
+
+                // Ricarichiamo i dati per mostrare il nuovo pacco nella lista.
                 setTimeout(() => window.location.reload(), 1200);
             })
-            .catch((error) => {
-                console.error('Report package error:', error);
-                window.PickupPortal.showAlert('Errore di comunicazione con il server', 'danger');
+            .catch(() => {
+                window.PickupPortal?.showAlert?.('Impossibile completare la richiesta in questo momento.', 'danger');
             });
     });
 });

@@ -110,7 +110,7 @@ class CustomerAuth {
         // Salva OTP nel database
         $otpData = [
             'customer_id' => $customerId,
-            'otp_code' => password_hash($otp, PASSWORD_ARGON2ID),
+            'otp_code' => self::hashOtp($otp),
             'delivery_method' => $method,
             'expires_at' => $expiresAt,
             'used' => 0,
@@ -316,6 +316,61 @@ class CustomerAuth {
         }
         
         portal_update('pickup_customers', $updateData, ['id' => $customerId]);
+    }
+
+    /**
+     * Genera hash sicuro per l'OTP con fallback automatico
+     */
+    private static function hashOtp(string $otp): string {
+        $availableAlgorithms = function_exists('password_algos') ? password_algos() : [];
+        $preferred = [];
+
+        if (defined('PASSWORD_ARGON2ID') && in_array('argon2id', $availableAlgorithms, true)) {
+            $preferred[] = PASSWORD_ARGON2ID;
+        }
+
+        if (defined('PASSWORD_ARGON2I') && in_array('argon2i', $availableAlgorithms, true)) {
+            $preferred[] = PASSWORD_ARGON2I;
+        }
+
+        $preferred[] = PASSWORD_DEFAULT;
+
+        foreach ($preferred as $index => $algorithm) {
+            try {
+                $hash = password_hash($otp, $algorithm);
+                if ($hash !== false) {
+                    if ($index > 0) {
+                        portal_info_log('OTP hashing fallback in use', [
+                            'algorithm' => self::describePasswordAlgo($algorithm)
+                        ]);
+                    }
+                    return $hash;
+                }
+            } catch (\Throwable $exception) {
+                portal_error_log('OTP hashing failed', [
+                    'algorithm' => self::describePasswordAlgo($algorithm),
+                    'error' => $exception->getMessage()
+                ]);
+            }
+        }
+
+        throw new Exception('Impossibile generare il codice di sicurezza. Riprovare più tardi.');
+    }
+
+    private static function describePasswordAlgo($algorithm): string {
+        if (defined('PASSWORD_ARGON2ID') && $algorithm === PASSWORD_ARGON2ID) {
+            return 'argon2id';
+        }
+
+        if (defined('PASSWORD_ARGON2I') && $algorithm === PASSWORD_ARGON2I) {
+            return 'argon2i';
+        }
+
+        if ($algorithm === PASSWORD_DEFAULT) {
+            return 'default';
+        }
+
+        return is_string($algorithm) ? $algorithm : (string) $algorithm;
     }
     
     /**

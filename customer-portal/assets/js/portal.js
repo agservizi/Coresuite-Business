@@ -6,7 +6,10 @@
 window.PickupPortal = {
     config: window.portalConfig || {},
     apiUrl: function(endpoint) {
-        return this.config.apiBaseUrl + endpoint;
+        const baseUrl = typeof this.config.apiBaseUrl === 'string' && this.config.apiBaseUrl.length > 0
+            ? this.config.apiBaseUrl
+            : 'api/';
+        return baseUrl + endpoint;
     },
     
     // Utility per le chiamate API
@@ -236,10 +239,15 @@ async function handleLogin(event) {
     
     const form = event.target;
     const formData = new FormData(form);
-    const data = Object.fromEntries(formData);
+    const email = (formData.get('email') || '').toString().trim();
+    const csrfToken = formData.get('csrf_token');
+    const data = {
+        email,
+        csrf_token: csrfToken
+    };
     
     // Validazione base
-    if (!data.email || data.email.trim() === '') {
+    if (email === '') {
         window.PickupPortal.showAlert('Email richiesta', 'danger');
         return;
     }
@@ -247,7 +255,7 @@ async function handleLogin(event) {
     showLoginStep('loading');
     
     try {
-        const response = await window.PickupPortal.api.post('auth/login.php', data);
+    const response = await window.PickupPortal.api.post('auth/login.php', data);
         
         if (response.success) {
             // Mostra form OTP
@@ -507,7 +515,12 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Service Worker registration (se disponibile)
-if ('serviceWorker' in navigator) {
+if (
+    'serviceWorker' in navigator &&
+    window.PickupPortal &&
+    window.PickupPortal.config &&
+    window.PickupPortal.config.enableServiceWorker
+) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')
             .then((registration) => {

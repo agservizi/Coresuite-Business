@@ -51,7 +51,8 @@ if (!function_exists('send_mail_via_resend')) {
         }
 
         $ch = curl_init('https://api.resend.com/emails');
-        curl_setopt_array($ch, [
+
+        $curlOptions = [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_POST => true,
             CURLOPT_HTTPHEADER => [
@@ -60,7 +61,21 @@ if (!function_exists('send_mail_via_resend')) {
             ],
             CURLOPT_POSTFIELDS => $jsonPayload,
             CURLOPT_TIMEOUT => 10,
-        ]);
+        ];
+
+        $verifySsl = filter_var(env('RESEND_VERIFY_SSL', 'true'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+        if ($verifySsl === false) {
+            $curlOptions[CURLOPT_SSL_VERIFYPEER] = false;
+            $curlOptions[CURLOPT_SSL_VERIFYHOST] = 0;
+            log_portal_mail_failure('resend', $to, $subject, 'ATTENZIONE: verifica SSL disabilitata tramite configurazione.');
+        } else {
+            $caBundle = env('RESEND_CA_BUNDLE');
+            if (is_string($caBundle) && $caBundle !== '' && file_exists($caBundle)) {
+                $curlOptions[CURLOPT_CAINFO] = $caBundle;
+            }
+        }
+
+        curl_setopt_array($ch, $curlOptions);
 
         $responseBody = curl_exec($ch);
         $curlError = curl_error($ch);

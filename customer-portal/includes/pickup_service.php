@@ -7,6 +7,28 @@ require_once __DIR__ . '/database.php';
  * Servizio per la gestione dei pacchi e integrazione con il sistema pickup
  */
 class PickupService {
+    private array $tableExistsCache = [];
+    
+    private function hasTable(string $tableName): bool {
+        if (isset($this->tableExistsCache[$tableName])) {
+            return $this->tableExistsCache[$tableName];
+        }
+        try {
+            $exists = (int) portal_fetch_value(
+                "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?",
+                [$tableName]
+            ) > 0;
+            $this->tableExistsCache[$tableName] = $exists;
+            return $exists;
+        } catch (Exception $exception) {
+            portal_error_log('Unable to determine table existence', [
+                'table' => $tableName,
+                'error' => $exception->getMessage()
+            ]);
+            $this->tableExistsCache[$tableName] = false;
+            return false;
+        }
+    }
     
     /**
      * Ottiene le statistiche del cliente
@@ -21,20 +43,28 @@ class PickupService {
         );
         
         // Pacchi pronti per il ritiro (arrivati)
-        $stats['ready_packages'] = portal_count(
-            'SELECT COUNT(*) FROM pickup_customer_reports r 
-             LEFT JOIN pickup p ON r.pickup_id = p.id 
-             WHERE r.customer_id = ? AND (p.status = ? OR p.status = ?)',
-            [$customerId, 'consegnato', 'in_giacenza']
-        );
+        if ($this->hasTable('pickup')) {
+            $stats['ready_packages'] = portal_count(
+                'SELECT COUNT(*) FROM pickup_customer_reports r 
+                 LEFT JOIN pickup p ON r.pickup_id = p.id 
+                 WHERE r.customer_id = ? AND (p.status = ? OR p.status = ?)',
+                [$customerId, 'consegnato', 'in_giacenza']
+            );
+        } else {
+            $stats['ready_packages'] = 0;
+        }
         
         // Pacchi ritirati questo mese
-        $stats['monthly_delivered'] = portal_count(
-            'SELECT COUNT(*) FROM pickup_customer_reports r 
-             LEFT JOIN pickup p ON r.pickup_id = p.id 
-             WHERE r.customer_id = ? AND p.status = ? AND p.updated_at >= ?',
-            [$customerId, 'ritirato', date('Y-m-01')]
-        );
+        if ($this->hasTable('pickup')) {
+            $stats['monthly_delivered'] = portal_count(
+                'SELECT COUNT(*) FROM pickup_customer_reports r 
+                 LEFT JOIN pickup p ON r.pickup_id = p.id 
+                 WHERE r.customer_id = ? AND p.status = ? AND p.updated_at >= ?',
+                [$customerId, 'ritirato', date('Y-m-01')]
+            );
+        } else {
+            $stats['monthly_delivered'] = 0;
+        }
         
         // Totale pacchi
         $stats['total_packages'] = portal_count(
@@ -53,43 +83,76 @@ class PickupService {
         $offset = $options['offset'] ?? 0;
         $status = $options['status'] ?? null;
         
-        $sql = 'SELECT r.*, p.status as pickup_status, p.courier_id, p.pickup_location_id,
-                       p.delivered_at, p.created_at as pickup_created_at,
-                       c.name as courier_name, l.name as location_name
-                FROM pickup_customer_reports r
-                LEFT JOIN pickup p ON r.pickup_id = p.id
-                LEFT JOIN pickup_couriers c ON p.courier_id = c.id
-                LEFT JOIN pickup_locations l ON p.pickup_location_id = l.id
-                WHERE r.customer_id = ?';
-        
+        if ($this->hasTable('pickup')) {
+            $sql = 'SELECT r.*, p.status as pickup_status, p.courier_id, p.pickup_location_id,
+                           p.delivered_at, p.created_at as pickup_created_at,
+                           c.name as courier_name, l.name as location_name
+                    FROM pickup_customer_reports r
+                    LEFT JOIN pickup p ON r.pickup_id = p.id
+                    LEFT JOIN pickup_couriers c ON p.courier_id = c.id
+                    LEFT JOIN pickup_locations l ON p.pickup_location_id = l.id
+                    WHERE r.customer_id = ?';
+            
+            $params = [$customerId];
+            
+            if ($status) {
+                $sql .= ' AND r.status = ?';
+                $params[] = $status;
+            }
+            
+            $sql .= ' ORDER BY r.created_at DESC LIMIT ? OFFSET ?';
+            $params[] = $limit;
+            $params[] = $offset;
+            
+            return portal_fetch_all($sql, $params);
+        }
+
+        $sql = 'SELECT * FROM pickup_customer_reports WHERE customer_id = ?';
         $params = [$customerId];
-        
+
         if ($status) {
-            $sql .= ' AND r.status = ?';
+            $sql .= ' AND status = ?';
             $params[] = $status;
         }
-        
-        $sql .= ' ORDER BY r.created_at DESC LIMIT ? OFFSET ?';
+
+        $sql .= ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
         $params[] = $limit;
         $params[] = $offset;
-        
-        return portal_fetch_all($sql, $params);
+
+        $reports = portal_fetch_all($sql, $params);
+        return array_map(static function (array $report): array {
+            $report['pickup_status'] = null;
+            $report['courier_id'] = null;
+            $report['pickup_location_id'] = null;
+            $report['delivered_at'] = null;
+            $report['pickup_created_at'] = null;
+            $report['courier_name'] = null;
+            $report['location_name'] = null;
+            return $report;
+        }, $reports);
     }
     
     /**
      * Ottiene un singolo pacco del cliente
      */
     public function getCustomerPackage(int $customerId, int $packageId): ?array {
+        if ($this->hasTable('pickup')) {
+            return portal_fetch_one(
+                'SELECT r.*, p.status as pickup_status, p.courier_id, p.pickup_location_id,
+                        p.delivered_at, p.created_at as pickup_created_at, p.tracking_number,
+                        p.otp_code, p.signature_path, p.photo_path,
+                        c.name as courier_name, l.name as location_name, l.address as location_address
+                 FROM pickup_customer_reports r
+                 LEFT JOIN pickup p ON r.pickup_id = p.id
+                 LEFT JOIN pickup_couriers c ON p.courier_id = c.id
+                 LEFT JOIN pickup_locations l ON p.pickup_location_id = l.id
+                 WHERE r.customer_id = ? AND r.id = ?',
+                [$customerId, $packageId]
+            );
+        }
+
         return portal_fetch_one(
-            'SELECT r.*, p.status as pickup_status, p.courier_id, p.pickup_location_id,
-                    p.delivered_at, p.created_at as pickup_created_at, p.tracking_number,
-                    p.otp_code, p.signature_path, p.photo_path,
-                    c.name as courier_name, l.name as location_name, l.address as location_address
-             FROM pickup_customer_reports r
-             LEFT JOIN pickup p ON r.pickup_id = p.id
-             LEFT JOIN pickup_couriers c ON p.courier_id = c.id
-             LEFT JOIN pickup_locations l ON p.pickup_location_id = l.id
-             WHERE r.customer_id = ? AND r.id = ?',
+            'SELECT * FROM pickup_customer_reports WHERE customer_id = ? AND id = ?',
             [$customerId, $packageId]
         );
     }

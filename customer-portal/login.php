@@ -75,7 +75,7 @@ $assetVersion = defined('APP_VERSION') ? constant('APP_VERSION') : '1.0.0';
                 <header class="login-panel-header">
                     <span class="login-pill">Accesso clienti pickup</span>
                     <h2>Accedi al tuo spazio operativo</h2>
-                    <p>Inserisci i tuoi riferimenti per ricevere un codice monouso e confermare l'identità.</p>
+                    <p>Inserisci il tuo indirizzo email aziendale per ricevere un codice monouso e confermare l'identità.</p>
                 </header>
 
                 <?php if ($error): ?>
@@ -93,7 +93,7 @@ $assetVersion = defined('APP_VERSION') ? constant('APP_VERSION') : '1.0.0';
                 <div class="login-progress" aria-hidden="true">
                     <div class="login-progress-step active" data-login-step="login-form">
                         <span class="login-progress-index">1</span>
-                        <span>Dati cliente</span>
+                        <span>Email</span>
                     </div>
                     <div class="login-progress-divider"></div>
                     <div class="login-progress-step" data-login-step="otp-form">
@@ -103,7 +103,7 @@ $assetVersion = defined('APP_VERSION') ? constant('APP_VERSION') : '1.0.0';
                 </div>
 
                 <section id="login-form" class="login-step active" aria-labelledby="login-form-heading">
-                    <h3 id="login-form-heading" class="login-step-title">Inserisci i dati del referente</h3>
+                    <h3 id="login-form-heading" class="login-step-title">Inserisci l'email aziendale</h3>
                     <form id="loginForm" class="needs-validation" novalidate>
                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(get_csrf_token()) ?>">
                         <div class="login-field">
@@ -111,21 +111,11 @@ $assetVersion = defined('APP_VERSION') ? constant('APP_VERSION') : '1.0.0';
                             <input class="form-control form-control-lg" id="email" name="email" type="email" placeholder="nome@azienda.it" required>
                             <div class="invalid-feedback">Inserisci un indirizzo email valido.</div>
                         </div>
-                        <div class="login-field-grid">
-                            <div class="login-field">
-                                <label class="login-label" for="phone">Telefono (opzionale)</label>
-                                <input class="form-control form-control-lg" id="phone" name="phone" type="tel" placeholder="+39 123 456 7890">
-                            </div>
-                            <div class="login-field">
-                                <label class="login-label" for="name">Nome referente (opzionale)</label>
-                                <input class="form-control form-control-lg" id="name" name="name" type="text" placeholder="Il tuo nome">
-                            </div>
-                        </div>
                         <button class="btn btn-primary btn-lg w-100" type="submit">
                             <span class="btn-label">Invia codice di verifica</span>
                             <i class="fa-solid fa-arrow-right-long ms-2" aria-hidden="true"></i>
                         </button>
-                        <p class="login-hint">Riceverai una mail o un SMS con un codice di sicurezza valido per alcuni minuti.</p>
+                        <p class="login-hint">Riceverai una mail con un codice di sicurezza valido per alcuni minuti.</p>
                     </form>
                 </section>
 
@@ -173,6 +163,13 @@ $assetVersion = defined('APP_VERSION') ? constant('APP_VERSION') : '1.0.0';
     <div id="alert-container" class="position-fixed top-0 start-50 translate-middle-x w-100 px-3" style="max-width: 420px; z-index: 1080; margin-top: 1.5rem;"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <script>
+        window.portalConfig = {
+            csrfToken: '<?= htmlspecialchars(get_csrf_token(), ENT_QUOTES, 'UTF-8') ?>',
+            apiBaseUrl: 'api/',
+            enableServiceWorker: false
+        };
+    </script>
     <script src="assets/js/portal.js?v=<?= urlencode($assetVersion) ?>"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {

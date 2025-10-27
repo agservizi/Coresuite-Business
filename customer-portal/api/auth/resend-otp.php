@@ -31,10 +31,11 @@ try {
     }
     
     // Determina metodo di invio
-    $method = 'email';
-    if (empty($customer['email']) && !empty($customer['phone'])) {
-        $method = 'sms';
+    if (empty($customer['email'])) {
+        api_error('Nessuna email disponibile per questo account. Contatta il supporto.');
     }
+
+    $method = 'email';
     
     // Genera e invia nuovo OTP
     $otpResult = CustomerAuth::generateAndSendOtp($customerId, $method);
