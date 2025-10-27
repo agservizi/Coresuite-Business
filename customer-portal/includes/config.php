@@ -106,9 +106,8 @@ function verify_csrf_token(string $token): bool {
     return hash_equals($_SESSION['csrf_token'] ?? '', $token);
 }
 
-// Carica configurazione ambiente dal sistema principale
-require_once CORESUITE_ROOT . 'includes/env.php';
-load_env(CORESUITE_ROOT . '.env');
+// Carica configurazione ambiente principale + override del portale
+require_once __DIR__ . '/env.php';
 
 // Funzioni di logging specifiche per il portale
 function portal_log(string $message, string $level = 'INFO', array $context = []): void {
