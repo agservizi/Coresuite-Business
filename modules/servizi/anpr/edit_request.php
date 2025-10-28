@@ -154,7 +154,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Aggiorna dati e stato della pratica.</p>
             </div>
             <div class="toolbar-actions d-flex gap-2">
-                <a class="btn btn-outline-warning" href="https://www.anpr.interno.it/portale/web/guest/accesso-ai-servizi" target="_blank" rel="noopener">
+                <a class="btn btn-outline-warning" href="https://www.anagrafenazionale.interno.it/servizi-al-cittadino/" target="_blank" rel="noopener">
                     <i class="fa-solid fa-up-right-from-square me-2"></i>Portale ANPR
                 </a>
                 <a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-arrow-left me-2"></i>Indietro</a>
