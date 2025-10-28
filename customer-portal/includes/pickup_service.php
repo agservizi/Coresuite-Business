@@ -9,6 +9,7 @@ require_once __DIR__ . '/database.php';
 class PickupService {
     private array $tableExistsCache = [];
     private ?array $pickupTableConfig = null;
+    private bool $orphanCleanupRan = false;
     
     private function hasTable(string $tableName): bool {
         if (isset($this->tableExistsCache[$tableName])) {
@@ -431,6 +432,8 @@ SQL,
      * Ottiene i pacchi del cliente
      */
     public function getCustomerPackages(int $customerId, array $options = []): array {
+        $this->cleanupOrphanedReports();
+
         $limit = $options['limit'] ?? 50;
         $offset = $options['offset'] ?? 0;
         $status = $options['status'] ?? null;
@@ -542,6 +545,8 @@ SQL,
      * Ottiene un singolo pacco del cliente
      */
     public function getCustomerPackage(int $customerId, int $packageId): ?array {
+        $this->cleanupOrphanedReports();
+
         $pickupConfig = $this->getPickupTableConfig();
 
         if ($pickupConfig) {
@@ -586,6 +591,31 @@ SQL,
         );
     }
     
+    private function cleanupOrphanedReports(): void {
+        if ($this->orphanCleanupRan) {
+            return;
+        }
+
+        $this->orphanCleanupRan = true;
+
+        $pickupConfig = $this->getPickupTableConfig();
+        if (!$pickupConfig) {
+            return;
+        }
+
+        $pickupTable = $pickupConfig['name'];
+
+        try {
+            portal_query(
+                "DELETE r FROM pickup_customer_reports r LEFT JOIN {$pickupTable} p ON p.id = r.pickup_id WHERE r.pickup_id IS NOT NULL AND p.id IS NULL"
+            );
+        } catch (Exception $exception) {
+            portal_error_log('Unable to cleanup orphaned pickup reports', [
+                'error' => $exception->getMessage(),
+            ]);
+        }
+    }
+
     /**
      * Segnala un nuovo pacco
      */
@@ -727,6 +757,18 @@ SQL,
         );
         
         return $updated > 0;
+    }
+
+    /**
+     * Elimina una singola notifica del cliente
+     */
+    public function deleteNotification(int $customerId, int $notificationId): bool {
+        $deleted = portal_delete(
+            'pickup_customer_notifications',
+            ['id' => $notificationId, 'customer_id' => $customerId]
+        );
+
+        return $deleted > 0;
     }
     
     /**

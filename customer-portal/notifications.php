@@ -50,6 +50,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 $alerts[] = 'Notifica aggiornata correttamente.';
+            } elseif ($action === 'delete_one') {
+                $notificationId = (int) ($_POST['notification_id'] ?? 0);
+                if ($notificationId <= 0) {
+                    throw new Exception('Notifica non valida.');
+                }
+
+                $deleted = $pickupService->deleteNotification((int) $customer['id'], $notificationId);
+                if (!$deleted) {
+                    throw new Exception('Impossibile eliminare la notifica selezionata.');
+                }
+
+                $alerts[] = 'Notifica eliminata con successo.';
             }
         } catch (Exception $exception) {
             $errors[] = $exception->getMessage();
@@ -165,15 +177,24 @@ $pageTitle = 'Notifiche';
                                         </div>
                                     </div>
                                 </div>
-                                <?php if (!$isRead): ?>
-                                    <form class="ms-lg-auto" method="POST" action="notifications.php">
+                                <div class="d-flex flex-wrap gap-2 ms-lg-auto">
+                                    <?php if (!$isRead): ?>
+                                        <form method="POST" action="notifications.php">
+                                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(get_csrf_token()) ?>">
+                                            <input type="hidden" name="filter" value="<?= htmlspecialchars($filter) ?>">
+                                            <input type="hidden" name="action" value="mark_one">
+                                            <input type="hidden" name="notification_id" value="<?= (int) $notification['id'] ?>">
+                                            <button class="btn btn-outline-primary btn-sm" type="submit"><i class="fa-solid fa-circle-check me-2"></i>Segna come letta</button>
+                                        </form>
+                                    <?php endif; ?>
+                                    <form method="POST" action="notifications.php" onsubmit="return confirm('Eliminare definitivamente questa notifica?');">
                                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(get_csrf_token()) ?>">
                                         <input type="hidden" name="filter" value="<?= htmlspecialchars($filter) ?>">
-                                        <input type="hidden" name="action" value="mark_one">
+                                        <input type="hidden" name="action" value="delete_one">
                                         <input type="hidden" name="notification_id" value="<?= (int) $notification['id'] ?>">
-                                        <button class="btn btn-outline-primary btn-sm" type="submit"><i class="fa-solid fa-circle-check me-2"></i>Segna come letta</button>
+                                        <button class="btn btn-outline-danger btn-sm" type="submit"><i class="fa-solid fa-trash me-2"></i>Elimina</button>
                                     </form>
-                                <?php endif; ?>
+                                </div>
                             </div>
                         <?php endforeach; ?>
                     </div>
