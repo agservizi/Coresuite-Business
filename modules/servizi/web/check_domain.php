@@ -30,7 +30,19 @@ if ($domain === '') {
 
 $result = servizi_web_hostinger_check_domain($domain);
 
-if (!$result) {
+if (isset($result['error']) && $result['error']) {
+    http_response_code(502);
+    echo json_encode([
+        'success' => false,
+        'domain' => $domain,
+        'message' => 'Verifica Hostinger fallita: ' . $result['error'],
+    ]);
+    exit;
+}
+
+$items = isset($result['items']) && is_array($result['items']) ? $result['items'] : [];
+
+if (!$items) {
     http_response_code(200);
     echo json_encode([
         'success' => true,
@@ -42,7 +54,7 @@ if (!$result) {
 }
 
 $match = null;
-foreach ($result as $item) {
+foreach ($items as $item) {
     if (isset($item['domain']) && strtolower((string) $item['domain']) === $domain) {
         $match = $item;
         break;
@@ -59,14 +71,26 @@ if ($match === null) {
     exit;
 }
 
-$available = isset($match['status']) ? $match['status'] === 'AVAILABLE' : (bool) ($match['available'] ?? false);
+$available = null;
+if (array_key_exists('is_available', $match)) {
+    $available = (bool) $match['is_available'];
+} elseif (array_key_exists('available', $match)) {
+    $available = (bool) $match['available'];
+}
+
+$status = null;
+if (isset($match['is_available'])) {
+    $status = $match['is_available'] ? 'AVAILABLE' : 'UNAVAILABLE';
+} elseif (isset($match['status'])) {
+    $status = (string) $match['status'];
+}
 
 $response = [
     'success' => true,
     'domain' => $domain,
     'available' => $available,
-    'status' => $match['status'] ?? null,
-    'pricing' => $match['pricing'] ?? null,
+    'status' => $status,
+    'details' => $match,
 ];
 
 echo json_encode($response);

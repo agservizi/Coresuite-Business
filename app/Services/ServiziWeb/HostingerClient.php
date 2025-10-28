@@ -10,8 +10,10 @@ class HostingerClient
     private string $baseUri;
     private string $token;
     private int $timeout;
+    private bool $verifySsl;
+    private ?string $caBundle;
 
-    public function __construct(string $token, ?string $baseUri = null, int $timeout = 30)
+    public function __construct(string $token, ?string $baseUri = null, ?array $options = null)
     {
         $token = trim($token);
         if ($token === '') {
@@ -25,7 +27,12 @@ class HostingerClient
 
         $this->token = $token;
         $this->baseUri = rtrim($baseUri !== null ? $baseUri : $defaultBase, '/');
+        $options = $options ?? [];
+        $timeout = (int) ($options['timeout'] ?? 30);
         $this->timeout = $timeout > 0 ? $timeout : 30;
+        $this->verifySsl = !array_key_exists('verify_ssl', $options) || (bool) $options['verify_ssl'];
+        $caBundle = isset($options['ca_path']) ? trim((string) $options['ca_path']) : '';
+        $this->caBundle = $caBundle !== '' ? $caBundle : null;
     }
 
     public function checkDomainAvailability(array $domains): array
@@ -39,11 +46,44 @@ class HostingerClient
             throw new RuntimeException('Nessun dominio fornito per la verifica.');
         }
 
-        $response = $this->request('POST', '/api/domains/v1/availability', [
-            'domains' => $sanitized,
-        ]);
+        $results = [];
 
-        return $response['data']['items'] ?? [];
+        foreach ($sanitized as $fullDomain) {
+            $parts = explode('.', $fullDomain, 2);
+            if (count($parts) !== 2) {
+                throw new RuntimeException('Dominio non valido: ' . $fullDomain);
+            }
+
+            [$name, $tld] = $parts;
+            $name = trim($name);
+            $tld = trim($tld);
+
+            if ($name === '' || $tld === '') {
+                throw new RuntimeException('Dominio non valido: ' . $fullDomain);
+            }
+
+            $payload = [
+                'domain' => $name,
+                'tlds' => [$tld],
+            ];
+
+            $response = $this->request('POST', '/api/domains/v1/availability', $payload);
+
+            if (!is_array($response)) {
+                continue;
+            }
+
+            foreach ($response as $item) {
+                if (is_array($item)) {
+                    if (!isset($item['domain'])) {
+                        $item['domain'] = $fullDomain;
+                    }
+                    $results[] = $item;
+                }
+            }
+        }
+
+        return $results;
     }
 
     public function listDatacenters(): array
@@ -92,9 +132,15 @@ class HostingerClient
             CURLOPT_TIMEOUT => $this->timeout,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_MAXREDIRS => 3,
-            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYPEER => $this->verifySsl,
             CURLOPT_HTTPHEADER => $headers,
         ];
+
+        if ($this->verifySsl === false) {
+            $options[CURLOPT_SSL_VERIFYHOST] = 0;
+        } elseif ($this->caBundle !== null) {
+            $options[CURLOPT_CAINFO] = $this->caBundle;
+        }
 
         if ($method === 'GET') {
             $options[CURLOPT_HTTPGET] = true;

@@ -183,9 +183,31 @@ function servizi_web_hostinger_client(): ?HostingerClient
 
     $token = (string) env('HOSTINGER_API_TOKEN');
     $baseUri = (string) env('HOSTINGER_API_BASE_URI', '');
+    $options = [];
+
+    $verifySetting = env('HOSTINGER_API_VERIFY_SSL', null);
+    if ($verifySetting !== null && $verifySetting !== '') {
+        $normalized = strtolower((string) $verifySetting);
+        if (in_array($normalized, ['0', 'false', 'no', 'off'], true)) {
+            $options['verify_ssl'] = false;
+        }
+    }
+
+    $caBundle = (string) env('HOSTINGER_API_CA_PATH', '');
+    if ($caBundle !== '') {
+        $options['ca_path'] = $caBundle;
+    }
+
+    $timeoutSetting = env('HOSTINGER_API_TIMEOUT', null);
+    if ($timeoutSetting !== null && $timeoutSetting !== '') {
+        $timeout = (int) $timeoutSetting;
+        if ($timeout > 0) {
+            $options['timeout'] = $timeout;
+        }
+    }
 
     try {
-        $client = new HostingerClient($token, $baseUri !== '' ? $baseUri : null);
+        $client = new HostingerClient($token, $baseUri !== '' ? $baseUri : null, $options);
     } catch (\Throwable $exception) {
         error_log('Servizi Web hostinger init failed: ' . $exception->getMessage());
         return null;
@@ -228,14 +250,26 @@ function servizi_web_hostinger_check_domain(string $domain): array
 {
     $client = servizi_web_hostinger_client();
     if (!$client) {
-        return [];
+        return [
+            'items' => [],
+            'error' => 'Integrazione Hostinger non disponibile.',
+        ];
     }
 
     try {
-        return $client->checkDomainAvailability([$domain]);
+        $items = $client->checkDomainAvailability([$domain]);
+
+        return [
+            'items' => $items,
+            'error' => null,
+        ];
     } catch (\Throwable $exception) {
         error_log('Servizi Web hostinger domain check failed: ' . $exception->getMessage());
-        return [];
+
+        return [
+            'items' => [],
+            'error' => $exception->getMessage(),
+        ];
     }
 }
 
