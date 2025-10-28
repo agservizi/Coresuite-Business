@@ -406,12 +406,14 @@ document.addEventListener('DOMContentLoaded', function() {
             sidebar.classList.remove('collapsed');
             sidebar.classList.remove('open');
             document.body.classList.remove('offcanvas-active');
+            document.body.classList.remove('sidebar-collapsed');
             sidebarToggle?.setAttribute('aria-expanded', 'false');
             sidebarMobileToggle?.setAttribute('aria-expanded', 'false');
         } else {
             const storedState = localStorage.getItem('pickupPortalSidebar');
             const shouldCollapse = storedState === 'collapsed';
             sidebar.classList.toggle('collapsed', shouldCollapse);
+            document.body.classList.toggle('sidebar-collapsed', shouldCollapse);
             sidebarToggle?.setAttribute('aria-expanded', String(!shouldCollapse));
         }
     };
@@ -422,6 +424,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         const shouldCollapse = !sidebar.classList.contains('collapsed');
         sidebar.classList.toggle('collapsed', shouldCollapse);
+        document.body.classList.toggle('sidebar-collapsed', shouldCollapse);
         sidebarToggle?.setAttribute('aria-expanded', String(!shouldCollapse));
         localStorage.setItem('pickupPortalSidebar', shouldCollapse ? 'collapsed' : 'expanded');
     };
@@ -433,6 +436,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const willOpen = !sidebar.classList.contains('open');
         sidebar.classList.toggle('open', willOpen);
         document.body.classList.toggle('offcanvas-active', willOpen);
+        if (willOpen) {
+            document.body.classList.remove('sidebar-collapsed');
+        }
         sidebarToggle?.setAttribute('aria-expanded', String(willOpen));
         sidebarMobileToggle?.setAttribute('aria-expanded', String(willOpen));
     };
@@ -459,6 +465,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             sidebar.classList.remove('open');
             document.body.classList.remove('offcanvas-active');
+            document.body.classList.remove('sidebar-collapsed');
             sidebarToggle?.setAttribute('aria-expanded', 'false');
             sidebarMobileToggle?.setAttribute('aria-expanded', 'false');
         });
