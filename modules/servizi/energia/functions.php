@@ -1,9 +1,6 @@
 <?php
 declare(strict_types=1);
 
-use DateTimeImmutable;
-use PDO;
-use Throwable;
 
 const ENERGIA_MODULE_LOG = 'Servizi/Energia';
 const ENERGIA_MAX_UPLOAD_SIZE = 15_728_640; // 15 MB per allegato
