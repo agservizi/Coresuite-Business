@@ -21,6 +21,7 @@ $data = [
     'tipo_pratica' => $types[0] ?? 'Certificato di residenza',
     'stato' => 'In lavorazione',
     'note_interne' => '',
+    'generate_delega' => '1',
 ];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -30,6 +31,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data['tipo_pratica'] = trim((string) ($_POST['tipo_pratica'] ?? ''));
     $data['stato'] = trim((string) ($_POST['stato'] ?? ''));
     $data['note_interne'] = trim((string) ($_POST['note_interne'] ?? ''));
+    $generateDelegaRequested = (string) ($_POST['generate_delega'] ?? '') === '1';
+    $data['generate_delega'] = $generateDelegaRequested ? '1' : '0';
 
     $clienteId = (int) $data['cliente_id'];
     if ($clienteId <= 0) {
@@ -112,18 +115,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ]);
             }
 
+            $manualDelegaUploaded = false;
             if (!empty($_FILES['delega']['name'])) {
                 $storedDelega = anpr_store_delega($_FILES['delega'], $praticaId);
-                $updateStmt = $pdo->prepare('UPDATE anpr_pratiche
-                    SET delega_path = :path,
-                        delega_hash = :hash,
-                        delega_caricato_at = NOW()
-                    WHERE id = :id');
-                $updateStmt->execute([
-                    ':path' => $storedDelega['path'],
-                    ':hash' => $storedDelega['hash'],
-                    ':id' => $praticaId,
-                ]);
+                anpr_set_delega_metadata($pdo, $praticaId, $storedDelega, false);
+                $manualDelegaUploaded = true;
+            }
+
+            if (!$manualDelegaUploaded && anpr_should_generate_delega($data['tipo_pratica'], $generateDelegaRequested)) {
+                $praticaInfo = anpr_fetch_pratica($pdo, $praticaId);
+                anpr_auto_generate_delega($pdo, $praticaId, $praticaInfo);
             }
 
             if (!empty($_FILES['documento']['name'])) {
@@ -232,7 +233,11 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     <div class="col-md-6">
                         <label class="form-label" for="delega">Delega firmata (PDF)</label>
                         <input class="form-control" type="file" id="delega" name="delega" accept="application/pdf">
-                        <small class="text-muted">Facoltativo. Dimensione massima 10 MB.</small>
+                        <small class="text-muted d-block">Facoltativo. Dimensione massima 10 MB.</small>
+                        <div class="form-check mt-2">
+                            <input class="form-check-input" type="checkbox" id="generate_delega" name="generate_delega" value="1" <?php echo $data['generate_delega'] === '1' ? 'checked' : ''; ?>>
+                            <label class="form-check-label" for="generate_delega">Genera automaticamente la delega se non caricata</label>
+                        </div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label" for="documento">Documento identità delegante (PDF/JPG/PNG)</label>

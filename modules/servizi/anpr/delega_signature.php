@@ -38,8 +38,13 @@ if (!$pratica) {
 try {
     switch ($action) {
         case 'send':
+            if (empty($pratica['delega_path']) && anpr_can_generate_delega($pratica)) {
+                anpr_auto_generate_delega($pdo, $praticaId, $pratica);
+                $pratica = anpr_fetch_pratica($pdo, $praticaId);
+            }
+
             if (empty($pratica['delega_path'])) {
-                throw new RuntimeException('Carica una delega prima di inviare la firma digitale.');
+                throw new RuntimeException('Carica o genera una delega prima di inviare la firma digitale.');
             }
 
             if ($recipient === '' || !filter_var($recipient, FILTER_VALIDATE_EMAIL)) {

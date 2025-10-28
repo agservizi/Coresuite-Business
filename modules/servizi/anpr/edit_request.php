@@ -35,6 +35,7 @@ $data = [
     'tipo_pratica' => (string) ($pratica['tipo_pratica'] ?? ''),
     'stato' => (string) ($pratica['stato'] ?? 'In lavorazione'),
     'note_interne' => (string) ($pratica['note_interne'] ?? ''),
+    'generate_delega' => !empty($pratica['delega_generata_auto']) ? '1' : '0',
 ];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -44,6 +45,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data['tipo_pratica'] = trim((string) ($_POST['tipo_pratica'] ?? ''));
     $data['stato'] = trim((string) ($_POST['stato'] ?? ''));
     $data['note_interne'] = trim((string) ($_POST['note_interne'] ?? ''));
+    $generateDelegaRequested = (string) ($_POST['generate_delega'] ?? '') === '1';
+    $data['generate_delega'] = $generateDelegaRequested ? '1' : '0';
 
     $clienteId = (int) $data['cliente_id'];
     if ($clienteId <= 0) {
@@ -77,19 +80,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ':id' => $praticaId,
             ]);
 
+            $manualDelegaUploaded = false;
             if (!empty($_FILES['delega']['name'])) {
                 $storedDelega = anpr_store_delega($_FILES['delega'], $praticaId);
                 anpr_delete_delega($pratica['delega_path'] ?? null);
-                $updateStmt = $pdo->prepare('UPDATE anpr_pratiche
-                    SET delega_path = :path,
-                        delega_hash = :hash,
-                        delega_caricato_at = NOW()
-                    WHERE id = :id');
-                $updateStmt->execute([
-                    ':path' => $storedDelega['path'],
-                    ':hash' => $storedDelega['hash'],
-                    ':id' => $praticaId,
-                ]);
+                anpr_set_delega_metadata($pdo, $praticaId, $storedDelega, false);
+                anpr_signature_clear($pdo, $praticaId);
+                $manualDelegaUploaded = true;
+            }
+
+            if (!$manualDelegaUploaded && anpr_should_generate_delega($data['tipo_pratica'], $generateDelegaRequested)) {
+                anpr_auto_generate_delega($pdo, $praticaId);
+                $pratica = anpr_fetch_pratica($pdo, $praticaId);
             }
 
             if (!empty($_FILES['documento']['name'])) {
@@ -214,7 +216,11 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     <div class="col-md-6">
                         <label class="form-label" for="delega">Aggiorna delega (PDF)</label>
                         <input class="form-control" type="file" id="delega" name="delega" accept="application/pdf">
-                        <small class="text-muted">Lascia vuoto per mantenere l'allegato esistente.</small>
+                        <small class="text-muted d-block">Lascia vuoto per mantenere l'allegato esistente.</small>
+                        <div class="form-check mt-2">
+                            <input class="form-check-input" type="checkbox" id="generate_delega" name="generate_delega" value="1" <?php echo $data['generate_delega'] === '1' ? 'checked' : ''; ?>>
+                            <label class="form-check-label" for="generate_delega">Genera automaticamente la delega se non caricata</label>
+                        </div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label" for="documento">Aggiorna documento identità (PDF/JPG/PNG)</label>
