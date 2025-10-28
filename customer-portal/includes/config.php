@@ -73,8 +73,20 @@ function portal_config(string $key, $default = null) {
 
 // Inizializzazione sessione sicura
 if (session_status() === PHP_SESSION_NONE) {
+    $httpsOn = (
+        (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
+        (isset($_SERVER['SERVER_PORT']) && (int) $_SERVER['SERVER_PORT'] === 443) ||
+        (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower((string) $_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https')
+    );
+
+    $forcedSecure = getenv('PORTAL_FORCE_SECURE_COOKIE');
+    if ($forcedSecure !== false) {
+        $normalized = strtolower((string) $forcedSecure);
+        $httpsOn = in_array($normalized, ['1', 'true', 'on', 'yes'], true);
+    }
+
     ini_set('session.cookie_httponly', '1');
-    ini_set('session.cookie_secure', '1');
+    ini_set('session.cookie_secure', $httpsOn ? '1' : '0');
     ini_set('session.cookie_samesite', 'Strict');
     ini_set('session.use_strict_mode', '1');
     ini_set('session.gc_maxlifetime', (string) SESSION_TIMEOUT);
