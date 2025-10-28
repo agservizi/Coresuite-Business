@@ -25,6 +25,8 @@ if (!$pratica) {
 
 $csrfToken = csrf_token();
 $flashes = get_flashes();
+$hasCertificate = !empty($pratica['certificato_path']);
+$customerEmail = trim((string) ($pratica['cliente_email'] ?? ''));
 
 require_once __DIR__ . '/../../../includes/header.php';
 require_once __DIR__ . '/../../../includes/sidebar.php';
@@ -121,6 +123,83 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <p class="text-muted mb-2">Nessun certificato caricato.</p>
                             <a class="btn btn-outline-warning" href="upload_certificate.php?id=<?php echo $praticaId; ?>">Carica ora</a>
                         <?php endif; ?>
+                    </div>
+                </div>
+                <div class="card ag-card mt-4">
+                    <div class="card-header bg-transparent border-0">
+                        <h2 class="h5 mb-0">Servizi operativi</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-4">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h3 class="h6 text-uppercase text-muted mb-0">Verifica identità SPID</h3>
+                                <?php if (!empty($pratica['spid_verificato_at'])): ?>
+                                    <span class="badge bg-success">Verificato</span>
+                                <?php else: ?>
+                                    <span class="badge bg-secondary">Da verificare</span>
+                                <?php endif; ?>
+                            </div>
+                            <?php if (!empty($pratica['spid_verificato_at'])): ?>
+                                <p class="mb-1 small">Ultima verifica: <strong><?php echo sanitize_output(format_datetime_locale($pratica['spid_verificato_at'])); ?></strong></p>
+                                <p class="mb-3 small">Operatore: <?php echo !empty($pratica['spid_operatore_username']) ? sanitize_output($pratica['spid_operatore_username']) : '<span class="text-muted">N/D</span>'; ?></p>
+                                <form method="post" action="spid_verification.php" class="d-flex gap-2" onsubmit="return confirm('Annullare la verifica SPID?');">
+                                    <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
+                                    <input type="hidden" name="pratica_id" value="<?php echo $praticaId; ?>">
+                                    <input type="hidden" name="action" value="reset">
+                                    <button class="btn btn-outline-warning" type="submit"><i class="fa-solid fa-rotate-left me-2"></i>Annulla verifica</button>
+                                </form>
+                            <?php else: ?>
+                                <p class="text-muted small mb-3">Registra la verifica SPID per certificare l&apos;identità del richiedente.</p>
+                                <form method="post" action="spid_verification.php" class="d-flex gap-2">
+                                    <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
+                                    <input type="hidden" name="pratica_id" value="<?php echo $praticaId; ?>">
+                                    <input type="hidden" name="action" value="verify">
+                                    <button class="btn btn-warning text-dark" type="submit"><i class="fa-solid fa-fingerprint me-2"></i>Segna come verificato</button>
+                                </form>
+                            <?php endif; ?>
+                        </div>
+
+                        <div class="border-top pt-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h3 class="h6 text-uppercase text-muted mb-0">Invio al cliente</h3>
+                                <?php if (!empty($pratica['certificato_inviato_at'])): ?>
+                                    <span class="badge bg-success">Inviato</span>
+                                <?php else: ?>
+                                    <span class="badge bg-secondary">In attesa</span>
+                                <?php endif; ?>
+                            </div>
+                            <?php if (!empty($pratica['certificato_inviato_at'])): ?>
+                                <p class="mb-1 small">Inviato il: <strong><?php echo sanitize_output(format_datetime_locale($pratica['certificato_inviato_at'])); ?></strong></p>
+                                <p class="mb-2 small">Canale: <?php echo sanitize_output(strtoupper($pratica['certificato_inviato_via'] ?? '')); ?> → <?php echo sanitize_output($pratica['certificato_inviato_destinatario'] ?? ''); ?></p>
+                            <?php endif; ?>
+                            <?php if ($hasCertificate && $customerEmail !== ''): ?>
+                                <form method="post" action="send_certificate.php" class="row g-2" enctype="application/x-www-form-urlencoded">
+                                    <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
+                                    <input type="hidden" name="pratica_id" value="<?php echo $praticaId; ?>">
+                                    <div class="col-12">
+                                        <label class="form-label" for="recipient-email">Destinatario</label>
+                                        <input class="form-control" type="email" id="recipient-email" name="recipient" value="<?php echo sanitize_output($customerEmail); ?>" required>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label" for="channel">Canale</label>
+                                        <select class="form-select" id="channel" name="channel">
+                                            <option value="email" selected>Email</option>
+                                            <option value="pec">PEC</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label" for="message">Messaggio opzionale</label>
+                                        <textarea class="form-control" id="message" name="message" rows="3" placeholder="Gentile cliente, in allegato il certificato richiesto."></textarea>
+                                        <small class="text-muted">Il PDF viene linkato nel testo; per invio PEC allegalo manualmente se richiesto dal provider.</small>
+                                    </div>
+                                    <div class="col-12 d-flex justify-content-end">
+                                        <button class="btn btn-warning text-dark" type="submit"><i class="fa-solid fa-paper-plane me-2"></i>Invia al cliente</button>
+                                    </div>
+                                </form>
+                            <?php else: ?>
+                                <p class="text-muted small mb-0">Per inviare il certificato serve caricarlo e avere l&apos;email del cliente.</p>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 </div>
                 <div class="card ag-card mt-4">

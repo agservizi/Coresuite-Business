@@ -48,19 +48,59 @@ function anpr_practice_types(): array
         'Certificato di nascita',
         'Certificato di cittadinanza',
         'Certificato di stato di famiglia',
+        'Certificato cumulativo',
+        'Certificato contestuale',
         'Certificato di matrimonio',
         'Certificato di morte',
-        'Certificato contestuale',
+        'Cambio residenza assistito',
+        'Delega / autocertificazione',
         'Altra certificazione',
+    ];
+}
+
+function anpr_service_catalog(): array
+{
+    return [
+        [
+            'servizio' => 'Certificato di residenza',
+            'prezzo' => '€3–5',
+            'note' => 'Rilascio in pochi minuti',
+        ],
+        [
+            'servizio' => 'Certificato di nascita',
+            'prezzo' => '€3–5',
+            'note' => '',
+        ],
+        [
+            'servizio' => 'Stato di famiglia',
+            'prezzo' => '€3–6',
+            'note' => '',
+        ],
+        [
+            'servizio' => 'Certificato cumulativo',
+            'prezzo' => '€5–8',
+            'note' => '',
+        ],
+        [
+            'servizio' => 'Cambio residenza assistito',
+            'prezzo' => '€15–25',
+            'note' => 'Con caricamento moduli e PEC',
+        ],
+        [
+            'servizio' => 'Delega / autocertificazione',
+            'prezzo' => '€2–3',
+            'note' => 'Generata dal gestionale',
+        ],
     ];
 }
 
 function anpr_fetch_pratiche(PDO $pdo, array $filters = []): array
 {
-    $sql = 'SELECT ap.*, c.nome, c.cognome, c.ragione_sociale, u.username AS operatore_username
+    $sql = 'SELECT ap.*, c.nome, c.cognome, c.ragione_sociale, c.email AS cliente_email, u.username AS operatore_username, us.username AS spid_operatore_username
         FROM anpr_pratiche ap
         LEFT JOIN clienti c ON ap.cliente_id = c.id
-        LEFT JOIN users u ON ap.operatore_id = u.id';
+        LEFT JOIN users u ON ap.operatore_id = u.id
+        LEFT JOIN users us ON ap.spid_operatore_id = us.id';
 
     $where = [];
     $params = [];
@@ -85,11 +125,49 @@ function anpr_fetch_pratiche(PDO $pdo, array $filters = []): array
         $params[':cliente_id'] = (int) $filters['cliente_id'];
     }
 
+    if (!empty($filters['has_certificate'])) {
+        $where[] = 'ap.certificato_path IS NOT NULL';
+    }
+
+    if (!empty($filters['created_from'])) {
+        $where[] = 'ap.created_at >= :created_from';
+        $params[':created_from'] = $filters['created_from'] . ' 00:00:00';
+    }
+
+    if (!empty($filters['created_to'])) {
+        $where[] = 'ap.created_at <= :created_to';
+        $params[':created_to'] = $filters['created_to'] . ' 23:59:59';
+    }
+
+    if (!empty($filters['certificate_from'])) {
+        $where[] = 'ap.certificato_caricato_at >= :cert_from';
+        $params[':cert_from'] = $filters['certificate_from'] . ' 00:00:00';
+    }
+
+    if (!empty($filters['certificate_to'])) {
+        $where[] = 'ap.certificato_caricato_at <= :cert_to';
+        $params[':cert_to'] = $filters['certificate_to'] . ' 23:59:59';
+    }
+
     if ($where) {
         $sql .= ' WHERE ' . implode(' AND ', $where);
     }
 
-    $sql .= ' ORDER BY ap.created_at DESC';
+    $orderBy = 'ap.created_at';
+    $orderDir = 'DESC';
+
+    if (!empty($filters['order_by'])) {
+        $allowed = ['ap.created_at', 'ap.certificato_caricato_at', 'ap.pratica_code'];
+        if (in_array($filters['order_by'], $allowed, true)) {
+            $orderBy = $filters['order_by'];
+        }
+    }
+
+    if (!empty($filters['order_dir']) && strtoupper($filters['order_dir']) === 'ASC') {
+        $orderDir = 'ASC';
+    }
+
+    $sql .= ' ORDER BY ' . $orderBy . ' ' . $orderDir;
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
@@ -100,10 +178,11 @@ function anpr_fetch_pratiche(PDO $pdo, array $filters = []): array
 function anpr_fetch_pratica(PDO $pdo, int $id): ?array
 {
     $stmt = $pdo->prepare('SELECT ap.*, c.nome, c.cognome, c.ragione_sociale, c.email AS cliente_email,
-            c.telefono AS cliente_telefono, u.username AS operatore_username
+            c.telefono AS cliente_telefono, u.username AS operatore_username, us.username AS spid_operatore_username
         FROM anpr_pratiche ap
         LEFT JOIN clienti c ON ap.cliente_id = c.id
         LEFT JOIN users u ON ap.operatore_id = u.id
+        LEFT JOIN users us ON ap.spid_operatore_id = us.id
         WHERE ap.id = :id');
     $stmt->execute([':id' => $id]);
     $pratica = $stmt->fetch();
@@ -155,6 +234,39 @@ function anpr_fetch_clienti(PDO $pdo): array
 {
     $stmt = $pdo->query('SELECT id, ragione_sociale, nome, cognome FROM clienti ORDER BY ragione_sociale, cognome, nome');
     return $stmt->fetchAll() ?: [];
+}
+
+function anpr_set_spid_status(PDO $pdo, int $praticaId, ?int $operatoreId): void
+{
+    if ($operatoreId) {
+        $stmt = $pdo->prepare('UPDATE anpr_pratiche
+            SET spid_verificato_at = NOW(), spid_operatore_id = :operatore_id, updated_at = NOW()
+            WHERE id = :id');
+        $stmt->execute([
+            ':operatore_id' => $operatoreId,
+            ':id' => $praticaId,
+        ]);
+    } else {
+        $stmt = $pdo->prepare('UPDATE anpr_pratiche
+            SET spid_verificato_at = NULL, spid_operatore_id = NULL, updated_at = NOW()
+            WHERE id = :id');
+        $stmt->execute([':id' => $praticaId]);
+    }
+}
+
+function anpr_record_certificate_delivery(PDO $pdo, int $praticaId, string $channel, string $recipient): void
+{
+    $stmt = $pdo->prepare('UPDATE anpr_pratiche
+        SET certificato_inviato_at = NOW(),
+            certificato_inviato_via = :via,
+            certificato_inviato_destinatario = :recipient,
+            updated_at = NOW()
+        WHERE id = :id');
+    $stmt->execute([
+        ':via' => $channel,
+        ':recipient' => $recipient,
+        ':id' => $praticaId,
+    ]);
 }
 
 function anpr_get_attachment_rules(string $type): array
