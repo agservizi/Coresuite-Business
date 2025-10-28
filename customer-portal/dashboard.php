@@ -60,8 +60,8 @@ $pageTitle = 'Dashboard';
         ];
         ?>
 
-        <div class="container-xl portal-dashboard">
-            <section class="card dashboard-card dashboard-header text-white">
+        <div class="portal-dashboard">
+            <section class="card ag-card dashboard-card portal-hero text-white">
                 <div class="card-body">
                     <div class="row align-items-center g-4">
                         <div class="col-lg-7">
@@ -114,50 +114,68 @@ $pageTitle = 'Dashboard';
                 </div>
             </section>
 
-            <section>
+            <section class="card ag-card dashboard-card portal-actions">
+                <div class="card-header border-0 pb-0">
+                    <div class="dashboard-panel-header">
+                        <div>
+                            <h2 class="dashboard-panel-title">Azioni rapide</h2>
+                            <p class="dashboard-panel-subtitle mb-0">Accedi subito alle attività più frequenti</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
                 <div class="row g-3">
                     <div class="col-sm-6 col-lg-4">
-                        <a class="dashboard-action dashboard-card" href="report.php">
-                            <span class="dashboard-action-icon bg-gradient-primary"><i class="fa-solid fa-clipboard"></i></span>
+                        <a class="dashboard-action" href="report.php">
+                            <span class="dashboard-action-icon" data-variant="primary"><i class="fa-solid fa-clipboard"></i></span>
                             <div class="dashboard-action-content">
                                 <span class="dashboard-action-title">Nuova segnalazione</span>
                                 <span class="dashboard-action-text">Registra un nuovo pacco per iniziare il monitoraggio.</span>
                             </div>
-                            <i class="fa-solid fa-arrow-right dashboard-action-arrow" aria-hidden="true"></i>
+                            <i class="fa-solid fa-chevron-right dashboard-action-chevron" aria-hidden="true"></i>
                         </a>
                     </div>
                     <div class="col-sm-6 col-lg-4">
-                        <a class="dashboard-action dashboard-card" href="packages.php">
-                            <span class="dashboard-action-icon bg-gradient-success"><i class="fa-solid fa-box"></i></span>
+                        <a class="dashboard-action" href="packages.php">
+                            <span class="dashboard-action-icon" data-variant="success"><i class="fa-solid fa-box"></i></span>
                             <div class="dashboard-action-content">
                                 <span class="dashboard-action-title">Situazione pacchi</span>
                                 <span class="dashboard-action-text">Consulta lo stato dettagliato e scarica i documenti.</span>
                             </div>
-                            <i class="fa-solid fa-arrow-right dashboard-action-arrow" aria-hidden="true"></i>
+                            <i class="fa-solid fa-chevron-right dashboard-action-chevron" aria-hidden="true"></i>
                         </a>
                     </div>
                     <div class="col-sm-6 col-lg-4">
-                        <a class="dashboard-action dashboard-card" href="notifications.php">
-                            <span class="dashboard-action-icon bg-gradient-warning"><i class="fa-solid fa-bell"></i></span>
+                        <a class="dashboard-action" href="notifications.php">
+                            <span class="dashboard-action-icon" data-variant="warning"><i class="fa-solid fa-bell"></i></span>
                             <div class="dashboard-action-content">
-                                <span class="dashboard-action-title">Centro notifiche</span>
+                                <span class="dashboard-action-title d-flex align-items-center gap-2">Centro notifiche
+                                    <?php if ($unreadCount > 0): ?>
+                                        <span class="badge rounded-pill bg-danger-subtle text-danger-emphasis"><?= $unreadCount ?></span>
+                                    <?php endif; ?>
+                                </span>
                                 <span class="dashboard-action-text">Rivedi gli avvisi recenti e segna come gestiti quelli completati.</span>
                             </div>
-                            <div class="dashboard-action-meta">
-                                <?php if ($unreadCount > 0): ?>
-                                    <span class="badge rounded-pill bg-danger-subtle text-danger-emphasis"><?= $unreadCount ?></span>
-                                <?php endif; ?>
-                                <i class="fa-solid fa-arrow-right dashboard-action-arrow" aria-hidden="true"></i>
-                            </div>
+                            <i class="fa-solid fa-chevron-right dashboard-action-chevron" aria-hidden="true"></i>
                         </a>
                     </div>
                 </div>
+                </div>
             </section>
 
-            <section>
+            <section class="card ag-card dashboard-card portal-metrics">
+                <div class="card-header border-0 pb-0">
+                    <div class="dashboard-panel-header">
+                        <div>
+                            <h2 class="dashboard-panel-title">Metriche operative</h2>
+                            <p class="dashboard-panel-subtitle mb-0">Stato aggiornato dei tuoi pacchi</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
                 <div class="row g-3">
                     <div class="col-sm-6 col-xl-3">
-                        <article class="dashboard-metric dashboard-card h-100">
+                        <article class="dashboard-metric h-100">
                             <div class="dashboard-metric-icon bg-primary-subtle text-primary"><i class="fa-solid fa-box-open"></i></div>
                             <div class="dashboard-metric-body">
                                 <span class="dashboard-metric-label">In attesa</span>
@@ -167,7 +185,7 @@ $pageTitle = 'Dashboard';
                         </article>
                     </div>
                     <div class="col-sm-6 col-xl-3">
-                        <article class="dashboard-metric dashboard-card h-100">
+                        <article class="dashboard-metric h-100">
                             <div class="dashboard-metric-icon bg-success-subtle text-success"><i class="fa-solid fa-truck-ramp-box"></i></div>
                             <div class="dashboard-metric-body">
                                 <span class="dashboard-metric-label">Pronti</span>
@@ -177,7 +195,7 @@ $pageTitle = 'Dashboard';
                         </article>
                     </div>
                     <div class="col-sm-6 col-xl-3">
-                        <article class="dashboard-metric dashboard-card h-100">
+                        <article class="dashboard-metric h-100">
                             <div class="dashboard-metric-icon bg-info-subtle text-info"><i class="fa-solid fa-calendar-check"></i></div>
                             <div class="dashboard-metric-body">
                                 <span class="dashboard-metric-label">Ultimi 30 giorni</span>
@@ -187,7 +205,7 @@ $pageTitle = 'Dashboard';
                         </article>
                     </div>
                     <div class="col-sm-6 col-xl-3">
-                        <article class="dashboard-metric dashboard-card h-100">
+                        <article class="dashboard-metric h-100">
                             <div class="dashboard-metric-icon bg-warning-subtle text-warning"><i class="fa-solid fa-circle-exclamation"></i></div>
                             <div class="dashboard-metric-body">
                                 <span class="dashboard-metric-label">Follow-up</span>
@@ -197,11 +215,12 @@ $pageTitle = 'Dashboard';
                         </article>
                     </div>
                 </div>
+                </div>
             </section>
 
             <div class="row g-4 dashboard-main">
                 <div class="col-xxl-8">
-                    <section class="card dashboard-panel dashboard-card h-100">
+                    <section class="card ag-card dashboard-panel dashboard-card h-100">
                         <div class="card-header border-0 pb-0">
                             <div class="dashboard-panel-header">
                                 <div>
@@ -253,7 +272,7 @@ $pageTitle = 'Dashboard';
                         </div>
                     </section>
 
-                    <section class="card dashboard-panel dashboard-card">
+                    <section class="card ag-card dashboard-panel dashboard-card">
                         <div class="card-header border-0 pb-0">
                             <div class="dashboard-panel-header">
                                 <div>
@@ -297,7 +316,7 @@ $pageTitle = 'Dashboard';
                 </div>
 
                 <div class="col-xxl-4">
-                    <section class="card dashboard-panel dashboard-card h-100">
+                    <section class="card ag-card dashboard-panel dashboard-card h-100">
                         <div class="card-header border-0 pb-0">
                             <div class="dashboard-panel-header">
                                 <div>
@@ -342,7 +361,7 @@ $pageTitle = 'Dashboard';
                         </div>
                     </section>
 
-                    <section class="card dashboard-panel dashboard-card">
+                    <section class="card ag-card dashboard-panel dashboard-card">
                         <div class="card-header border-0 pb-0">
                             <h2 class="dashboard-panel-title mb-0">Supporto operativo</h2>
                         </div>
