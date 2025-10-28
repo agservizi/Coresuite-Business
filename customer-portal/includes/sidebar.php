@@ -61,23 +61,25 @@ $currentPage = basename($_SERVER['PHP_SELF'] ?? '');
             </a>
         </div>
 
-        <div class="quick-info sidebar-quick-info mt-4">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <span class="small text-uppercase text-white-50">In attesa</span>
-                <span class="fw-bold" id="quick-pending">-</span>
+        <div class="sidebar-bottom mt-4">
+            <div class="quick-info sidebar-quick-info">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small text-uppercase text-white-50">In attesa</span>
+                    <span class="fw-bold" id="quick-pending">-</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small text-uppercase text-white-50">Pronti al ritiro</span>
+                    <span class="fw-bold" id="quick-ready">-</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="small text-uppercase text-white-50">Questo mese</span>
+                    <span class="fw-bold" id="quick-monthly">-</span>
+                </div>
             </div>
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <span class="small text-uppercase text-white-50">Pronti al ritiro</span>
-                <span class="fw-bold" id="quick-ready">-</span>
-            </div>
-            <div class="d-flex justify-content-between align-items-center">
-                <span class="small text-uppercase text-white-50">Questo mese</span>
-                <span class="fw-bold" id="quick-monthly">-</span>
-            </div>
-        </div>
 
-        <div class="sidebar-footer mt-4">
-            Pickup Portal · v<?= htmlspecialchars(portal_config('portal_version')) ?>
+            <div class="sidebar-footer">
+                Pickup Portal · v<?= htmlspecialchars(portal_config('portal_version')) ?>
+            </div>
         </div>
     </div>
 </aside>

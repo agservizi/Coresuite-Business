@@ -901,6 +901,28 @@ body.login-body {
     color: #74c0fc;
 }
 
+.sidebar .nav-link {
+    color: #ffffff;
+}
+
+.sidebar .nav-link .nav-label,
+.sidebar .sidebar-section-label,
+.sidebar .badge,
+.sidebar .sidebar-footer {
+    color: inherit;
+}
+
+.sidebar .nav-link:hover,
+.sidebar .nav-link:focus,
+.sidebar .nav-link.active {
+    color: #ffffff;
+}
+
+.sidebar .nav-link.text-danger,
+.sidebar .nav-link.text-danger .nav-label {
+    color: #ff6b6b !important;
+}
+
 .sidebar .nav-icon[data-color="violet"],
 .sidebar .nav-subicon[data-color="violet"] {
     color: #b197fc;
@@ -936,10 +958,17 @@ body.login-body {
     padding-bottom: 2rem;
 }
 
+.sidebar-bottom {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
 .sidebar-footer {
     font-size: 0.7rem;
     color: rgba(255, 255, 255, 0.6);
-    margin-top: auto;
+    margin-top: 0;
     text-transform: uppercase;
     letter-spacing: 0.18em;
 }
