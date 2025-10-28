@@ -1,9 +1,9 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__ . '/../../includes/auth.php';
-require_once __DIR__ . '/../../includes/db_connect.php';
-require_once __DIR__ . '/../../includes/helpers.php';
+require_once __DIR__ . '/../../../includes/auth.php';
+require_once __DIR__ . '/../../../includes/db_connect.php';
+require_once __DIR__ . '/../../../includes/helpers.php';
 require_once __DIR__ . '/functions.php';
 
 require_role('Admin', 'Operatore', 'Manager');
@@ -36,11 +36,11 @@ if ($filterCliente > 0) {
 $pratiche = anpr_fetch_pratiche($pdo, $filters);
 $clienti = anpr_fetch_clienti($pdo);
 
-require_once __DIR__ . '/../../includes/header.php';
-require_once __DIR__ . '/../../includes/sidebar.php';
+require_once __DIR__ . '/../../../includes/header.php';
+require_once __DIR__ . '/../../../includes/sidebar.php';
 ?>
 <div class="flex-grow-1 d-flex flex-column min-vh-100">
-    <?php require_once __DIR__ . '/../../includes/topbar.php'; ?>
+    <?php require_once __DIR__ . '/../../../includes/topbar.php'; ?>
     <main class="content-wrapper">
         <div class="page-toolbar mb-4">
             <div>
@@ -170,4 +170,4 @@ require_once __DIR__ . '/../../includes/sidebar.php';
         </div>
     </main>
 </div>
-<?php require_once __DIR__ . '/../../includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../../../includes/footer.php'; ?>

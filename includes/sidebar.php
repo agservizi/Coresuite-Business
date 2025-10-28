@@ -64,6 +64,13 @@ $serviziItems = [
         'href' => base_url('modules/servizi/energia/index.php'),
         'color' => 'crimson',
     ],
+    [
+        'needle' => 'modules/servizi/anpr',
+        'label' => 'Servizi ANPR',
+        'icon' => 'fa-solid fa-id-card-clip',
+        'href' => base_url('modules/servizi/anpr/index.php'),
+        'color' => 'amber',
+    ],
 ];
 
 $serviziMenuOpen = false;
