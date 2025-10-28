@@ -90,7 +90,11 @@ class HostingerClient
     {
         $response = $this->request('GET', '/api/hosting/v1/datacenters');
 
-        return $response['data'] ?? [];
+        if (is_array($response) && isset($response['data']) && is_array($response['data'])) {
+            return $response['data'];
+        }
+
+        return is_array($response) ? $response : [];
     }
 
     public function listCatalog(?string $category = null): array
@@ -102,7 +106,26 @@ class HostingerClient
 
         $response = $this->request('GET', '/api/billing/v1/catalog', $params);
 
-        return $response['data'] ?? [];
+        if (is_array($response) && isset($response['data']) && is_array($response['data'])) {
+            return $response['data'];
+        }
+
+        return is_array($response) ? $response : [];
+    }
+
+    public function createOrder(array $payload): array
+    {
+        if (empty($payload['items'])) {
+            throw new RuntimeException('Nessuna voce fornita per la creazione dell\'ordine.');
+        }
+
+        $response = $this->request('POST', '/api/billing/v1/orders', $payload);
+
+        if (is_array($response) && isset($response['data']) && is_array($response['data'])) {
+            return $response['data'];
+        }
+
+        return is_array($response) ? $response : [];
     }
 
     private function request(string $method, string $path, ?array $payload = null): array

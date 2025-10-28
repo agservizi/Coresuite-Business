@@ -23,6 +23,8 @@ const SERVIZI_WEB_SERVICE_TYPES = [
     'Servizi di stampa',
 ];
 
+const SERVIZI_WEB_HOSTINGER_SELECTION_SEPARATOR = '::';
+
 function servizi_web_generate_code(PDO $pdo): string
 {
     $prefix = 'WEB-' . date('Y');
@@ -169,6 +171,41 @@ function servizi_web_hostinger_is_configured(): bool
     return trim((string) env('HOSTINGER_API_TOKEN', '')) !== '';
 }
 
+function servizi_web_hostinger_encode_selection(string $itemId, string $priceId): string
+{
+    $itemId = trim($itemId);
+    $priceId = trim($priceId);
+
+    return $itemId . SERVIZI_WEB_HOSTINGER_SELECTION_SEPARATOR . $priceId;
+}
+
+function servizi_web_hostinger_decode_selection(?string $value): array
+{
+    $value = trim((string) $value);
+    if ($value === '') {
+        return [
+            'item_id' => null,
+            'price_id' => null,
+        ];
+    }
+
+    if (!str_contains($value, SERVIZI_WEB_HOSTINGER_SELECTION_SEPARATOR)) {
+        return [
+            'item_id' => null,
+            'price_id' => $value,
+        ];
+    }
+
+    [$itemId, $priceId] = explode(SERVIZI_WEB_HOSTINGER_SELECTION_SEPARATOR, $value, 2);
+    $itemId = trim($itemId);
+    $priceId = trim($priceId);
+
+    return [
+        'item_id' => $itemId !== '' ? $itemId : null,
+        'price_id' => $priceId !== '' ? $priceId : null,
+    ];
+}
+
 function servizi_web_hostinger_client(): ?HostingerClient
 {
     static $client;
@@ -216,6 +253,365 @@ function servizi_web_hostinger_client(): ?HostingerClient
     return $client;
 }
 
+function servizi_web_hostinger_catalog_items(?string $category = null): array
+{
+    static $fetched = false;
+    static $cache = [];
+
+    if (!$fetched) {
+        $fetched = true;
+        $client = servizi_web_hostinger_client();
+        if (!$client) {
+            return [];
+        }
+
+        try {
+            $items = $client->listCatalog(null);
+            if (is_array($items)) {
+                $cache = array_values(array_filter($items, static function ($item): bool {
+                    return is_array($item) && !empty($item['id']);
+                }));
+            } else {
+                $cache = [];
+            }
+        } catch (\Throwable $exception) {
+            error_log('Servizi Web hostinger catalog fetch failed: ' . $exception->getMessage());
+            $cache = [];
+        }
+    }
+
+    if ($category === null || $category === '') {
+        return $cache;
+    }
+
+    $normalized = strtoupper($category);
+
+    return array_values(array_filter($cache, static function (array $item) use ($normalized): bool {
+        $itemCategory = strtoupper((string) ($item['category'] ?? ''));
+
+        return $itemCategory === $normalized;
+    }));
+}
+
+function servizi_web_hostinger_catalog_lookup(): array
+{
+    static $lookup;
+
+    if ($lookup !== null) {
+        return $lookup;
+    }
+
+    $lookup = [
+        'items' => [],
+        'prices' => [],
+    ];
+
+    foreach (servizi_web_hostinger_catalog_items(null) as $item) {
+        if (!is_array($item)) {
+            continue;
+        }
+
+        $itemId = trim((string) ($item['id'] ?? ''));
+        if ($itemId === '') {
+            continue;
+        }
+
+        $lookup['items'][$itemId] = $item;
+
+        $prices = $item['prices'] ?? [];
+        if (!is_array($prices)) {
+            continue;
+        }
+
+        foreach ($prices as $price) {
+            if (!is_array($price)) {
+                continue;
+            }
+
+            $priceId = trim((string) ($price['id'] ?? ''));
+            if ($priceId === '') {
+                continue;
+            }
+
+            $lookup['prices'][$priceId] = [
+                'price' => $price,
+                'item_id' => $itemId,
+            ];
+        }
+    }
+
+    return $lookup;
+}
+
+function servizi_web_hostinger_find_item(?string $itemId): ?array
+{
+    if ($itemId === null || $itemId === '') {
+        return null;
+    }
+
+    $lookup = servizi_web_hostinger_catalog_lookup();
+
+    return $lookup['items'][$itemId] ?? null;
+}
+
+function servizi_web_hostinger_find_price(?string $priceId): ?array
+{
+    if ($priceId === null || $priceId === '') {
+        return null;
+    }
+
+    $lookup = servizi_web_hostinger_catalog_lookup();
+
+    return $lookup['prices'][$priceId] ?? null;
+}
+
+function servizi_web_hostinger_format_currency(int $amount, string $currency): string
+{
+    $currency = strtoupper($currency);
+
+    if ($currency === 'EUR') {
+        $value = $amount / 100;
+        return '€' . number_format($value, 2, ',', '.');
+    }
+
+    $value = $amount / 100;
+
+    return $currency . ' ' . number_format($value, 2, '.', ',');
+}
+
+function servizi_web_hostinger_format_period_label(int $period, string $unit): string
+{
+    $period = $period > 0 ? $period : 1;
+    $unit = strtolower($unit);
+
+    if ($unit === 'month') {
+        return $period === 1 ? 'mensile' : 'ogni ' . $period . ' mesi';
+    }
+
+    if ($unit === 'year') {
+        return $period === 1 ? 'annuale' : 'ogni ' . $period . ' anni';
+    }
+
+    return 'ogni ' . $period . ' ' . $unit;
+}
+
+function servizi_web_hostinger_build_price_label(string $itemName, array $price): string
+{
+    $currency = strtoupper((string) ($price['currency'] ?? 'EUR'));
+    $listPrice = isset($price['price']) ? servizi_web_hostinger_format_currency((int) $price['price'], $currency) : '';
+
+    $period = isset($price['period']) ? (int) $price['period'] : 1;
+    $periodUnit = (string) ($price['period_unit'] ?? 'month');
+    $periodLabel = servizi_web_hostinger_format_period_label($period, $periodUnit);
+
+    $firstPrice = isset($price['first_period_price']) ? (int) $price['first_period_price'] : null;
+
+    if ($firstPrice !== null && $listPrice !== '' && $firstPrice !== (int) ($price['price'] ?? null)) {
+        $promo = servizi_web_hostinger_format_currency($firstPrice, $currency);
+        $priceLabel = $promo . ' promo / ' . $listPrice;
+    } else {
+        $priceLabel = $listPrice !== '' ? $listPrice : '—';
+    }
+
+    return $itemName . ' • ' . $periodLabel . ' • ' . $priceLabel;
+}
+
+function servizi_web_hostinger_plan_options(string $type): array
+{
+    $items = servizi_web_hostinger_catalog_items(null);
+    if (!$items) {
+        return [];
+    }
+
+    $category = '';
+    $filter = '';
+
+    if ($type === 'hosting') {
+        $category = strtoupper(trim((string) env('HOSTINGER_API_HOSTING_CATEGORY', 'VPS')));
+        $filter = strtolower(trim((string) env('HOSTINGER_API_HOSTING_FILTER', '')));
+    } elseif ($type === 'email') {
+        $category = strtoupper(trim((string) env('HOSTINGER_API_EMAIL_CATEGORY', '')));
+        $filter = strtolower(trim((string) env('HOSTINGER_API_EMAIL_FILTER', 'email')));
+    }
+
+    $currency = strtoupper(trim((string) env('HOSTINGER_API_CURRENCY', 'EUR')));
+
+    $options = [];
+
+    foreach ($items as $item) {
+        if (!is_array($item)) {
+            continue;
+        }
+
+        $itemId = trim((string) ($item['id'] ?? ''));
+        if ($itemId === '') {
+            continue;
+        }
+
+        $itemName = trim((string) ($item['name'] ?? $itemId));
+        $itemCategory = strtoupper((string) ($item['category'] ?? ''));
+
+        if ($category !== '' && $itemCategory !== $category) {
+            continue;
+        }
+
+        if ($filter !== '' && stripos($itemId . ' ' . $itemName, $filter) === false) {
+            continue;
+        }
+
+        $prices = $item['prices'] ?? [];
+        if (!is_array($prices)) {
+            continue;
+        }
+
+        foreach ($prices as $price) {
+            if (!is_array($price)) {
+                continue;
+            }
+
+            $priceId = trim((string) ($price['id'] ?? ''));
+            if ($priceId === '') {
+                continue;
+            }
+
+            $priceCurrency = strtoupper((string) ($price['currency'] ?? ''));
+            if ($priceCurrency !== '' && $currency !== '' && $priceCurrency !== $currency) {
+                continue;
+            }
+
+            $label = servizi_web_hostinger_build_price_label($itemName, $price);
+
+            $options[] = [
+                'value' => servizi_web_hostinger_encode_selection($itemId, $priceId),
+                'label' => $label,
+                'item_id' => $itemId,
+                'item_name' => $itemName,
+                'price_id' => $priceId,
+                'currency' => $priceCurrency,
+                'price' => isset($price['price']) ? (int) $price['price'] : null,
+                'first_price' => isset($price['first_period_price']) ? (int) $price['first_period_price'] : null,
+                'period' => isset($price['period']) ? (int) $price['period'] : null,
+                'period_unit' => (string) ($price['period_unit'] ?? ''),
+                'category' => $itemCategory,
+                'metadata' => $item['metadata'] ?? null,
+            ];
+        }
+    }
+
+    usort($options, static function (array $a, array $b): int {
+        return strcmp($a['label'], $b['label']);
+    });
+
+    return $options;
+}
+
+function servizi_web_hostinger_selection_label(?string $value): ?string
+{
+    if ($value === null || $value === '') {
+        return null;
+    }
+
+    $decoded = servizi_web_hostinger_decode_selection($value);
+    $priceId = $decoded['price_id'] ?? null;
+
+    if ($priceId) {
+        $priceData = servizi_web_hostinger_find_price($priceId);
+        if ($priceData) {
+            $item = servizi_web_hostinger_find_item($priceData['item_id'] ?? null);
+            $price = $priceData['price'] ?? null;
+
+            if ($item && is_array($price)) {
+                $itemName = trim((string) ($item['name'] ?? ($priceData['item_id'] ?? '')));
+
+                return servizi_web_hostinger_build_price_label($itemName, $price);
+            }
+        }
+    }
+
+    $itemId = $decoded['item_id'] ?? null;
+    if ($itemId) {
+        $item = servizi_web_hostinger_find_item($itemId);
+        if ($item) {
+            return trim((string) ($item['name'] ?? $itemId));
+        }
+    }
+
+    return $decoded['price_id'] ?? $value;
+}
+
+function servizi_web_hostinger_create_order(array $items, ?int $paymentMethodId = null, ?string $currency = null): array
+{
+    $filtered = [];
+    foreach ($items as $item) {
+        if (!is_array($item)) {
+            continue;
+        }
+
+        $itemId = trim((string) ($item['item_id'] ?? ''));
+        $priceId = trim((string) ($item['price_id'] ?? ''));
+        $quantity = isset($item['quantity']) ? (int) $item['quantity'] : 1;
+
+        if ($itemId === '' || $priceId === '') {
+            continue;
+        }
+
+        $filtered[] = [
+            'item_id' => $itemId,
+            'price_id' => $priceId,
+            'quantity' => $quantity > 0 ? $quantity : 1,
+        ];
+    }
+
+    if (!$filtered) {
+        return [
+            'success' => false,
+            'error' => 'Nessun articolo valido per creare un ordine Hostinger.',
+        ];
+    }
+
+    $paymentMethodId = $paymentMethodId !== null ? $paymentMethodId : (int) env('HOSTINGER_API_PAYMENT_METHOD_ID', 0);
+    if ($paymentMethodId <= 0) {
+        return [
+            'success' => false,
+            'error' => 'Configura HOSTINGER_API_PAYMENT_METHOD_ID nelle variabili ambiente per generare ordini automatici.',
+        ];
+    }
+
+    $payload = [
+        'payment_method_id' => $paymentMethodId,
+        'items' => $filtered,
+    ];
+
+    $currency = $currency !== null ? trim($currency) : trim((string) env('HOSTINGER_API_CURRENCY', ''));
+    if ($currency !== '') {
+        $payload['currency'] = strtoupper($currency);
+    }
+
+    $client = servizi_web_hostinger_client();
+    if (!$client) {
+        return [
+            'success' => false,
+            'error' => 'Client Hostinger non disponibile.',
+        ];
+    }
+
+    try {
+        $response = $client->createOrder($payload);
+
+        return [
+            'success' => true,
+            'data' => $response,
+        ];
+    } catch (\Throwable $exception) {
+        error_log('Servizi Web hostinger order failed: ' . $exception->getMessage());
+
+        return [
+            'success' => false,
+            'error' => $exception->getMessage(),
+        ];
+    }
+}
+
 function servizi_web_hostinger_datacenters(): array
 {
     $client = servizi_web_hostinger_client();
@@ -233,17 +629,7 @@ function servizi_web_hostinger_datacenters(): array
 
 function servizi_web_hostinger_catalog(?string $category = null): array
 {
-    $client = servizi_web_hostinger_client();
-    if (!$client) {
-        return [];
-    }
-
-    try {
-        return $client->listCatalog($category);
-    } catch (\Throwable $exception) {
-        error_log('Servizi Web hostinger catalog failed: ' . $exception->getMessage());
-        return [];
-    }
+    return servizi_web_hostinger_catalog_items($category);
 }
 
 function servizi_web_hostinger_check_domain(string $domain): array
