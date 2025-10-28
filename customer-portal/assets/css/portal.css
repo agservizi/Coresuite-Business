@@ -660,17 +660,16 @@ body.login-body {
     min-height: 100vh;
     width: 100%;
     background-color: var(--ag-surface-alt);
+    display: grid !important;
+    grid-template-columns: var(--portal-sidebar-width) minmax(0, 1fr);
 }
 
 .portal-main {
-    flex: 1 1 calc(100% - var(--portal-sidebar-width));
-    width: calc(100% - var(--portal-sidebar-width));
-    max-width: calc(100% - var(--portal-sidebar-width));
-    min-width: 0;
     display: flex;
     flex-direction: column;
     background: var(--ag-surface-alt);
     min-height: 100vh;
+    min-width: 0;
 }
 
 .portal-content {
@@ -682,10 +681,12 @@ body.login-body {
 }
 
 @media (max-width: 991.98px) {
+    #portal-app {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
     .portal-main {
-        flex: 1 1 100%;
         width: 100%;
-        max-width: 100%;
     }
 
     .portal-content {
@@ -922,6 +923,8 @@ body.login-body {
     align-items: center;
     gap: 1rem;
     flex-wrap: wrap;
+    justify-content: space-between;
+    width: 100%;
 }
 
 .topbar-left,
