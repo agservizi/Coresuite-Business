@@ -18,6 +18,20 @@ CREATE TABLE IF NOT EXISTS servizi_appuntamenti (
     FOREIGN KEY (cliente_id) REFERENCES clienti(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS servizi_ricariche (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    cliente_id INT UNSIGNED NOT NULL,
+    operatore VARCHAR(120) NOT NULL,
+    numero_riferimento VARCHAR(160) NULL,
+    tipo VARCHAR(80) NOT NULL,
+    stato VARCHAR(40) NOT NULL DEFAULT 'Nuovo',
+    data_operazione DATE NOT NULL,
+    importo DECIMAL(10,2) NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_ricariche_cliente (cliente_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 INSERT INTO servizi_appuntamenti (cliente_id, titolo, tipo_servizio, responsabile, luogo, stato, data_inizio, data_fine, note, created_at, updated_at)
 SELECT sr.cliente_id,
        CONCAT('Ricarica ', sr.operatore, ' ', sr.numero_riferimento) AS titolo,

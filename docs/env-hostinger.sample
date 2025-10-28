@@ -1,0 +1,3 @@
+# Hostinger API configuration
+HOSTINGER_API_TOKEN=
+HOSTINGER_API_BASE_URI=https://developers.hostinger.com

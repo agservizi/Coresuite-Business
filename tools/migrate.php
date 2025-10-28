@@ -55,10 +55,14 @@ foreach ($pending as $file) {
         }
         $insert = $pdo->prepare('INSERT INTO schema_migrations (migration, executed_at) VALUES (:migration, NOW())');
         $insert->execute([':migration' => basename($file)]);
-        $pdo->commit();
+        if ($pdo->inTransaction()) {
+            $pdo->commit();
+        }
         echo 'Applicata migrazione ' . basename($file) . "\n";
     } catch (Throwable $e) {
-        $pdo->rollBack();
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         fwrite(STDERR, 'Errore migrazione ' . basename($file) . ': ' . $e->getMessage() . "\n");
         exit(1);
     }
