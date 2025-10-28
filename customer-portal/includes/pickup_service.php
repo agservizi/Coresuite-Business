@@ -8,6 +8,7 @@ require_once __DIR__ . '/database.php';
  */
 class PickupService {
     private array $tableExistsCache = [];
+    private ?array $pickupTableConfig = null;
     
     private function hasTable(string $tableName): bool {
         if (isset($this->tableExistsCache[$tableName])) {
@@ -29,6 +30,40 @@ class PickupService {
             return false;
         }
     }
+
+    private function getPickupTableConfig(): ?array {
+        if ($this->pickupTableConfig !== null) {
+            return $this->pickupTableConfig;
+        }
+
+        if ($this->hasTable('pickup_packages')) {
+            $this->pickupTableConfig = [
+                'name' => 'pickup_packages',
+                'tracking_column' => 'tracking',
+                'note_column' => 'notes',
+                'created_column' => 'created_at',
+                'updated_column' => 'updated_at',
+                'delivered_expression' => "CASE WHEN p.status = 'ritirato' THEN p.updated_at ELSE NULL END",
+                'supports_media' => true,
+                'supports_otp_column' => false,
+            ];
+        } elseif ($this->hasTable('pickup')) {
+            $this->pickupTableConfig = [
+                'name' => 'pickup',
+                'tracking_column' => 'tracking_number',
+                'note_column' => 'customer_note',
+                'created_column' => 'created_at',
+                'updated_column' => 'updated_at',
+                'delivered_expression' => 'p.delivered_at',
+                'supports_media' => false,
+                'supports_otp_column' => true,
+            ];
+        } else {
+            $this->pickupTableConfig = null;
+        }
+
+        return $this->pickupTableConfig;
+    }
     
     /**
      * Ottiene le statistiche del cliente
@@ -42,24 +77,29 @@ class PickupService {
             [$customerId, 'reported']
         );
         
+        $pickupConfig = $this->getPickupTableConfig();
+
         // Pacchi pronti per il ritiro (arrivati)
-        if ($this->hasTable('pickup')) {
+        if ($pickupConfig) {
+            $table = $pickupConfig['name'];
             $stats['ready_packages'] = portal_count(
-                'SELECT COUNT(*) FROM pickup_customer_reports r 
-                 LEFT JOIN pickup p ON r.pickup_id = p.id 
-                 WHERE r.customer_id = ? AND (p.status = ? OR p.status = ?)',
+                "SELECT COUNT(*) FROM pickup_customer_reports r 
+                 LEFT JOIN {$table} p ON r.pickup_id = p.id 
+                 WHERE r.customer_id = ? AND (p.status = ? OR p.status = ?)",
                 [$customerId, 'consegnato', 'in_giacenza']
             );
         } else {
             $stats['ready_packages'] = 0;
         }
-        
+
         // Pacchi ritirati questo mese
-        if ($this->hasTable('pickup')) {
+        if ($pickupConfig) {
+            $table = $pickupConfig['name'];
+            $updatedColumn = $pickupConfig['updated_column'];
             $stats['monthly_delivered'] = portal_count(
-                'SELECT COUNT(*) FROM pickup_customer_reports r 
-                 LEFT JOIN pickup p ON r.pickup_id = p.id 
-                 WHERE r.customer_id = ? AND p.status = ? AND p.updated_at >= ?',
+                "SELECT COUNT(*) FROM pickup_customer_reports r 
+                 LEFT JOIN {$table} p ON r.pickup_id = p.id 
+                 WHERE r.customer_id = ? AND p.status = ? AND p.{$updatedColumn} >= ?",
                 [$customerId, 'ritirato', date('Y-m-01')]
             );
         } else {
@@ -90,7 +130,10 @@ class PickupService {
             'ready' => 0,
         ];
 
-        if ($this->hasTable('pickup')) {
+        $pickupConfig = $this->getPickupTableConfig();
+
+        if ($pickupConfig) {
+            $table = $pickupConfig['name'];
             $row = portal_fetch_one(
                 <<<SQL
 SELECT 
@@ -105,7 +148,7 @@ SELECT
     SUM(CASE WHEN p.status = 'in_giacenza_scaduto' THEN 1 ELSE 0 END) AS in_giacenza_scaduto,
     SUM(CASE WHEN p.status = 'ritirato' THEN 1 ELSE 0 END) AS ritirato
 FROM pickup_customer_reports r
-LEFT JOIN pickup p ON r.pickup_id = p.id
+LEFT JOIN {$table} p ON r.pickup_id = p.id
 WHERE r.customer_id = ?
 SQL,
                 [$customerId]
@@ -393,18 +436,31 @@ SQL,
         $status = $options['status'] ?? null;
         $search = trim((string) ($options['search'] ?? ''));
         
-        if ($this->hasTable('pickup')) {
-            $sql = 'SELECT r.*, p.status as pickup_status, p.courier_id, p.pickup_location_id,
-                           p.delivered_at, p.created_at as pickup_created_at,
-                           COALESCE(c.name, r.courier_name) as courier_name, l.name as location_name
+        $pickupConfig = $this->getPickupTableConfig();
+
+        if ($pickupConfig) {
+            $pickupTable = $pickupConfig['name'];
+            $signatureColumns = $pickupConfig['supports_media']
+                ? 'p.signature_path AS signature_path, p.photo_path AS photo_path, p.qr_code_path AS qr_code_path'
+                : 'NULL AS signature_path, NULL AS photo_path, NULL AS qr_code_path';
+            $deliveredExpression = $pickupConfig['delivered_expression'];
+            $createdColumn = 'p.' . $pickupConfig['created_column'];
+            $updatedColumn = 'p.' . $pickupConfig['updated_column'];
+
+            $sql = "SELECT r.*, p.status AS pickup_status, p.courier_id, p.pickup_location_id,
+                           {$deliveredExpression} AS delivered_at,
+                           {$createdColumn} AS pickup_created_at,
+                           {$updatedColumn} AS pickup_updated_at,
+                           {$signatureColumns},
+                           COALESCE(c.name, r.courier_name) AS courier_name, l.name AS location_name
                     FROM pickup_customer_reports r
-                    LEFT JOIN pickup p ON r.pickup_id = p.id
+                    LEFT JOIN {$pickupTable} p ON r.pickup_id = p.id
                     LEFT JOIN pickup_couriers c ON p.courier_id = c.id
                     LEFT JOIN pickup_locations l ON p.pickup_location_id = l.id
-                    WHERE r.customer_id = ?';
-            
+                    WHERE r.customer_id = ?";
+
             $params = [$customerId];
-            
+
             if ($status) {
                 $sql .= ' AND r.status = ?';
                 $params[] = $status;
@@ -426,11 +482,15 @@ SQL,
                 $params[] = $like;
                 $params[] = $like;
             }
-            
-            $sql .= ' ORDER BY r.created_at DESC LIMIT ? OFFSET ?';
+
+            $orderBy = 'r.created_at';
+            if (!empty($pickupConfig['updated_column'])) {
+                $orderBy = 'p.' . $pickupConfig['updated_column'];
+            }
+            $sql .= ' ORDER BY ' . $orderBy . ' DESC, r.created_at DESC LIMIT ? OFFSET ?';
             $params[] = $limit;
             $params[] = $offset;
-            
+
             return portal_fetch_all($sql, $params);
         }
 
@@ -457,7 +517,11 @@ SQL,
             $params[] = $like;
         }
 
-        $sql .= ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+                $updatedOrder = 'r.updated_at';
+                if ($pickupConfig && !empty($pickupConfig['updated_column'])) {
+                    $updatedOrder = 'p.' . $pickupConfig['updated_column'];
+                }
+                $sql .= ' ORDER BY ' . $updatedOrder . ' DESC, r.created_at DESC LIMIT ? OFFSET ?';
         $params[] = $limit;
         $params[] = $offset;
 
@@ -478,19 +542,42 @@ SQL,
      * Ottiene un singolo pacco del cliente
      */
     public function getCustomerPackage(int $customerId, int $packageId): ?array {
-        if ($this->hasTable('pickup')) {
-            return portal_fetch_one(
-        'SELECT r.*, p.status as pickup_status, p.courier_id, p.pickup_location_id,
-            p.delivered_at, p.created_at as pickup_created_at, p.tracking_number,
-                        p.otp_code, p.signature_path, p.photo_path,
-            COALESCE(c.name, r.courier_name) as courier_name, l.name as location_name, l.address as location_address
-                 FROM pickup_customer_reports r
-                 LEFT JOIN pickup p ON r.pickup_id = p.id
-                 LEFT JOIN pickup_couriers c ON p.courier_id = c.id
-                 LEFT JOIN pickup_locations l ON p.pickup_location_id = l.id
-                 WHERE r.customer_id = ? AND r.id = ?',
-                [$customerId, $packageId]
-            );
+        $pickupConfig = $this->getPickupTableConfig();
+
+        if ($pickupConfig) {
+            $pickupTable = $pickupConfig['name'];
+            $signatureColumns = $pickupConfig['supports_media']
+                ? 'p.signature_path AS signature_path, p.photo_path AS photo_path, p.qr_code_path AS qr_code_path'
+                : 'NULL AS signature_path, NULL AS photo_path, NULL AS qr_code_path';
+            $deliveredExpression = $pickupConfig['delivered_expression'];
+            $createdColumn = 'p.' . $pickupConfig['created_column'];
+            $updatedColumn = 'p.' . $pickupConfig['updated_column'];
+            $otpColumn = $pickupConfig['supports_otp_column']
+                ? 'p.otp_code AS otp_code'
+                : 'NULL AS otp_code';
+            $trackingColumn = 'p.' . $pickupConfig['tracking_column'] . ' AS pickup_tracking';
+            $noteColumn = $pickupConfig['note_column']
+                ? 'p.' . $pickupConfig['note_column'] . ' AS pickup_note'
+                : 'NULL AS pickup_note';
+
+            $sql = "SELECT r.*, p.status AS pickup_status, p.courier_id, p.pickup_location_id,
+                           {$deliveredExpression} AS delivered_at,
+                           {$createdColumn} AS pickup_created_at,
+                           {$updatedColumn} AS pickup_updated_at,
+                           {$otpColumn},
+                           {$signatureColumns},
+                           {$trackingColumn},
+                           {$noteColumn},
+                           COALESCE(c.name, r.courier_name) AS courier_name,
+                           l.name AS location_name,
+                           l.address AS location_address
+                    FROM pickup_customer_reports r
+                    LEFT JOIN {$pickupTable} p ON r.pickup_id = p.id
+                    LEFT JOIN pickup_couriers c ON p.courier_id = c.id
+                    LEFT JOIN pickup_locations l ON p.pickup_location_id = l.id
+                    WHERE r.customer_id = ? AND r.id = ?";
+
+            return portal_fetch_one($sql, [$customerId, $packageId]);
         }
 
         return portal_fetch_one(
@@ -584,7 +671,7 @@ SQL,
             $params[] = $status;
         }
         
-        $sql .= ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+    $sql .= ' ORDER BY updated_at DESC, created_at DESC LIMIT ? OFFSET ?';
         $params[] = $limit;
         $params[] = $offset;
         
@@ -725,14 +812,30 @@ SQL,
      * Cerca pacchi nel sistema pickup per tracking code
      */
     public function findPickupByTracking(string $trackingCode): ?array {
+        $pickupConfig = $this->getPickupTableConfig();
+
+        if (!$pickupConfig) {
+            return null;
+        }
+
+        $pickupTable = $pickupConfig['name'];
+        $trackingColumn = 'p.' . $pickupConfig['tracking_column'];
+        $conditions = ["{$trackingColumn} = ?"];
+        $params = [$trackingCode];
+
+        if (!empty($pickupConfig['note_column'])) {
+            $noteColumn = 'p.' . $pickupConfig['note_column'];
+            $conditions[] = "{$noteColumn} LIKE ?";
+            $params[] = '%' . $trackingCode . '%';
+        }
+
+        $whereClause = implode(' OR ', $conditions);
+
         try {
-            // Connessione al database del sistema pickup
-            $pickup = portal_fetch_one(
-                'SELECT * FROM pickup WHERE tracking_number = ? OR customer_note LIKE ?',
-                [$trackingCode, '%' . $trackingCode . '%']
+            return portal_fetch_one(
+                "SELECT * FROM {$pickupTable} p WHERE {$whereClause} LIMIT 1",
+                $params
             );
-            
-            return $pickup;
         } catch (Exception $e) {
             portal_error_log('Error finding pickup by tracking: ' . $e->getMessage());
             return null;

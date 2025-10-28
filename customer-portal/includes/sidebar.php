@@ -37,7 +37,7 @@ $currentPage = basename($_SERVER['PHP_SELF'] ?? '');
         </nav>
 
         <div class="sidebar-section mt-4 pt-3 border-top border-light">
-            <span class="sidebar-section-label text-uppercase small text-muted">Account</span>
+            <span class="sidebar-section-label text-uppercase small text-white">Account</span>
             <nav class="nav flex-column mt-3 sidebar-account-nav">
                 <a class="nav-link <?= $currentPage === 'profile.php' ? 'active' : '' ?>" href="profile.php" title="Profilo">
                     <span class="nav-icon" data-color="orange"><i class="fa-solid fa-user"></i></span>

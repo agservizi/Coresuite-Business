@@ -1,22 +1,15 @@
-    <footer class="portal-footer mt-auto py-4 border-top">
-        <div class="container-fluid">
-            <div class="row align-items-center gy-3">
-                <div class="col-md-6">
-                    <span class="fw-semibold text-primary">Pickup Portal</span>
-                    <p class="text-muted-soft small mb-0">Gestisci i tuoi ritiri con la piattaforma clienti Coresuite Business.</p>
-                </div>
-                <div class="col-md-6 text-md-end">
-                    <a href="help.php" class="text-muted-soft text-decoration-none me-3"><i class="fa-solid fa-circle-question me-1"></i>Aiuto</a>
-                    <a href="privacy.php" class="text-muted-soft text-decoration-none me-3"><i class="fa-solid fa-shield-halved me-1"></i>Privacy</a>
-                    <a href="mailto:support@coresuite.it" class="text-muted-soft text-decoration-none"><i class="fa-solid fa-envelope me-1"></i>Supporto</a>
-                </div>
+    <footer class="portal-footer mt-auto border-top py-3">
+        <div class="container-fluid portal-footer__bar">
+            <div class="portal-footer__left text-muted-soft">
+                <span class="portal-footer__brand text-primary fw-semibold">Pickup Portal</span>
+                <span>© <?= date('Y') ?> Coresuite Business · v<?= portal_config('portal_version') ?></span>
             </div>
-            <div class="row mt-3">
-                <div class="col-12 d-flex justify-content-between flex-wrap small text-muted-soft">
-                    <span>© <?= date('Y') ?> Coresuite Business · Pickup Portal v<?= portal_config('portal_version') ?></span>
-                    <span><i class="fa-solid fa-shield-halved me-1"></i>Connessione protetta</span>
-                </div>
-            </div>
+            <nav class="portal-footer__right" aria-label="Link rapidi portale">
+                <a href="help.php" class="portal-footer__link"><i class="fa-solid fa-circle-question me-1"></i>Aiuto</a>
+                <a href="privacy.php" class="portal-footer__link"><i class="fa-solid fa-shield-halved me-1"></i>Privacy</a>
+                <a href="mailto:support@coresuite.it" class="portal-footer__link"><i class="fa-solid fa-envelope me-1"></i>Supporto</a>
+                <span class="portal-footer__secure text-muted-soft"><i class="fa-solid fa-lock me-1"></i>Connessione protetta</span>
+            </nav>
         </div>
     </footer>
 </div>

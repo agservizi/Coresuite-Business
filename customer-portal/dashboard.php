@@ -244,8 +244,13 @@ $pageTitle = 'Dashboard';
                                 <ul class="dashboard-feed list-unstyled mb-0">
                                     <?php foreach ($recentPackages as $package): ?>
                                         <?php
-                                        $status = $package['status'] ?? 'reported';
-                                        $statusIcon = $statusIconMap[$status] ?? 'fa-box';
+                                        $reportStatus = $package['status'] ?? 'reported';
+                                        $pickupStatus = $package['pickup_status'] ?? null;
+                                        $status = $pickupStatus ?: $reportStatus;
+                                        $statusIconKey = isset($statusIconMap[$status]) ? $status : $reportStatus;
+                                        $statusIcon = $statusIconMap[$statusIconKey] ?? 'fa-box';
+                                        $timestamp = $package['pickup_updated_at'] ?? ($package['updated_at'] ?? $package['created_at']);
+                                        $timestamp = $timestamp ?: $package['created_at'];
                                         ?>
                                         <li class="dashboard-feed-item">
                                             <span class="dashboard-feed-icon" data-status="<?= htmlspecialchars($status) ?>">
@@ -259,7 +264,7 @@ $pageTitle = 'Dashboard';
                                                 <div class="dashboard-feed-meta">
                                                     <span><i class="fa-solid fa-user"></i><?= htmlspecialchars($package['recipient_name'] ?: 'Destinatario non indicato') ?></span>
                                                     <span><i class="fa-solid fa-truck"></i><?= htmlspecialchars($package['courier_name'] ?? 'Corriere N/D') ?></span>
-                                                    <span><i class="fa-regular fa-clock"></i><?= date('d/m H:i', strtotime($package['created_at'])) ?></span>
+                                                    <span><i class="fa-regular fa-clock"></i><?= $timestamp ? date('d/m H:i', strtotime($timestamp)) : '-' ?></span>
                                                 </div>
                                             </div>
                                             <div class="dashboard-feed-actions">
