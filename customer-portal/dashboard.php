@@ -244,16 +244,16 @@ $pageTitle = 'Dashboard';
                                 <ul class="dashboard-feed list-unstyled mb-0">
                                     <?php foreach ($recentPackages as $package): ?>
                                         <?php
-                                        $reportStatus = $package['status'] ?? 'reported';
-                                        $pickupStatus = $package['pickup_status'] ?? null;
-                                        $status = $pickupStatus ?: $reportStatus;
+                                        $reportStatus = trim((string) ($package['status'] ?? 'reported')) ?: 'reported';
+                                        $pickupStatus = trim((string) ($package['pickup_status'] ?? ''));
+                                        $status = $pickupStatus !== '' ? $pickupStatus : $reportStatus;
                                         $statusIconKey = isset($statusIconMap[$status]) ? $status : $reportStatus;
                                         $statusIcon = $statusIconMap[$statusIconKey] ?? 'fa-box';
                                         $timestamp = $package['pickup_updated_at'] ?? ($package['updated_at'] ?? $package['created_at']);
                                         $timestamp = $timestamp ?: $package['created_at'];
                                         ?>
                                         <li class="dashboard-feed-item">
-                                            <span class="dashboard-feed-icon" data-status="<?= htmlspecialchars($status) ?>">
+                                            <span class="dashboard-feed-icon" data-status="<?= htmlspecialchars($status !== '' ? $status : $reportStatus) ?>">
                                                 <i class="fa-solid <?= $statusIcon ?>" aria-hidden="true"></i>
                                             </span>
                                             <div class="dashboard-feed-main">
