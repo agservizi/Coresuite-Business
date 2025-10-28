@@ -614,17 +614,61 @@ function servizi_web_hostinger_create_order(array $items, ?int $paymentMethodId 
 
 function servizi_web_hostinger_datacenters(): array
 {
+    static $cache;
+
+    if ($cache !== null) {
+        return $cache;
+    }
+
     $client = servizi_web_hostinger_client();
     if (!$client) {
-        return [];
+        $cache = [];
+        return $cache;
     }
 
     try {
-        return $client->listDatacenters();
+        $datacenters = $client->listDatacenters();
+        $cache = is_array($datacenters) ? $datacenters : [];
     } catch (\Throwable $exception) {
         error_log('Servizi Web hostinger datacenters failed: ' . $exception->getMessage());
-        return [];
+        $cache = [];
     }
+
+    return $cache;
+}
+
+function servizi_web_hostinger_datacenter_label(?string $datacenterId): ?string
+{
+    $datacenterId = trim((string) $datacenterId);
+    if ($datacenterId === '') {
+        return null;
+    }
+
+    static $labels;
+
+    if ($labels === null) {
+        $labels = [];
+        foreach (servizi_web_hostinger_datacenters() as $datacenter) {
+            if (!is_array($datacenter)) {
+                continue;
+            }
+
+            $id = (string) ($datacenter['id'] ?? $datacenter['code'] ?? '');
+            if ($id === '') {
+                continue;
+            }
+
+            $labelParts = array_filter([
+                $datacenter['name'] ?? null,
+                $datacenter['location'] ?? null,
+                $datacenter['country'] ?? ($datacenter['country_code'] ?? null),
+            ]);
+
+            $labels[$id] = $labelParts ? implode(' • ', $labelParts) : $id;
+        }
+    }
+
+    return $labels[$datacenterId] ?? null;
 }
 
 function servizi_web_hostinger_catalog(?string $category = null): array

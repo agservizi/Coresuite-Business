@@ -129,7 +129,15 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     <dd class="col-sm-9"><?php echo $project['dominio_richiesto'] ? sanitize_output($project['dominio_richiesto']) : '<span class="text-muted">—</span>'; ?></dd>
 
                     <dt class="col-sm-3">Datacenter Hostinger</dt>
-                    <dd class="col-sm-9"><?php echo $project['hostinger_datacenter'] ? sanitize_output($project['hostinger_datacenter']) : '<span class="text-muted">—</span>'; ?></dd>
+                    <dd class="col-sm-9">
+                        <?php if ($project['hostinger_datacenter']): ?>
+                            <?php $datacenterLabel = servizi_web_hostinger_datacenter_label((string) $project['hostinger_datacenter']); ?>
+                            <div><?php echo sanitize_output($datacenterLabel ?? (string) $project['hostinger_datacenter']); ?></div>
+                            <div class="text-muted small">ID: <?php echo sanitize_output((string) $project['hostinger_datacenter']); ?></div>
+                        <?php else: ?>
+                            <span class="text-muted">—</span>
+                        <?php endif; ?>
+                    </dd>
 
                     <dt class="col-sm-3">Piano hosting</dt>
                     <dd class="col-sm-9">

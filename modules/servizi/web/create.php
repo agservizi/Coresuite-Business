@@ -33,6 +33,7 @@ foreach ($hostingerDatacenters as $datacenter) {
 
     $hostingerDatacenterOptions[$identifier] = $labelParts ? implode(' • ', $labelParts) : $identifier;
 }
+$hostingerDatacenterValues = array_keys($hostingerDatacenterOptions);
 
 $hostingerHostingOptions = $hostingerEnabled ? servizi_web_hostinger_plan_options('hosting') : [];
 $hostingerEmailOptions = $hostingerEnabled ? servizi_web_hostinger_plan_options('email') : [];
@@ -109,6 +110,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     foreach (['hostinger_datacenter' => 120, 'hostinger_plan' => 120, 'hostinger_email_plan' => 120, 'hostinger_order_reference' => 120] as $field => $limit) {
         if ($data[$field] !== '' && mb_strlen($data[$field]) > $limit) {
             $errors[] = 'Il campo ' . str_replace('_', ' ', $field) . ' non può superare ' . $limit . ' caratteri.';
+        }
+    }
+
+    if ($hostingerEnabled && $hostingerDatacenterOptions) {
+        if ($data['hostinger_datacenter'] !== '' && !in_array($data['hostinger_datacenter'], $hostingerDatacenterValues, true)) {
+            $errors[] = 'Seleziona un datacenter Hostinger valido.';
         }
     }
 
@@ -286,6 +293,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $hostingerPlanSelectionLabel = $data['hostinger_plan'] !== '' ? servizi_web_hostinger_selection_label($data['hostinger_plan']) : null;
 $hostingerEmailSelectionLabel = $data['hostinger_email_plan'] !== '' ? servizi_web_hostinger_selection_label($data['hostinger_email_plan']) : null;
+$hostingerDatacenterSelectionLabel = $data['hostinger_datacenter'] !== '' ? servizi_web_hostinger_datacenter_label($data['hostinger_datacenter']) : null;
 
 require_once __DIR__ . '/../../../includes/header.php';
 require_once __DIR__ . '/../../../includes/sidebar.php';
@@ -418,12 +426,22 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label" for="hostinger_datacenter">Datacenter Hostinger</label>
-                                    <select class="form-select" id="hostinger_datacenter" name="hostinger_datacenter" <?php echo $hostingerEnabled && $hostingerDatacenterOptions ? '' : 'aria-disabled="true"'; ?>>
-                                        <option value="">Non specificato</option>
-                                        <?php foreach ($hostingerDatacenterOptions as $value => $label): ?>
-                                            <option value="<?php echo sanitize_output($value); ?>" <?php echo $data['hostinger_datacenter'] === $value ? 'selected' : ''; ?>><?php echo sanitize_output($label); ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
+                                    <?php if ($hostingerEnabled && $hostingerDatacenterOptions): ?>
+                                        <select class="form-select" id="hostinger_datacenter" name="hostinger_datacenter">
+                                            <option value="">Non specificato</option>
+                                            <?php foreach ($hostingerDatacenterOptions as $value => $label): ?>
+                                                <option value="<?php echo sanitize_output($value); ?>" <?php echo $data['hostinger_datacenter'] === $value ? 'selected' : ''; ?>><?php echo sanitize_output($label); ?></option>
+                                            <?php endforeach; ?>
+                                            <?php if ($data['hostinger_datacenter'] !== '' && !in_array($data['hostinger_datacenter'], $hostingerDatacenterValues, true)): ?>
+                                                <option value="<?php echo sanitize_output($data['hostinger_datacenter']); ?>" selected>Valore corrente (non catalogato)</option>
+                                            <?php endif; ?>
+                                        </select>
+                                        <?php if ($hostingerDatacenterSelectionLabel): ?>
+                                            <div class="form-text">Selezionato: <?php echo sanitize_output($hostingerDatacenterSelectionLabel); ?></div>
+                                        <?php endif; ?>
+                                    <?php else: ?>
+                                        <input class="form-control" id="hostinger_datacenter" name="hostinger_datacenter" maxlength="120" value="<?php echo sanitize_output($data['hostinger_datacenter']); ?>" placeholder="ID datacenter Hostinger">
+                                    <?php endif; ?>
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label" for="hostinger_domain_status">Stato dominio Hostinger</label>
