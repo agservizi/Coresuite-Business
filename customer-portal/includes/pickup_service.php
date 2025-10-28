@@ -74,6 +74,315 @@ class PickupService {
         
         return $stats;
     }
+
+    public function getPackageStatusCounts(int $customerId): array {
+        $counts = [
+            'all' => 0,
+            'reported' => 0,
+            'confirmed' => 0,
+            'arrived' => 0,
+            'cancelled' => 0,
+            'in_arrivo' => 0,
+            'consegnato' => 0,
+            'in_giacenza' => 0,
+            'in_giacenza_scaduto' => 0,
+            'ritirato' => 0,
+            'ready' => 0,
+        ];
+
+        if ($this->hasTable('pickup')) {
+            $row = portal_fetch_one(
+                <<<SQL
+SELECT 
+    COUNT(*) AS total,
+    SUM(CASE WHEN r.status = 'reported' THEN 1 ELSE 0 END) AS reported,
+    SUM(CASE WHEN r.status = 'confirmed' THEN 1 ELSE 0 END) AS confirmed,
+    SUM(CASE WHEN r.status = 'arrived' THEN 1 ELSE 0 END) AS arrived,
+    SUM(CASE WHEN r.status = 'cancelled' THEN 1 ELSE 0 END) AS cancelled,
+    SUM(CASE WHEN p.status = 'in_arrivo' THEN 1 ELSE 0 END) AS in_arrivo,
+    SUM(CASE WHEN p.status = 'consegnato' THEN 1 ELSE 0 END) AS consegnato,
+    SUM(CASE WHEN p.status = 'in_giacenza' THEN 1 ELSE 0 END) AS in_giacenza,
+    SUM(CASE WHEN p.status = 'in_giacenza_scaduto' THEN 1 ELSE 0 END) AS in_giacenza_scaduto,
+    SUM(CASE WHEN p.status = 'ritirato' THEN 1 ELSE 0 END) AS ritirato
+FROM pickup_customer_reports r
+LEFT JOIN pickup p ON r.pickup_id = p.id
+WHERE r.customer_id = ?
+SQL,
+                [$customerId]
+            );
+
+            if ($row) {
+                foreach ($counts as $key => $value) {
+                    if (isset($row[$key])) {
+                        $counts[$key] = (int) $row[$key];
+                    }
+                }
+
+                $counts['all'] = (int) ($row['total'] ?? 0);
+            }
+        } else {
+            $row = portal_fetch_one(
+                <<<SQL
+SELECT 
+    COUNT(*) AS total,
+    SUM(CASE WHEN status = 'reported' THEN 1 ELSE 0 END) AS reported,
+    SUM(CASE WHEN status = 'confirmed' THEN 1 ELSE 0 END) AS confirmed,
+    SUM(CASE WHEN status = 'arrived' THEN 1 ELSE 0 END) AS arrived,
+    SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) AS cancelled
+FROM pickup_customer_reports
+WHERE customer_id = ?
+SQL,
+                [$customerId]
+            );
+
+            if ($row) {
+                foreach (['reported', 'confirmed', 'arrived', 'cancelled'] as $key) {
+                    $counts[$key] = (int) ($row[$key] ?? 0);
+                }
+                $counts['all'] = (int) ($row['total'] ?? 0);
+            }
+        }
+
+        $counts['ready'] = $counts['consegnato'] + $counts['in_giacenza'];
+
+        return $counts;
+    }
+
+    public function getCustomerSummary(int $customerId): array {
+        $summary = portal_fetch_one(
+            'SELECT * FROM pickup_customer_summary WHERE id = ?',
+            [$customerId]
+        );
+
+        if (!$summary) {
+            $customer = portal_fetch_one('SELECT * FROM pickup_customers WHERE id = ?', [$customerId]);
+            if (!$customer) {
+                throw new Exception('Cliente non trovato');
+            }
+
+            $preferences = $this->getCustomerPreferences($customerId);
+
+            $summary = array_merge($customer, [
+                'notification_email' => $preferences['notification_email'],
+                'notification_sms' => $preferences['notification_sms'],
+                'notification_whatsapp' => $preferences['notification_whatsapp'],
+                'language' => $preferences['language'],
+                'timezone' => $preferences['timezone'],
+                'total_reports' => portal_count(
+                    'SELECT COUNT(*) FROM pickup_customer_reports WHERE customer_id = ?',
+                    [$customerId]
+                ),
+                'pending_reports' => portal_count(
+                    "SELECT COUNT(*) FROM pickup_customer_reports WHERE customer_id = ? AND status = 'reported'",
+                    [$customerId]
+                ),
+                'total_notifications' => portal_count(
+                    'SELECT COUNT(*) FROM pickup_customer_notifications WHERE customer_id = ?',
+                    [$customerId]
+                ),
+                'unread_notifications' => portal_count(
+                    'SELECT COUNT(*) FROM pickup_customer_notifications WHERE customer_id = ? AND read_at IS NULL',
+                    [$customerId]
+                )
+            ]);
+        }
+
+        return $summary;
+    }
+
+    public function getCustomerPreferences(int $customerId): array {
+        $preferences = portal_fetch_one(
+            'SELECT * FROM pickup_customer_preferences WHERE customer_id = ?',
+            [$customerId]
+        );
+
+        if (!$preferences) {
+            $now = date('Y-m-d H:i:s');
+            $defaults = [
+                'customer_id' => $customerId,
+                'notification_email' => 1,
+                'notification_sms' => 0,
+                'notification_whatsapp' => 0,
+                'language' => 'it',
+                'timezone' => 'Europe/Rome',
+                'created_at' => $now,
+                'updated_at' => $now
+            ];
+
+            try {
+                portal_insert('pickup_customer_preferences', $defaults);
+                $preferences = $defaults;
+            } catch (Exception $exception) {
+                portal_error_log('Unable to create default customer preferences', [
+                    'customer_id' => $customerId,
+                    'error' => $exception->getMessage()
+                ]);
+                $preferences = portal_fetch_one(
+                    'SELECT * FROM pickup_customer_preferences WHERE customer_id = ?',
+                    [$customerId]
+                ) ?: $defaults;
+            }
+        }
+
+        return $this->normalizePreferences($preferences);
+    }
+
+    public function updateCustomerPreferences(int $customerId, array $data): array {
+        $this->getCustomerPreferences($customerId);
+
+        $language = strtolower(trim((string) ($data['language'] ?? '')));
+        $allowedLanguages = ['it', 'en', 'de', 'fr', 'es'];
+        if (!in_array($language, $allowedLanguages, true)) {
+            $language = 'it';
+        }
+
+        $timezone = trim((string) ($data['timezone'] ?? 'Europe/Rome'));
+        try {
+            new DateTimeZone($timezone);
+        } catch (Exception $exception) {
+            portal_error_log('Invalid timezone provided by customer', [
+                'customer_id' => $customerId,
+                'timezone' => $timezone,
+                'error' => $exception->getMessage()
+            ]);
+            $timezone = 'Europe/Rome';
+        }
+
+        $updateData = [
+            'notification_email' => !empty($data['notification_email']) ? 1 : 0,
+            'notification_sms' => !empty($data['notification_sms']) ? 1 : 0,
+            'notification_whatsapp' => !empty($data['notification_whatsapp']) ? 1 : 0,
+            'language' => $language,
+            'timezone' => $timezone,
+            'updated_at' => date('Y-m-d H:i:s')
+        ];
+
+        if (!portal_config('enable_sms')) {
+            $updateData['notification_sms'] = 0;
+        }
+
+        if (!portal_config('enable_whatsapp')) {
+            $updateData['notification_whatsapp'] = 0;
+        }
+
+        portal_update('pickup_customer_preferences', $updateData, ['customer_id' => $customerId]);
+
+        $this->logCustomerActivity($customerId, 'preferences_updated', 'preferences', null, [
+            'email' => (bool) $updateData['notification_email'],
+            'sms' => (bool) $updateData['notification_sms'],
+            'whatsapp' => (bool) $updateData['notification_whatsapp'],
+            'language' => $language,
+            'timezone' => $timezone
+        ]);
+
+        return $this->getCustomerPreferences($customerId);
+    }
+
+    public function updateCustomerProfile(int $customerId, array $data): array {
+        $customer = portal_fetch_one('SELECT * FROM pickup_customers WHERE id = ?', [$customerId]);
+        if (!$customer) {
+            throw new Exception('Cliente non trovato');
+        }
+
+        $name = trim((string) ($data['name'] ?? ''));
+        $email = strtolower(trim((string) ($data['email'] ?? '')));
+        $phone = trim((string) ($data['phone'] ?? ''));
+
+        $email = $email !== '' ? $email : null;
+        $phone = $phone !== '' ? $phone : null;
+
+        if ($email !== null && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            throw new Exception('Email non valida');
+        }
+
+        if ($phone !== null && !preg_match('/^\+?[1-9]\d{1,14}$/', $phone)) {
+            throw new Exception('Numero di telefono non valido');
+        }
+
+        if ($email === null && $phone === null && empty($customer['email']) && empty($customer['phone'])) {
+            throw new Exception('Inserisci almeno un recapito tra email e telefono');
+        }
+
+        if ($email !== null && strtolower((string) ($customer['email'] ?? '')) !== $email) {
+            $exists = portal_fetch_one(
+                'SELECT id FROM pickup_customers WHERE email = ? AND id <> ?',
+                [$email, $customerId]
+            );
+            if ($exists) {
+                throw new Exception('Email già registrata per un altro account');
+            }
+        } else {
+            $email = $email ?? $customer['email'];
+        }
+
+        if ($phone !== null && $customer['phone'] !== $phone) {
+            $exists = portal_fetch_one(
+                'SELECT id FROM pickup_customers WHERE phone = ? AND id <> ?',
+                [$phone, $customerId]
+            );
+            if ($exists) {
+                throw new Exception('Numero di telefono già associato a un altro account');
+            }
+        } else {
+            $phone = $phone ?? $customer['phone'];
+        }
+
+        $updates = [];
+
+        if ($name !== ($customer['name'] ?? '')) {
+            $updates['name'] = $name !== '' ? $name : null;
+        }
+
+        if ($email !== ($customer['email'] ?? null)) {
+            $updates['email'] = $email;
+            $updates['email_verified'] = $email && $email === ($customer['email'] ?? null) ? $customer['email_verified'] : 0;
+        }
+
+        if ($phone !== ($customer['phone'] ?? null)) {
+            $updates['phone'] = $phone;
+            $updates['phone_verified'] = $phone && $phone === ($customer['phone'] ?? null) ? $customer['phone_verified'] : 0;
+        }
+
+        if (empty($updates)) {
+            return $customer;
+        }
+
+        $updates['updated_at'] = date('Y-m-d H:i:s');
+
+        portal_update('pickup_customers', $updates, ['id' => $customerId]);
+
+        $updatedCustomer = portal_fetch_one('SELECT * FROM pickup_customers WHERE id = ?', [$customerId]);
+
+        $this->logCustomerActivity($customerId, 'profile_updated', 'customer', $customerId, [
+            'name_changed' => array_key_exists('name', $updates),
+            'email_changed' => array_key_exists('email', $updates),
+            'phone_changed' => array_key_exists('phone', $updates)
+        ]);
+
+        return $updatedCustomer ?? $customer;
+    }
+
+    public function getCustomerActivity(int $customerId, int $limit = 10): array {
+        $limit = max(1, min($limit, 50));
+        $sql = 'SELECT * FROM pickup_customer_activity_logs WHERE customer_id = ? ORDER BY created_at DESC LIMIT ' . $limit;
+        return portal_fetch_all($sql, [$customerId]);
+    }
+
+    public function markAllNotificationsAsRead(int $customerId): int {
+        $now = date('Y-m-d H:i:s');
+        $stmt = portal_query(
+            'UPDATE pickup_customer_notifications SET read_at = ? WHERE customer_id = ? AND read_at IS NULL',
+            [$now, $customerId]
+        );
+
+        if ($stmt->rowCount() > 0) {
+            $this->logCustomerActivity($customerId, 'notifications_cleared', 'notification', null, [
+                'count' => $stmt->rowCount()
+            ]);
+        }
+
+        return $stmt->rowCount();
+    }
     
     /**
      * Ottiene i pacchi del cliente
@@ -82,11 +391,12 @@ class PickupService {
         $limit = $options['limit'] ?? 50;
         $offset = $options['offset'] ?? 0;
         $status = $options['status'] ?? null;
+        $search = trim((string) ($options['search'] ?? ''));
         
         if ($this->hasTable('pickup')) {
             $sql = 'SELECT r.*, p.status as pickup_status, p.courier_id, p.pickup_location_id,
                            p.delivered_at, p.created_at as pickup_created_at,
-                           c.name as courier_name, l.name as location_name
+                           COALESCE(c.name, r.courier_name) as courier_name, l.name as location_name
                     FROM pickup_customer_reports r
                     LEFT JOIN pickup p ON r.pickup_id = p.id
                     LEFT JOIN pickup_couriers c ON p.courier_id = c.id
@@ -98,6 +408,23 @@ class PickupService {
             if ($status) {
                 $sql .= ' AND r.status = ?';
                 $params[] = $status;
+            }
+
+            if ($search !== '') {
+                $sql .= " AND (
+                    r.tracking_code LIKE ? OR
+                    r.recipient_name LIKE ? OR
+                    COALESCE(c.name, r.courier_name, '') LIKE ? OR
+                    COALESCE(l.name, '') LIKE ? OR
+                    COALESCE(r.delivery_location, '') LIKE ?
+                )";
+
+                $like = '%' . $search . '%';
+                $params[] = $like;
+                $params[] = $like;
+                $params[] = $like;
+                $params[] = $like;
+                $params[] = $like;
             }
             
             $sql .= ' ORDER BY r.created_at DESC LIMIT ? OFFSET ?';
@@ -113,6 +440,21 @@ class PickupService {
         if ($status) {
             $sql .= ' AND status = ?';
             $params[] = $status;
+        }
+
+        if ($search !== '') {
+            $sql .= " AND (
+                tracking_code LIKE ? OR
+                COALESCE(courier_name, '') LIKE ? OR
+                COALESCE(recipient_name, '') LIKE ? OR
+                COALESCE(delivery_location, '') LIKE ?
+            )";
+
+            $like = '%' . $search . '%';
+            $params[] = $like;
+            $params[] = $like;
+            $params[] = $like;
+            $params[] = $like;
         }
 
         $sql .= ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
@@ -138,10 +480,10 @@ class PickupService {
     public function getCustomerPackage(int $customerId, int $packageId): ?array {
         if ($this->hasTable('pickup')) {
             return portal_fetch_one(
-                'SELECT r.*, p.status as pickup_status, p.courier_id, p.pickup_location_id,
-                        p.delivered_at, p.created_at as pickup_created_at, p.tracking_number,
+        'SELECT r.*, p.status as pickup_status, p.courier_id, p.pickup_location_id,
+            p.delivered_at, p.created_at as pickup_created_at, p.tracking_number,
                         p.otp_code, p.signature_path, p.photo_path,
-                        c.name as courier_name, l.name as location_name, l.address as location_address
+            COALESCE(c.name, r.courier_name) as courier_name, l.name as location_name, l.address as location_address
                  FROM pickup_customer_reports r
                  LEFT JOIN pickup p ON r.pickup_id = p.id
                  LEFT JOIN pickup_couriers c ON p.courier_id = c.id
@@ -462,5 +804,15 @@ class PickupService {
         $results['sessions'] = $stmt->rowCount();
         
         return $results;
+    }
+
+    private function normalizePreferences(array $preferences): array {
+        $preferences['notification_email'] = (bool) ($preferences['notification_email'] ?? false);
+        $preferences['notification_sms'] = (bool) ($preferences['notification_sms'] ?? false);
+        $preferences['notification_whatsapp'] = (bool) ($preferences['notification_whatsapp'] ?? false);
+        $preferences['language'] = $preferences['language'] ?? 'it';
+        $preferences['timezone'] = $preferences['timezone'] ?? 'Europe/Rome';
+
+        return $preferences;
     }
 }
