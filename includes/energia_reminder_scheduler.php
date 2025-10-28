@@ -48,7 +48,10 @@ function maybe_send_energia_reminders(PDO $pdo): void
         return;
     }
 
-        $contracts = $stmt ? $stmt->fetchAll(\PDO::FETCH_ASSOC) : [];
+        $contracts = [];
+        if ($stmt) {
+            $contracts = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        }
     if (!$contracts) {
         return;
     }
