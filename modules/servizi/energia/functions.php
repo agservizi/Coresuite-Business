@@ -255,6 +255,26 @@ function energia_detect_mime(string $filePath): string
     return $mime;
 }
 
+function energia_calculate_reminder_due_at(DateTimeImmutable $sentAt, int $workingHours): DateTimeImmutable
+{
+    $hours = max(0, $workingHours);
+    $current = $sentAt;
+    if ($hours === 0) {
+        return $current;
+    }
+
+    while ($hours > 0) {
+        $current = $current->modify('+1 hour');
+        if ((int) $current->format('N') >= 6) {
+            continue;
+        }
+
+        $hours--;
+    }
+
+    return $current;
+}
+
 function energia_build_contract_code(int $contractId, ?string $createdAt): string
 {
     if ($contractId <= 0) {

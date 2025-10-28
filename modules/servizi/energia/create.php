@@ -145,6 +145,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
 
             $contractId = (int) $pdo->lastInsertId();
+            $assignedCode = energia_assign_contract_code($pdo, [
+                'id' => $contractId,
+                'created_at' => date('Y-m-d H:i:s'),
+            ]);
 
             if ($processedUploads) {
                 $storageDir = public_path('assets/uploads/energia/' . $contractId);
@@ -193,6 +197,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             energia_log_action($pdo, 'Contratto creato', 'Creato contratto energia #' . $contractId . ' - ' . $data['nominativo']);
 
             $message = 'Contratto registrato correttamente.';
+            if ($assignedCode) {
+                $message .= ' Codice contratto: ' . $assignedCode . '.';
+            }
             $type = 'success';
 
             if ($data['send_now'] === '1') {
@@ -201,8 +208,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($mailSent) {
                     $message = 'Contratto registrato ed email inviata correttamente.';
                     $updatedContract = energia_fetch_contract($pdo, $contractId);
-                    if ($updatedContract && !empty($updatedContract['contract_code'])) {
-                        $message .= ' Codice contratto: ' . $updatedContract['contract_code'] . '.';
+                    $finalCode = $updatedContract['contract_code'] ?? $assignedCode;
+                    if ($finalCode) {
+                        $message .= ' Codice contratto: ' . $finalCode . '.';
                     }
                 } else {
                     $type = 'warning';
