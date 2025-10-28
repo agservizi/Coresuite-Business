@@ -919,6 +919,11 @@ body.login-body {
     flex-wrap: wrap;
 }
 
+.topbar-actions {
+    margin-left: auto;
+    justify-content: flex-end;
+}
+
 .topbar-brand-title {
     font-size: 0.95rem;
     font-weight: 600;
