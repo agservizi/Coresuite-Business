@@ -220,7 +220,7 @@ $pageTitle = 'Dashboard';
 
             <div class="row g-4 dashboard-main">
                 <div class="col-xxl-8">
-                    <section class="card ag-card dashboard-panel dashboard-card h-100">
+                    <section class="card ag-card dashboard-panel dashboard-card">
                         <div class="card-header border-0 pb-0">
                             <div class="dashboard-panel-header">
                                 <div>
@@ -316,7 +316,7 @@ $pageTitle = 'Dashboard';
                 </div>
 
                 <div class="col-xxl-4">
-                    <section class="card ag-card dashboard-panel dashboard-card h-100">
+                    <section class="card ag-card dashboard-panel dashboard-card">
                         <div class="card-header border-0 pb-0">
                             <div class="dashboard-panel-header">
                                 <div>

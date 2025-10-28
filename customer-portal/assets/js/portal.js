@@ -398,6 +398,20 @@ document.addEventListener('DOMContentLoaded', function() {
     const sidebarMobileToggle = document.getElementById('sidebarMobileToggle');
     const mobileBreakpoint = window.matchMedia('(max-width: 991.98px)');
 
+    const updateSidebarToggleState = (isCollapsed) => {
+        if (!sidebarToggle) {
+            return;
+        }
+        sidebarToggle.setAttribute('aria-expanded', String(!isCollapsed));
+        sidebarToggle.setAttribute('aria-label', isCollapsed ? 'Espandi barra laterale' : 'Riduci barra laterale');
+
+        const toggleIcon = sidebarToggle.querySelector('i');
+        if (toggleIcon) {
+            toggleIcon.classList.toggle('fa-angles-left', !isCollapsed);
+            toggleIcon.classList.toggle('fa-angles-right', isCollapsed);
+        }
+    };
+
     const syncSidebarState = () => {
         if (!sidebar) {
             return;
@@ -407,14 +421,14 @@ document.addEventListener('DOMContentLoaded', function() {
             sidebar.classList.remove('open');
             document.body.classList.remove('offcanvas-active');
             document.body.classList.remove('sidebar-collapsed');
-            sidebarToggle?.setAttribute('aria-expanded', 'false');
+            updateSidebarToggleState(false);
             sidebarMobileToggle?.setAttribute('aria-expanded', 'false');
         } else {
             const storedState = localStorage.getItem('pickupPortalSidebar');
             const shouldCollapse = storedState === 'collapsed';
             sidebar.classList.toggle('collapsed', shouldCollapse);
             document.body.classList.toggle('sidebar-collapsed', shouldCollapse);
-            sidebarToggle?.setAttribute('aria-expanded', String(!shouldCollapse));
+            updateSidebarToggleState(shouldCollapse);
         }
     };
 
@@ -425,7 +439,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const shouldCollapse = !sidebar.classList.contains('collapsed');
         sidebar.classList.toggle('collapsed', shouldCollapse);
         document.body.classList.toggle('sidebar-collapsed', shouldCollapse);
-        sidebarToggle?.setAttribute('aria-expanded', String(!shouldCollapse));
+        updateSidebarToggleState(shouldCollapse);
         localStorage.setItem('pickupPortalSidebar', shouldCollapse ? 'collapsed' : 'expanded');
     };
 
@@ -439,7 +453,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (willOpen) {
             document.body.classList.remove('sidebar-collapsed');
         }
-        sidebarToggle?.setAttribute('aria-expanded', String(willOpen));
+        updateSidebarToggleState(!willOpen && sidebar?.classList.contains('collapsed'));
         sidebarMobileToggle?.setAttribute('aria-expanded', String(willOpen));
     };
 
@@ -466,7 +480,7 @@ document.addEventListener('DOMContentLoaded', function() {
             sidebar.classList.remove('open');
             document.body.classList.remove('offcanvas-active');
             document.body.classList.remove('sidebar-collapsed');
-            sidebarToggle?.setAttribute('aria-expanded', 'false');
+            updateSidebarToggleState(false);
             sidebarMobileToggle?.setAttribute('aria-expanded', 'false');
         });
     });

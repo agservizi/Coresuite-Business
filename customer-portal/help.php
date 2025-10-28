@@ -21,7 +21,7 @@ $summary = $pickupService->getCustomerSummary((int) $customer['id']);
 $statusCounts = $pickupService->getPackageStatusCounts((int) $customer['id']);
 
 $supportEmail = env('CUSTOMER_SUPPORT_EMAIL', env('SUPPORT_EMAIL', 'assistenza@coresuite.it'));
-$supportPhone = env('CUSTOMER_SUPPORT_PHONE', env('SUPPORT_PHONE', '+39 02 1234 5678'));
+$supportPhone = env('CUSTOMER_SUPPORT_PHONE', env('SUPPORT_PHONE', '+39 0810584542'));
 $supportHours = env('CUSTOMER_SUPPORT_HOURS', 'Lun-Ven 09:00-18:00');
 
 $faqItems = [

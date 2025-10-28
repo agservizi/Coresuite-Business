@@ -662,35 +662,76 @@ body.login-body {
     background-color: var(--ag-surface-alt);
     display: grid !important;
     grid-template-columns: var(--portal-sidebar-width) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+        "alerts alerts"
+        "sidebar main"
+        "sidebar footer";
+    align-items: stretch;
+    transition: grid-template-columns 0.3s ease;
+}
+
+#global-alert-container {
+    grid-area: alerts;
+    padding-inline: 1.75rem;
 }
 
 .portal-main {
+    grid-area: main;
     display: flex;
     flex-direction: column;
     background: var(--ag-surface-alt);
-    min-height: 100vh;
+    min-height: 0;
     min-width: 0;
+    position: relative;
+    z-index: 101;
 }
 
 .portal-content {
     flex: 1;
-    padding: 1.75rem;
+    padding: 1.75rem 1.75rem 6.5rem;
     background: var(--ag-surface-alt);
     width: 100%;
     max-width: none;
 }
 
+.portal-footer {
+    grid-area: footer;
+    background: #ffffff;
+    border-top: 1px solid var(--ag-border);
+    box-shadow: 0 -12px 32px rgba(8, 28, 60, 0.05);
+    position: sticky;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    z-index: 1200;
+}
+
 @media (max-width: 991.98px) {
     #portal-app {
         grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: auto 1fr auto;
+        grid-template-areas:
+            "alerts"
+            "main"
+            "footer";
+    }
+
+    #global-alert-container {
+        padding-inline: 1.5rem;
     }
 
     .portal-main {
         width: 100%;
     }
 
+    .sidebar {
+        grid-area: auto;
+    }
+
     .portal-content {
-        padding: 1.5rem;
+        padding: 1.5rem 1.5rem 6rem;
     }
 }
 
@@ -698,6 +739,7 @@ body.login-body {
    Sidebar (stile business)
    ===================== */
 .sidebar {
+    grid-area: sidebar;
     width: var(--portal-sidebar-width);
     min-height: 100vh;
     transition: width 0.3s ease;
@@ -706,10 +748,12 @@ body.login-body {
     box-shadow: 0 0 24px rgba(8, 28, 60, 0.28);
     position: sticky;
     top: 0;
-    height: 100vh;
+    align-self: start;
+    height: calc(100vh - var(--footer-height, 0px));
     overflow-y: auto;
+    overflow-x: hidden;
     flex-shrink: 0;
-    z-index: 1030;
+    z-index: 900;
 }
 
 .sidebar-brand {
@@ -749,23 +793,22 @@ body.login-body {
     color: rgba(255, 255, 255, 0.7);
 }
 
-.sidebar .nav {
-    gap: 0.35rem;
-}
-
-.sidebar .nav-link {
-    color: rgba(255, 255, 255, 0.9);
-    border-radius: 0.6rem;
-    font-weight: 500;
-    gap: 0.75rem;
-    position: relative;
-    padding: 0.65rem 0.9rem;
-}
-
-.sidebar .nav-link:hover,
-.sidebar .nav-link.active {
-    background: rgba(255, 255, 255, 0.16);
-    color: #ffffff;
+.sidebar {
+    grid-area: sidebar;
+    width: var(--portal-sidebar-width);
+    min-height: 100vh;
+    transition: width 0.3s ease;
+    background-color: #0b2f6b !important;
+    color: #f8f9ff;
+    box-shadow: 0 0 24px rgba(8, 28, 60, 0.28);
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex-shrink: 0;
+    z-index: 900;
 }
 
 .sidebar .nav-icon,
@@ -849,16 +892,53 @@ body.login-body {
     width: 88px;
 }
 
+.sidebar.collapsed .sidebar-inner {
+    padding: 1.5rem 0.75rem 2rem;
+    gap: 1rem;
+}
+
+.sidebar.collapsed .sidebar-brand-link {
+    justify-content: center;
+}
+
 .sidebar.collapsed .sidebar-brand-text,
 .sidebar.collapsed .nav-label,
 .sidebar.collapsed .nav-caret,
-.sidebar.collapsed .nav-link-toggle::after {
+.sidebar.collapsed .nav-link-toggle::after,
+.sidebar.collapsed .sidebar-section-label,
+.sidebar.collapsed .sidebar-quick-info,
+.sidebar.collapsed .sidebar-footer,
+.sidebar.collapsed .nav-link .badge,
+.sidebar.collapsed .nav-link .ms-auto {
     display: none !important;
+}
+
+.sidebar.collapsed .nav,
+.sidebar.collapsed .sidebar-section {
+    align-items: center;
 }
 
 .sidebar.collapsed .nav-link {
     justify-content: center;
-    padding-inline: 0.75rem;
+    padding-inline: 0.5rem;
+    gap: 0;
+}
+
+.sidebar.collapsed .nav-link + .nav-link {
+    margin-top: 0.25rem;
+}
+
+.sidebar.collapsed .nav-icon {
+    margin-right: 0;
+}
+
+.sidebar.collapsed .sidebar-section {
+    border-top-color: rgba(255, 255, 255, 0.1);
+    padding-top: 1rem !important;
+}
+
+.sidebar.collapsed .sidebar-section .nav {
+    width: 100%;
 }
 
 .sidebar::-webkit-scrollbar {
@@ -1364,6 +1444,16 @@ body.login-body {
 
 .dashboard-main {
     align-items: stretch;
+}
+
+.dashboard-main > [class*="col-"] {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.dashboard-main > [class*="col-"] > .dashboard-card {
+    height: auto;
 }
 
 .dashboard-panel-header {

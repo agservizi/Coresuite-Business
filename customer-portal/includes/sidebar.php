@@ -15,53 +15,53 @@ $currentPage = basename($_SERVER['PHP_SELF'] ?? '');
             </a>
         </div>
 
-        <nav class="nav flex-column">
-            <a class="nav-link <?= $currentPage === 'dashboard.php' ? 'active' : '' ?>" href="dashboard.php">
+        <nav class="nav flex-column sidebar-primary-nav">
+            <a class="nav-link <?= $currentPage === 'dashboard.php' ? 'active' : '' ?>" href="dashboard.php" title="Dashboard">
                 <span class="nav-icon" data-color="sky"><i class="fa-solid fa-gauge-high"></i></span>
                 <span class="nav-label">Dashboard</span>
             </a>
-            <a class="nav-link <?= $currentPage === 'packages.php' ? 'active' : '' ?>" href="packages.php">
+            <a class="nav-link <?= $currentPage === 'packages.php' ? 'active' : '' ?>" href="packages.php" title="I miei pacchi">
                 <span class="nav-icon" data-color="emerald"><i class="fa-solid fa-boxes-stacked"></i></span>
                 <span class="nav-label">I miei pacchi</span>
                 <span class="badge bg-success-subtle text-success-emphasis ms-auto" id="nav-ready-count" style="display: none;">0</span>
             </a>
-            <a class="nav-link <?= $currentPage === 'report.php' ? 'active' : '' ?>" href="report.php">
+            <a class="nav-link <?= $currentPage === 'report.php' ? 'active' : '' ?>" href="report.php" title="Segnala pacco">
                 <span class="nav-icon" data-color="amber"><i class="fa-solid fa-plus"></i></span>
                 <span class="nav-label">Segnala pacco</span>
             </a>
-            <a class="nav-link <?= $currentPage === 'notifications.php' ? 'active' : '' ?>" href="notifications.php">
+            <a class="nav-link <?= $currentPage === 'notifications.php' ? 'active' : '' ?>" href="notifications.php" title="Notifiche">
                 <span class="nav-icon" data-color="violet"><i class="fa-solid fa-bell"></i></span>
                 <span class="nav-label">Notifiche</span>
                 <span class="notification-count-sidebar badge bg-danger ms-auto" style="display: none;">0</span>
             </a>
         </nav>
 
-        <div class="mt-4 pt-3 border-top border-light">
-            <span class="text-uppercase small text-muted">Account</span>
-            <nav class="nav flex-column mt-3">
-                <a class="nav-link <?= $currentPage === 'profile.php' ? 'active' : '' ?>" href="profile.php">
+        <div class="sidebar-section mt-4 pt-3 border-top border-light">
+            <span class="sidebar-section-label text-uppercase small text-muted">Account</span>
+            <nav class="nav flex-column mt-3 sidebar-account-nav">
+                <a class="nav-link <?= $currentPage === 'profile.php' ? 'active' : '' ?>" href="profile.php" title="Profilo">
                     <span class="nav-icon" data-color="orange"><i class="fa-solid fa-user"></i></span>
                     <span class="nav-label">Profilo</span>
                 </a>
-                <a class="nav-link <?= $currentPage === 'settings.php' ? 'active' : '' ?>" href="settings.php">
+                <a class="nav-link <?= $currentPage === 'settings.php' ? 'active' : '' ?>" href="settings.php" title="Impostazioni">
                     <span class="nav-icon" data-color="teal"><i class="fa-solid fa-sliders"></i></span>
                     <span class="nav-label">Impostazioni</span>
                 </a>
-                <a class="nav-link <?= $currentPage === 'help.php' ? 'active' : '' ?>" href="help.php">
+                <a class="nav-link <?= $currentPage === 'help.php' ? 'active' : '' ?>" href="help.php" title="Supporto">
                     <span class="nav-icon" data-color="sky"><i class="fa-solid fa-circle-question"></i></span>
                     <span class="nav-label">Supporto</span>
                 </a>
             </nav>
         </div>
 
-        <div class="mt-4 pt-3 border-top border-light">
-            <a class="nav-link text-danger" href="logout.php">
+        <div class="sidebar-section mt-4 pt-3 border-top border-light">
+            <a class="nav-link text-danger" href="logout.php" title="Esci">
                 <span class="nav-icon" data-color="crimson"><i class="fa-solid fa-right-from-bracket"></i></span>
                 <span class="nav-label">Esci</span>
             </a>
         </div>
 
-        <div class="quick-info mt-4">
+        <div class="quick-info sidebar-quick-info mt-4">
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <span class="small text-uppercase text-white-50">In attesa</span>
                 <span class="fw-bold" id="quick-pending">-</span>
