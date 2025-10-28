@@ -459,9 +459,11 @@ body.login-body {
     font-size: 0.82rem;
     color: var(--ag-muted);
     text-align: center;
-    display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.4rem;
 }
 
 .login-privacy a {
