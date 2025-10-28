@@ -39,6 +39,9 @@ $statusBadgeClass = [
     'annullato' => 'bg-danger',
 ];
 
+$hostingerPlanSelectionLabel = servizi_web_hostinger_selection_label($project['hostinger_plan'] ?? null);
+$hostingerEmailSelectionLabel = servizi_web_hostinger_selection_label($project['hostinger_email_plan'] ?? null);
+
 $flashes = get_flashes();
 
 require_once __DIR__ . '/../../../includes/header.php';
@@ -129,10 +132,30 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     <dd class="col-sm-9"><?php echo $project['hostinger_datacenter'] ? sanitize_output($project['hostinger_datacenter']) : '<span class="text-muted">—</span>'; ?></dd>
 
                     <dt class="col-sm-3">Piano hosting</dt>
-                    <dd class="col-sm-9"><?php echo $project['hostinger_plan'] ? sanitize_output($project['hostinger_plan']) : '<span class="text-muted">—</span>'; ?></dd>
+                    <dd class="col-sm-9">
+                        <?php if ($project['hostinger_plan']): ?>
+                            <div><?php echo sanitize_output($hostingerPlanSelectionLabel ?? $project['hostinger_plan']); ?></div>
+                            <?php $decodedPlan = servizi_web_hostinger_decode_selection($project['hostinger_plan']); ?>
+                            <?php if (!empty($decodedPlan['item_id']) && !empty($decodedPlan['price_id'])): ?>
+                                <div class="text-muted small">Item: <?php echo sanitize_output($decodedPlan['item_id']); ?> • Price: <?php echo sanitize_output($decodedPlan['price_id']); ?></div>
+                            <?php endif; ?>
+                        <?php else: ?>
+                            <span class="text-muted">—</span>
+                        <?php endif; ?>
+                    </dd>
 
                     <dt class="col-sm-3">Piano email</dt>
-                    <dd class="col-sm-9"><?php echo $project['hostinger_email_plan'] ? sanitize_output($project['hostinger_email_plan']) : '<span class="text-muted">—</span>'; ?></dd>
+                    <dd class="col-sm-9">
+                        <?php if ($project['hostinger_email_plan']): ?>
+                            <div><?php echo sanitize_output($hostingerEmailSelectionLabel ?? $project['hostinger_email_plan']); ?></div>
+                            <?php $decodedEmail = servizi_web_hostinger_decode_selection($project['hostinger_email_plan']); ?>
+                            <?php if (!empty($decodedEmail['item_id']) && !empty($decodedEmail['price_id'])): ?>
+                                <div class="text-muted small">Item: <?php echo sanitize_output($decodedEmail['item_id']); ?> • Price: <?php echo sanitize_output($decodedEmail['price_id']); ?></div>
+                            <?php endif; ?>
+                        <?php else: ?>
+                            <span class="text-muted">—</span>
+                        <?php endif; ?>
+                    </dd>
 
                     <dt class="col-sm-3">Stato Hostinger</dt>
                     <dd class="col-sm-9"><?php echo $project['hostinger_domain_status'] ? sanitize_output($project['hostinger_domain_status']) : '<span class="text-muted">—</span>'; ?></dd>

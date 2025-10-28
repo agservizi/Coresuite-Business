@@ -34,6 +34,11 @@ foreach ($hostingerDatacenters as $datacenter) {
     $hostingerDatacenterOptions[$identifier] = $labelParts ? implode(' • ', $labelParts) : $identifier;
 }
 
+$hostingerHostingOptions = $hostingerEnabled ? servizi_web_hostinger_plan_options('hosting') : [];
+$hostingerEmailOptions = $hostingerEnabled ? servizi_web_hostinger_plan_options('email') : [];
+$hostingerHostingValues = $hostingerHostingOptions ? array_column($hostingerHostingOptions, 'value') : [];
+$hostingerEmailValues = $hostingerEmailOptions ? array_column($hostingerEmailOptions, 'value') : [];
+
 $data = [
     'cliente_id' => '',
     'tipo_servizio' => $defaultService,
@@ -104,6 +109,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     foreach (['hostinger_datacenter' => 120, 'hostinger_plan' => 120, 'hostinger_email_plan' => 120, 'hostinger_order_reference' => 120] as $field => $limit) {
         if ($data[$field] !== '' && mb_strlen($data[$field]) > $limit) {
             $errors[] = 'Il campo ' . str_replace('_', ' ', $field) . ' non può superare ' . $limit . ' caratteri.';
+        }
+    }
+
+    if ($hostingerEnabled && $hostingerHostingOptions) {
+        if ($data['hostinger_plan'] !== '' && !in_array($data['hostinger_plan'], $hostingerHostingValues, true)) {
+            $errors[] = 'Seleziona un piano hosting valido dal catalogo Hostinger.';
+        }
+    }
+
+    if ($hostingerEnabled && $hostingerEmailOptions) {
+        if ($data['hostinger_email_plan'] !== '' && !in_array($data['hostinger_email_plan'], $hostingerEmailValues, true)) {
+            $errors[] = 'Seleziona un piano email valido dal catalogo Hostinger.';
         }
     }
 
@@ -267,6 +284,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+$hostingerPlanSelectionLabel = $data['hostinger_plan'] !== '' ? servizi_web_hostinger_selection_label($data['hostinger_plan']) : null;
+$hostingerEmailSelectionLabel = $data['hostinger_email_plan'] !== '' ? servizi_web_hostinger_selection_label($data['hostinger_email_plan']) : null;
+
 require_once __DIR__ . '/../../../includes/header.php';
 require_once __DIR__ . '/../../../includes/sidebar.php';
 ?>
@@ -411,11 +431,45 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label" for="hostinger_plan">Piano hosting / bundle</label>
-                                    <input class="form-control" id="hostinger_plan" name="hostinger_plan" maxlength="120" value="<?php echo sanitize_output($data['hostinger_plan']); ?>" placeholder="Es. Premium Shared">
+                                    <?php if ($hostingerEnabled && $hostingerHostingOptions): ?>
+                                        <select class="form-select" id="hostinger_plan" name="hostinger_plan">
+                                            <option value="">Non specificato</option>
+                                            <?php foreach ($hostingerHostingOptions as $option): ?>
+                                                <option value="<?php echo sanitize_output($option['value']); ?>" <?php echo $data['hostinger_plan'] === $option['value'] ? 'selected' : ''; ?>>
+                                                    <?php echo sanitize_output($option['label']); ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                            <?php if ($data['hostinger_plan'] !== '' && !in_array($data['hostinger_plan'], $hostingerHostingValues, true)): ?>
+                                                <option value="<?php echo sanitize_output($data['hostinger_plan']); ?>" selected>Valore corrente (non catalogato)</option>
+                                            <?php endif; ?>
+                                        </select>
+                                        <?php if ($hostingerPlanSelectionLabel): ?>
+                                            <div class="form-text">Selezionato: <?php echo sanitize_output($hostingerPlanSelectionLabel); ?></div>
+                                        <?php endif; ?>
+                                    <?php else: ?>
+                                        <input class="form-control" id="hostinger_plan" name="hostinger_plan" maxlength="120" value="<?php echo sanitize_output($data['hostinger_plan']); ?>" placeholder="Es. Premium Shared">
+                                    <?php endif; ?>
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label" for="hostinger_email_plan">Piano email professionale</label>
-                                    <input class="form-control" id="hostinger_email_plan" name="hostinger_email_plan" maxlength="120" value="<?php echo sanitize_output($data['hostinger_email_plan']); ?>" placeholder="Es. Titan Business">
+                                    <?php if ($hostingerEnabled && $hostingerEmailOptions): ?>
+                                        <select class="form-select" id="hostinger_email_plan" name="hostinger_email_plan">
+                                            <option value="">Non specificato</option>
+                                            <?php foreach ($hostingerEmailOptions as $option): ?>
+                                                <option value="<?php echo sanitize_output($option['value']); ?>" <?php echo $data['hostinger_email_plan'] === $option['value'] ? 'selected' : ''; ?>>
+                                                    <?php echo sanitize_output($option['label']); ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                            <?php if ($data['hostinger_email_plan'] !== '' && !in_array($data['hostinger_email_plan'], $hostingerEmailValues, true)): ?>
+                                                <option value="<?php echo sanitize_output($data['hostinger_email_plan']); ?>" selected>Valore corrente (non catalogato)</option>
+                                            <?php endif; ?>
+                                        </select>
+                                        <?php if ($hostingerEmailSelectionLabel): ?>
+                                            <div class="form-text">Selezionato: <?php echo sanitize_output($hostingerEmailSelectionLabel); ?></div>
+                                        <?php endif; ?>
+                                    <?php else: ?>
+                                        <input class="form-control" id="hostinger_email_plan" name="hostinger_email_plan" maxlength="120" value="<?php echo sanitize_output($data['hostinger_email_plan']); ?>" placeholder="Es. Titan Business">
+                                    <?php endif; ?>
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label" for="hostinger_order_reference">Riferimento ordine/ID Hostinger</label>
