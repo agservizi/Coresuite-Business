@@ -28,6 +28,13 @@ if (!$package) {
     exit;
 }
 
+$linkedReport = null;
+try {
+    $linkedReport = get_customer_report_for_pickup($id);
+} catch (Throwable $reportException) {
+    error_log('Impossibile recuperare la segnalazione portal collegata: ' . $reportException->getMessage());
+}
+
 $notifications = get_notifications_for_package($id);
 $statuses = pickup_statuses();
 $formToken = csrf_token();
@@ -90,6 +97,48 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         </dl>
                     </div>
                 </div>
+
+                <?php if ($linkedReport): ?>
+                    <?php $reportMeta = pickup_customer_report_status_meta($linkedReport['status']); ?>
+                    <div class="card ag-card mb-4">
+                        <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+                            <h2 class="h5 mb-0">Segnalazione portal</h2>
+                            <span class="badge rounded-pill <?php echo sanitize_output($reportMeta['badge']); ?>"><?php echo sanitize_output($reportMeta['label']); ?></span>
+                        </div>
+                        <div class="card-body">
+                            <dl class="row mb-0">
+                                <dt class="col-sm-4">ID segnalazione</dt>
+                                <dd class="col-sm-8">#<?php echo (int) $linkedReport['id']; ?> · <a class="link-warning" href="report.php?id=<?php echo (int) $linkedReport['id']; ?>">Apri dettaglio</a></dd>
+                                <dt class="col-sm-4">Tracking portal</dt>
+                                <dd class="col-sm-8">#<?php echo sanitize_output($linkedReport['tracking_code'] ?? ''); ?></dd>
+                                <dt class="col-sm-4">Segnalato il</dt>
+                                <dd class="col-sm-8"><?php echo sanitize_output(format_datetime_locale($linkedReport['created_at'] ?? '')); ?></dd>
+                                <dt class="col-sm-4">Ultimo aggiornamento</dt>
+                                <dd class="col-sm-8"><?php echo sanitize_output(format_datetime_locale($linkedReport['updated_at'] ?? '')); ?></dd>
+                                <?php if (!empty($linkedReport['customer_name']) || !empty($linkedReport['recipient_name'])): ?>
+                                    <dt class="col-sm-4">Cliente</dt>
+                                    <dd class="col-sm-8"><?php echo sanitize_output($linkedReport['customer_name'] ?? $linkedReport['recipient_name']); ?></dd>
+                                <?php endif; ?>
+                                <?php if (!empty($linkedReport['customer_email'])): ?>
+                                    <dt class="col-sm-4">Email</dt>
+                                    <dd class="col-sm-8"><a class="link-warning" href="mailto:<?php echo sanitize_output($linkedReport['customer_email']); ?>"><?php echo sanitize_output($linkedReport['customer_email']); ?></a></dd>
+                                <?php endif; ?>
+                                <?php if (!empty($linkedReport['customer_phone'])): ?>
+                                    <dt class="col-sm-4">Telefono</dt>
+                                    <dd class="col-sm-8"><a class="link-warning" href="tel:<?php echo sanitize_output(preg_replace('/[^0-9+]/', '', (string) $linkedReport['customer_phone'])); ?>"><?php echo sanitize_output($linkedReport['customer_phone']); ?></a></dd>
+                                <?php endif; ?>
+                                <?php if (!empty($linkedReport['delivery_location'])): ?>
+                                    <dt class="col-sm-4">Luogo consegna</dt>
+                                    <dd class="col-sm-8"><?php echo sanitize_output($linkedReport['delivery_location']); ?></dd>
+                                <?php endif; ?>
+                                <?php if (!empty($linkedReport['notes'])): ?>
+                                    <dt class="col-sm-4">Note cliente</dt>
+                                    <dd class="col-sm-8"><?php echo nl2br(sanitize_output($linkedReport['notes'])); ?></dd>
+                                <?php endif; ?>
+                            </dl>
+                        </div>
+                    </div>
+                <?php endif; ?>
 
                 <div class="card ag-card">
                     <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">

@@ -2341,6 +2341,225 @@ function pickup_whatsapp_message_template(array $package): string
     return trim($message);
 }
 
+function pickup_customer_report_statuses(): array
+{
+    return ['reported', 'confirmed', 'arrived', 'cancelled'];
+}
+
+function pickup_customer_report_status_meta(string $status): array
+{
+    $map = [
+        'reported' => ['label' => 'Segnalato', 'badge' => 'bg-warning-subtle text-warning'],
+        'confirmed' => ['label' => 'Confermato', 'badge' => 'bg-info-subtle text-info'],
+        'arrived' => ['label' => 'Arrivato', 'badge' => 'bg-success-subtle text-success'],
+        'cancelled' => ['label' => 'Annullato', 'badge' => 'bg-secondary-subtle text-secondary'],
+    ];
+
+    return $map[$status] ?? ['label' => ucfirst(str_replace('_', ' ', $status)), 'badge' => 'bg-secondary-subtle text-secondary'];
+}
+
+function get_customer_report_statistics(): array
+{
+    $pdo = pickup_db();
+    $statuses = pickup_customer_report_statuses();
+    $stats = array_fill_keys($statuses, 0);
+
+    $stmt = $pdo->query('SELECT status, COUNT(*) AS total FROM pickup_customer_reports GROUP BY status');
+    foreach ($stmt->fetchAll() as $row) {
+        $key = $row['status'] ?? '';
+        if (isset($stats[$key])) {
+            $stats[$key] = (int) $row['total'];
+        }
+    }
+
+    $pendingStmt = $pdo->query('SELECT COUNT(*) FROM pickup_customer_reports WHERE status = "reported" AND pickup_id IS NULL');
+    $pending = $pendingStmt ? (int) $pendingStmt->fetchColumn() : 0;
+
+    $stats['totale'] = array_sum($stats);
+    $stats['pending_unlinked'] = $pending;
+
+    return $stats;
+}
+
+function get_customer_reports(array $filters = [], array $options = []): array
+{
+    $pdo = pickup_db();
+
+    $conditions = ['1 = 1'];
+    $params = [];
+
+    if (!empty($filters['id'])) {
+        $conditions[] = 'r.id = :report_id';
+        $params[':report_id'] = (int) $filters['id'];
+    }
+
+    if (!empty($filters['customer_id'])) {
+        $conditions[] = 'r.customer_id = :customer_id';
+        $params[':customer_id'] = (int) $filters['customer_id'];
+    }
+
+    if (!empty($filters['pickup_id'])) {
+        $conditions[] = 'r.pickup_id = :pickup_id';
+        $params[':pickup_id'] = (int) $filters['pickup_id'];
+    }
+
+    if (!empty($filters['status'])) {
+        $allowed = pickup_customer_report_statuses();
+        if (is_array($filters['status'])) {
+            $selected = array_values(array_intersect($allowed, array_map('strval', $filters['status'])));
+            if ($selected) {
+                $placeholders = [];
+                foreach ($selected as $idx => $status) {
+                    $placeholder = ':status_' . $idx;
+                    $placeholders[] = $placeholder;
+                    $params[$placeholder] = $status;
+                }
+                $conditions[] = 'r.status IN (' . implode(', ', $placeholders) . ')';
+            }
+        } else {
+            $status = (string) $filters['status'];
+            if (in_array($status, $allowed, true)) {
+                $conditions[] = 'r.status = :status';
+                $params[':status'] = $status;
+            }
+        }
+    }
+
+    if (!empty($filters['only_unlinked'])) {
+        $conditions[] = 'r.pickup_id IS NULL';
+    }
+
+    if (array_key_exists('linked', $filters)) {
+        if ($filters['linked'] === true) {
+            $conditions[] = 'r.pickup_id IS NOT NULL';
+        }
+        if ($filters['linked'] === false) {
+            $conditions[] = 'r.pickup_id IS NULL';
+        }
+    }
+
+    if (!empty($filters['from']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $filters['from'])) {
+        $conditions[] = 'r.created_at >= :from_date';
+        $params[':from_date'] = $filters['from'] . ' 00:00:00';
+    }
+
+    if (!empty($filters['to']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $filters['to'])) {
+        $conditions[] = 'r.created_at <= :to_date';
+        $params[':to_date'] = $filters['to'] . ' 23:59:59';
+    }
+
+    if (!empty($filters['search'])) {
+        $search = clean_input((string) $filters['search'], 120);
+        if ($search !== '') {
+            $conditions[] = '(r.tracking_code LIKE :search OR COALESCE(r.courier_name, "") LIKE :search OR COALESCE(r.recipient_name, "") LIKE :search OR COALESCE(r.delivery_location, "") LIKE :search OR COALESCE(c.name, "") LIKE :search OR COALESCE(c.email, "") LIKE :search OR COALESCE(c.phone, "") LIKE :search OR COALESCE(r.notes, "") LIKE :search)';
+            $params[':search'] = '%' . $search . '%';
+        }
+    }
+
+    $orderBy = 'created_at';
+    $orderDirection = 'DESC';
+
+    if (!empty($options['order_by'])) {
+        $candidate = strtolower((string) $options['order_by']);
+        if (in_array($candidate, ['created_at', 'updated_at'], true)) {
+            $orderBy = $candidate;
+        }
+    }
+
+    if (!empty($options['order_direction'])) {
+        $candidate = strtoupper((string) $options['order_direction']);
+        if (in_array($candidate, ['ASC', 'DESC'], true)) {
+            $orderDirection = $candidate;
+        }
+    }
+
+    $limit = isset($options['limit']) ? (int) $options['limit'] : 50;
+    $limit = max(1, min($limit, 200));
+    $offset = isset($options['offset']) ? (int) $options['offset'] : 0;
+    $offset = max(0, $offset);
+
+    $sql = 'SELECT r.*, c.name AS customer_name, c.email AS customer_email, c.phone AS customer_phone '
+        . 'FROM pickup_customer_reports r '
+        . 'LEFT JOIN pickup_customers c ON c.id = r.customer_id '
+        . 'WHERE ' . implode(' AND ', $conditions)
+        . ' ORDER BY r.' . $orderBy . ' ' . $orderDirection . ' LIMIT :limit OFFSET :offset';
+
+    $stmt = $pdo->prepare($sql);
+
+    foreach ($params as $placeholder => $value) {
+        $stmt->bindValue($placeholder, $value);
+    }
+
+    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $stmt->execute();
+
+    return $stmt->fetchAll();
+}
+
+function get_customer_report(int $reportId): ?array
+{
+    $reports = get_customer_reports(['id' => $reportId], ['limit' => 1]);
+    return $reports[0] ?? null;
+}
+
+function get_customer_report_for_pickup(int $pickupId): ?array
+{
+    $reports = get_customer_reports(['pickup_id' => $pickupId], ['limit' => 1]);
+    return $reports[0] ?? null;
+}
+
+function update_customer_report_status(int $reportId, string $status): bool
+{
+    if (!in_array($status, pickup_customer_report_statuses(), true)) {
+        throw new InvalidArgumentException('Stato segnalazione non valido.');
+    }
+
+    $pdo = pickup_db();
+    $stmt = $pdo->prepare('UPDATE pickup_customer_reports SET status = :status, updated_at = NOW() WHERE id = :id');
+    $stmt->execute([
+        ':status' => $status,
+        ':id' => $reportId,
+    ]);
+
+    return $stmt->rowCount() > 0;
+}
+
+function link_customer_report_to_pickup(int $reportId, int $pickupId, string $status = 'confirmed'): bool
+{
+    $allowed = pickup_customer_report_statuses();
+    if (!in_array($status, $allowed, true)) {
+        $status = 'confirmed';
+    }
+
+    $pdo = pickup_db();
+    $stmt = $pdo->prepare('UPDATE pickup_customer_reports SET pickup_id = :pickup_id, status = :status, updated_at = NOW() WHERE id = :id');
+    $stmt->execute([
+        ':pickup_id' => $pickupId,
+        ':status' => $status,
+        ':id' => $reportId,
+    ]);
+
+    return $stmt->rowCount() > 0;
+}
+
+function unlink_customer_report(int $reportId): bool
+{
+    $pdo = pickup_db();
+    $stmt = $pdo->prepare('UPDATE pickup_customer_reports SET pickup_id = NULL, status = "reported", updated_at = NOW() WHERE id = :id');
+    $stmt->execute([':id' => $reportId]);
+    return $stmt->rowCount() > 0;
+}
+
+function get_package_by_tracking(string $tracking): ?array
+{
+    $pdo = pickup_db();
+    $stmt = $pdo->prepare('SELECT * FROM pickup_packages WHERE tracking = :tracking LIMIT 1');
+    $stmt->execute([':tracking' => trim($tracking)]);
+    $row = $stmt->fetch();
+    return $row ?: null;
+}
+
 function archive_old_packages(int $days = PICKUP_DEFAULT_ARCHIVE_DAYS): int
 {
     $pdo = pickup_db();

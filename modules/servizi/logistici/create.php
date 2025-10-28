@@ -31,7 +31,35 @@ $data = [
     'notes' => '',
 ];
 
+$sourceReportId = 0;
+$sourceReport = null;
+
+if (isset($_GET['report_id'])) {
+    $sourceReportId = (int) $_GET['report_id'];
+} elseif (isset($_GET['source_report'])) {
+    $sourceReportId = (int) $_GET['source_report'];
+}
+
 $errors = [];
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $sourceReportId = (int) ($_POST['source_report_id'] ?? $sourceReportId);
+}
+
+if ($sourceReportId > 0) {
+    $sourceReport = get_customer_report($sourceReportId);
+    if (!$sourceReport) {
+        add_flash('warning', 'La segnalazione cliente selezionata non è più disponibile.');
+        $sourceReportId = 0;
+    } elseif ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        $data['customer_name'] = trim((string) ($sourceReport['customer_name'] ?? $sourceReport['recipient_name'] ?? $data['customer_name']));
+        $data['customer_phone'] = trim((string) ($sourceReport['customer_phone'] ?? $data['customer_phone']));
+        $data['customer_email'] = trim((string) ($sourceReport['customer_email'] ?? $data['customer_email']));
+        $data['tracking'] = trim((string) ($sourceReport['tracking_code'] ?? $data['tracking']));
+        $data['expected_at'] = trim((string) ($sourceReport['expected_delivery_date'] ?? $data['expected_at']));
+        $data['notes'] = trim((string) ($sourceReport['notes'] ?? $data['notes']));
+    }
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_valid_csrf();
@@ -58,6 +86,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'expected_at' => $data['expected_at'],
             'notes' => $data['notes'],
         ]);
+
+        if ($sourceReportId > 0) {
+            try {
+                link_customer_report_to_pickup($sourceReportId, $packageId, 'confirmed');
+            } catch (Throwable $linkException) {
+                error_log('Unable to link portal report to pickup: ' . $linkException->getMessage());
+            }
+        }
 
         add_flash('success', 'Pickup #' . $data['tracking'] . ' creato con successo.');
         header('Location: view.php?id=' . $packageId);
@@ -89,8 +125,22 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <?php if ($errors): ?>
                     <div class="alert alert-warning"><?php echo implode('<br>', array_map('sanitize_output', $errors)); ?></div>
                 <?php endif; ?>
+                <?php if ($sourceReport): ?>
+                    <div class="alert alert-info">
+                        Segnalazione portal #<?php echo (int) $sourceReport['id']; ?> · tracking <?php echo sanitize_output($sourceReport['tracking_code'] ?? ''); ?>.
+                        <?php
+                            $contactDetails = $sourceReport['customer_email'] ?? $sourceReport['customer_phone'] ?? '';
+                            if ($contactDetails !== '') {
+                                echo '<br>Contatto: ' . sanitize_output($contactDetails);
+                            }
+                        ?>
+                    </div>
+                <?php endif; ?>
                 <form method="post" novalidate>
                     <input type="hidden" name="_token" value="<?php echo $formToken; ?>">
+                    <?php if ($sourceReportId > 0): ?>
+                        <input type="hidden" name="source_report_id" value="<?php echo (int) $sourceReportId; ?>">
+                    <?php endif; ?>
                     <div class="row g-4">
                         <div class="col-md-6">
                             <label class="form-label" for="customer_name">Nome cliente</label>

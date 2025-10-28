@@ -8,14 +8,41 @@ require_once __DIR__ . '/config.php';
  */
 class PortalDatabase {
     private static ?PDO $connection = null;
+    private static ?bool $sharedConnection = null;
+
+    /**
+     * Determina se il portale deve utilizzare le stesse credenziali del gestionale business
+     */
+    private static function useSharedConnection(): bool
+    {
+        if (self::$sharedConnection !== null) {
+            return self::$sharedConnection;
+        }
+
+        $raw = env('PORTAL_USE_SHARED_DB', 'true');
+        $flag = filter_var($raw, FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE);
+
+        if ($flag === null) {
+            $normalized = strtolower((string) $raw);
+            $flag = in_array($normalized, ['1', 'on', 'yes', 'true', 'shared'], true);
+        }
+
+        self::$sharedConnection = $flag ?? true;
+
+        return self::$sharedConnection;
+    }
 
     /**
      * Recupera una variabile d'ambiente con preferenza per i valori del portale.
      */
     private static function envValue(string $key, $default = null): ?string
     {
-        $portalKey = 'PORTAL_' . $key;
-        $value = env($portalKey);
+        $value = null;
+
+        if (!self::useSharedConnection()) {
+            $portalKey = 'PORTAL_' . $key;
+            $value = env($portalKey);
+        }
 
         if ($value === null || $value === '') {
             $value = env($key, $default);
@@ -54,7 +81,9 @@ class PortalDatabase {
                     self::$connection->exec(sprintf("SET time_zone = '%s'", addslashes($timezone)));
                 }
                 
-                portal_debug_log('Database connection established for portal');
+                portal_debug_log('Database connection established for portal', [
+                    'mode' => self::useSharedConnection() ? 'shared' : 'dedicated',
+                ]);
             } catch (PDOException $e) {
                 portal_error_log('Database connection failed: ' . $e->getMessage());
                 throw new Exception('Errore di connessione al database');

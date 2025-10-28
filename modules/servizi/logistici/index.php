@@ -268,6 +268,29 @@ $statusCounts = generate_statistics(array_filter([
     'pickup_location_id' => $locationParam > 0 ? $locationParam : null,
 ], static fn($value) => $value !== null && $value !== ''));
 $notifications = get_recent_notifications(6);
+$customerReportStats = ['pending_unlinked' => 0, 'totale' => 0];
+$pendingPortalReports = [];
+
+try {
+    $customerReportStats = get_customer_report_statistics();
+    $pendingPortalReports = get_customer_reports([
+        'status' => 'reported',
+        'only_unlinked' => true,
+    ], [
+        'limit' => 5,
+        'order_by' => 'created_at',
+    ]);
+
+    if (!$pendingPortalReports) {
+        $pendingPortalReports = get_customer_reports([], [
+            'limit' => 5,
+            'order_by' => 'updated_at',
+        ]);
+    }
+} catch (Throwable $portalReportException) {
+    error_log('Pickup portal report summary unavailable: ' . $portalReportException->getMessage());
+}
+
 $statuses = pickup_statuses();
 $formToken = csrf_token();
 
@@ -287,6 +310,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Monitoraggio pacchi, notifiche clienti e archivio ritiri.</p>
             </div>
             <div class="toolbar-actions d-flex flex-wrap gap-2">
+                <a class="btn btn-outline-warning" href="reports.php"><i class="fa-solid fa-inbox me-2"></i>Segnalazioni portal</a>
                 <button class="btn btn-outline-warning" type="button" data-bs-toggle="modal" data-bs-target="#pickupCheckinModal"><i class="fa-solid fa-qrcode me-2"></i>Ritiro con codice</button>
                 <a class="btn btn-warning text-dark" href="create.php"><i class="fa-solid fa-circle-plus me-2"></i>Nuovo pickup</a>
                 <a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-rotate"></i></a>
@@ -482,6 +506,64 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             </div>
 
             <div class="col-xxl-3">
+                <div class="card ag-card mb-4">
+                    <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-start">
+                        <div>
+                            <h2 class="h5 mb-0">Segnalazioni clienti</h2>
+                            <p class="text-muted small mb-0">Portale pickup</p>
+                        </div>
+                        <a class="btn btn-sm btn-outline-warning" href="reports.php">Gestisci</a>
+                    </div>
+                    <div class="card-body">
+                        <?php if (($customerReportStats['pending_unlinked'] ?? 0) > 0): ?>
+                            <div class="alert alert-warning py-2 px-3" role="alert">
+                                <strong><?php echo (int) $customerReportStats['pending_unlinked']; ?></strong> segnalazioni in attesa di presa in carico
+                            </div>
+                        <?php endif; ?>
+                        <div class="list-group list-group-flush" data-portal-report-log>
+                            <?php if (!$pendingPortalReports): ?>
+                                <div class="text-muted small">Nessuna segnalazione recente dal portale.</div>
+                            <?php endif; ?>
+                            <?php foreach ($pendingPortalReports as $report): ?>
+                                <?php $meta = pickup_customer_report_status_meta($report['status']); ?>
+                                <div class="list-group-item bg-transparent border-secondary-subtle text-body">
+                                    <div class="d-flex justify-content-between align-items-start gap-2">
+                                        <div>
+                                            <div class="fw-semibold">#<?php echo sanitize_output($report['tracking_code']); ?></div>
+                                            <div class="small text-muted">Segnalato <?php echo sanitize_output(format_datetime_locale($report['created_at'] ?? '')); ?></div>
+                                        </div>
+                                        <span class="badge rounded-pill <?php echo sanitize_output($meta['badge']); ?>"><?php echo sanitize_output($meta['label']); ?></span>
+                                    </div>
+                                    <div class="small text-secondary mt-2">
+                                        <?php
+                                            $contactName = $report['customer_name'] ?? $report['recipient_name'] ?? '';
+                                            echo $contactName !== '' ? sanitize_output($contactName) : 'Cliente anonimo';
+                                        ?>
+                                        <?php if (!empty($report['customer_phone'])): ?>
+                                            · <a class="link-warning" href="tel:<?php echo sanitize_output(preg_replace('/[^0-9+]/', '', (string) $report['customer_phone'])); ?>">Chiama</a>
+                                        <?php endif; ?>
+                                    </div>
+                                    <?php if (!empty($report['notes'])): ?>
+                                        <?php
+                                            $notePreview = (string) $report['notes'];
+                                            if (function_exists('mb_strimwidth')) {
+                                                $notePreview = mb_strimwidth($notePreview, 0, 80, '…', 'UTF-8');
+                                            } elseif (strlen($notePreview) > 80) {
+                                                $notePreview = substr($notePreview, 0, 77) . '…';
+                                            }
+                                        ?>
+                                        <div class="small text-muted mt-2"><?php echo sanitize_output($notePreview); ?></div>
+                                    <?php endif; ?>
+                                    <div class="d-flex flex-wrap gap-2 mt-3">
+                                        <a class="btn btn-sm btn-outline-warning" href="report.php?id=<?php echo (int) $report['id']; ?>">Dettagli</a>
+                                        <a class="btn btn-sm btn-warning text-dark" href="create.php?source_report=<?php echo (int) $report['id']; ?>">Crea pickup</a>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="card ag-card mb-4">
                     <div class="card-header bg-transparent border-0">
                         <h2 class="h5 mb-0">Invia notifica</h2>
