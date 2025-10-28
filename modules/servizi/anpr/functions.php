@@ -8,6 +8,16 @@ const ANPR_ALLOWED_STATUSES = [
     'Annullato',
 ];
 
+const ANPR_SIGNATURE_STATUSES = [
+    'non_inviata',
+    'otp_inviato',
+    'firmata',
+    'scaduta',
+];
+
+const ANPR_SIGNATURE_OTP_TTL = 900; // 15 minuti
+const ANPR_SIGNATURE_MAX_ATTEMPTS = 5;
+
 const ANPR_ATTACHMENT_RULES = [
     'certificato' => [
         'dir' => 'uploads/anpr/certificati',
@@ -369,4 +379,104 @@ function anpr_store_documento(array $file, int $praticaId): array
 function anpr_delete_documento(?string $relativePath): void
 {
     anpr_delete_attachment($relativePath);
+}
+
+function anpr_signature_generate_otp(): array
+{
+    $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+    $salt = bin2hex(random_bytes(4));
+    $hash = hash('sha256', $salt . $otp);
+
+    return [
+        'otp' => $otp,
+        'salt' => $salt,
+        'hash' => $hash,
+    ];
+}
+
+function anpr_signature_clear(PDO $pdo, int $praticaId): void
+{
+    $stmt = $pdo->prepare('UPDATE anpr_pratiche
+        SET delega_firma_status = "non_inviata",
+            delega_firma_hash = NULL,
+            delega_firma_otp_salt = NULL,
+            delega_firma_inviata_il = NULL,
+            delega_firma_verificata_il = NULL,
+            delega_firma_recipient = NULL,
+            delega_firma_channel = NULL,
+            delega_firma_attempts = 0,
+            updated_at = NOW()
+        WHERE id = :id');
+    $stmt->execute([':id' => $praticaId]);
+}
+
+function anpr_signature_store_send(PDO $pdo, int $praticaId, string $hash, string $salt, string $channel, string $recipient): void
+{
+    $stmt = $pdo->prepare('UPDATE anpr_pratiche
+        SET delega_firma_status = "otp_inviato",
+            delega_firma_hash = :hash,
+            delega_firma_otp_salt = :salt,
+            delega_firma_inviata_il = NOW(),
+            delega_firma_verificata_il = NULL,
+            delega_firma_channel = :channel,
+            delega_firma_recipient = :recipient,
+            delega_firma_attempts = 0,
+            updated_at = NOW()
+        WHERE id = :id');
+    $stmt->execute([
+        ':hash' => $hash,
+        ':salt' => $salt,
+        ':channel' => $channel,
+        ':recipient' => $recipient,
+        ':id' => $praticaId,
+    ]);
+}
+
+function anpr_signature_mark_verified(PDO $pdo, int $praticaId): void
+{
+    $stmt = $pdo->prepare('UPDATE anpr_pratiche
+        SET delega_firma_status = "firmata",
+            delega_firma_verificata_il = NOW(),
+            delega_firma_hash = NULL,
+            delega_firma_otp_salt = NULL,
+            delega_firma_attempts = 0,
+            updated_at = NOW()
+        WHERE id = :id');
+    $stmt->execute([':id' => $praticaId]);
+}
+
+function anpr_signature_increment_attempt(PDO $pdo, int $praticaId, bool $expire = false): void
+{
+    if ($expire) {
+        $stmt = $pdo->prepare('UPDATE anpr_pratiche
+            SET delega_firma_status = "scaduta",
+                delega_firma_hash = NULL,
+                delega_firma_otp_salt = NULL,
+                delega_firma_attempts = delega_firma_attempts + 1,
+                updated_at = NOW()
+            WHERE id = :id');
+        $stmt->execute([':id' => $praticaId]);
+        return;
+    }
+
+    $stmt = $pdo->prepare('UPDATE anpr_pratiche
+        SET delega_firma_attempts = delega_firma_attempts + 1,
+            updated_at = NOW()
+        WHERE id = :id');
+    $stmt->execute([':id' => $praticaId]);
+}
+
+function anpr_signature_is_expired(array $pratica): bool
+{
+    if (empty($pratica['delega_firma_inviata_il'])) {
+        return false;
+    }
+
+    try {
+        $sentAt = new DateTimeImmutable($pratica['delega_firma_inviata_il']);
+    } catch (Throwable $exception) {
+        return false;
+    }
+
+    return $sentAt->getTimestamp() + ANPR_SIGNATURE_OTP_TTL < time();
 }

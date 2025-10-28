@@ -27,6 +27,10 @@ $csrfToken = csrf_token();
 $flashes = get_flashes();
 $hasCertificate = !empty($pratica['certificato_path']);
 $customerEmail = trim((string) ($pratica['cliente_email'] ?? ''));
+$hasDelega = !empty($pratica['delega_path']);
+$signatureStatus = (string) ($pratica['delega_firma_status'] ?? 'non_inviata');
+$signatureExpired = anpr_signature_is_expired($pratica);
+$signatureAttempts = (int) ($pratica['delega_firma_attempts'] ?? 0);
 
 require_once __DIR__ . '/../../../includes/header.php';
 require_once __DIR__ . '/../../../includes/sidebar.php';
@@ -132,6 +136,108 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     <div class="card-body">
                         <div class="mb-4">
                             <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h3 class="h6 text-uppercase text-muted mb-0">Firma digitale delega</h3>
+                                <?php
+                                    $badgeClass = 'bg-secondary';
+                                    $badgeLabel = 'Non iniziata';
+                                    if ($signatureStatus === 'otp_inviato') {
+                                        $badgeClass = $signatureExpired ? 'bg-danger' : 'bg-warning text-dark';
+                                        $badgeLabel = $signatureExpired ? 'OTP scaduto' : 'OTP inviato';
+                                    } elseif ($signatureStatus === 'firmata') {
+                                        $badgeClass = 'bg-success';
+                                        $badgeLabel = 'Firmata';
+                                    } elseif ($signatureStatus === 'scaduta') {
+                                        $badgeClass = 'bg-danger';
+                                        $badgeLabel = 'Scaduta';
+                                    }
+                                ?>
+                                <span class="badge <?php echo $badgeClass; ?>"><?php echo sanitize_output($badgeLabel); ?></span>
+                            </div>
+                            <?php if (!$hasDelega): ?>
+                                <p class="text-muted small mb-0">Carica la delega per abilitare la firma digitale remota.</p>
+                            <?php else: ?>
+                                <?php if ($signatureStatus === 'firmata'): ?>
+                                    <p class="mb-1 small">Firmata il: <strong><?php echo sanitize_output(format_datetime_locale($pratica['delega_firma_verificata_il'] ?? '')); ?></strong></p>
+                                    <p class="mb-2 small">Destinatario OTP: <?php echo sanitize_output($pratica['delega_firma_recipient'] ?? ''); ?></p>
+                                    <form method="post" action="delega_signature.php" class="d-inline" onsubmit="return confirm('Annullare lo stato di firma e richiedere una nuova sottoscrizione?');">
+                                        <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
+                                        <input type="hidden" name="pratica_id" value="<?php echo $praticaId; ?>">
+                                        <input type="hidden" name="action" value="reset">
+                                        <button class="btn btn-outline-warning" type="submit"><i class="fa-solid fa-rotate-left me-2"></i>Reimposta firma</button>
+                                    </form>
+                                <?php else: ?>
+                                    <?php if ($signatureStatus === 'otp_inviato' && !$signatureExpired): ?>
+                                        <p class="mb-1 small">OTP inviato a: <?php echo sanitize_output($pratica['delega_firma_recipient'] ?? ''); ?></p>
+                                        <p class="mb-2 small">Inviato il: <strong><?php echo sanitize_output(format_datetime_locale($pratica['delega_firma_inviata_il'] ?? '')); ?></strong></p>
+                                        <?php
+                                            $remainingSeconds = null;
+                                            if (!empty($pratica['delega_firma_inviata_il'])) {
+                                                try {
+                                                    $sentAt = new DateTimeImmutable($pratica['delega_firma_inviata_il']);
+                                                    $remainingSeconds = max(0, ($sentAt->getTimestamp() + ANPR_SIGNATURE_OTP_TTL) - time());
+                                                } catch (Throwable $exception) {
+                                                    $remainingSeconds = null;
+                                                }
+                                            }
+                                            if ($remainingSeconds !== null) {
+                                                $remainingMinutes = (int) ceil($remainingSeconds / 60);
+                                                echo '<p class="text-muted small">Codice valido ancora per circa ' . $remainingMinutes . ' min.</p>';
+                                            }
+                                        ?>
+                                        <?php if ($signatureAttempts > 0): ?>
+                                            <p class="text-muted small">Tentativi effettuati: <?php echo $signatureAttempts; ?> / <?php echo ANPR_SIGNATURE_MAX_ATTEMPTS; ?></p>
+                                        <?php endif; ?>
+                                        <form method="post" action="delega_signature.php" class="row g-2 align-items-end mb-2">
+                                            <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
+                                            <input type="hidden" name="pratica_id" value="<?php echo $praticaId; ?>">
+                                            <input type="hidden" name="action" value="verify">
+                                            <div class="col-sm-6">
+                                                <label class="form-label" for="otp-code">Codice OTP</label>
+                                                <input class="form-control" type="text" id="otp-code" name="otp" maxlength="6" pattern="[0-9]{6}" inputmode="numeric" required>
+                                                <small class="text-muted">Inserisci il codice comunicato dal cliente.</small>
+                                            </div>
+                                            <div class="col-sm-6 d-flex justify-content-end">
+                                                <button class="btn btn-warning text-dark" type="submit"><i class="fa-solid fa-check me-2"></i>Conferma firma</button>
+                                            </div>
+                                        </form>
+                                        <div class="d-flex flex-wrap gap-2 justify-content-end">
+                                            <form method="post" action="delega_signature.php" onsubmit="return confirm('Inviare nuovamente l\'OTP al cliente?');">
+                                                <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
+                                                <input type="hidden" name="pratica_id" value="<?php echo $praticaId; ?>">
+                                                <input type="hidden" name="action" value="send">
+                                                <input type="hidden" name="recipient" value="<?php echo sanitize_output($pratica['delega_firma_recipient'] ?? $customerEmail); ?>">
+                                                <button class="btn btn-outline-warning" type="submit"><i class="fa-solid fa-paper-plane me-2"></i>Reinvia OTP</button>
+                                            </form>
+                                            <form method="post" action="delega_signature.php" onsubmit="return confirm('Annullare l\'OTP attivo?');">
+                                                <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
+                                                <input type="hidden" name="pratica_id" value="<?php echo $praticaId; ?>">
+                                                <input type="hidden" name="action" value="reset">
+                                                <button class="btn btn-outline-warning" type="submit"><i class="fa-solid fa-rotate-left me-2"></i>Annulla OTP</button>
+                                            </form>
+                                        </div>
+                                    <?php else: ?>
+                                        <?php if ($signatureExpired || $signatureStatus === 'scaduta'): ?>
+                                            <p class="text-muted small">L'OTP precedente è scaduto o il limite di tentativi è stato raggiunto. Invia nuovamente il codice.</p>
+                                        <?php endif; ?>
+                                        <form method="post" action="delega_signature.php" class="row g-2 align-items-end">
+                                            <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
+                                            <input type="hidden" name="pratica_id" value="<?php echo $praticaId; ?>">
+                                            <input type="hidden" name="action" value="send">
+                                            <div class="col-sm-7">
+                                                <label class="form-label" for="signature-email">Email destinatario OTP</label>
+                                                <input class="form-control" type="email" id="signature-email" name="recipient" value="<?php echo sanitize_output($pratica['delega_firma_recipient'] ?? $customerEmail); ?>" required>
+                                                <small class="text-muted">Invieremo un codice OTP gratuito al cliente.</small>
+                                            </div>
+                                            <div class="col-sm-5 d-flex justify-content-end">
+                                                <button class="btn btn-warning text-dark" type="submit"><i class="fa-solid fa-paper-plane me-2"></i>Invia OTP</button>
+                                            </div>
+                                        </form>
+                                    <?php endif; ?>
+                                <?php endif; ?>
+                            <?php endif; ?>
+                        </div>
+                        <div class="border-top pt-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
                                 <h3 class="h6 text-uppercase text-muted mb-0">Verifica identità SPID</h3>
                                 <?php if (!empty($pratica['spid_verificato_at'])): ?>
                                     <span class="badge bg-success">Verificato</span>
@@ -159,7 +265,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <?php endif; ?>
                         </div>
 
-                        <div class="border-top pt-3">
+                        <div class="border-top pt-3 mt-3">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <h3 class="h6 text-uppercase text-muted mb-0">Invio al cliente</h3>
                                 <?php if (!empty($pratica['certificato_inviato_at'])): ?>
