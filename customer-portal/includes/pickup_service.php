@@ -770,6 +770,67 @@ SQL,
 
         return $deleted > 0;
     }
+
+    public function deleteAllNotifications(int $customerId): int {
+        $stmt = portal_query(
+            'DELETE FROM pickup_customer_notifications WHERE customer_id = ?',
+            [$customerId]
+        );
+
+        $deletedCount = $stmt->rowCount();
+
+        if ($deletedCount > 0) {
+            $this->logCustomerActivity($customerId, 'notifications_deleted_all', 'notification', null, [
+                'count' => $deletedCount,
+            ]);
+        }
+
+        return $deletedCount;
+    }
+
+    public function deleteCustomerAccount(int $customerId): void {
+        $connection = portal_db();
+        $startedTransaction = !$connection->inTransaction();
+
+        if ($startedTransaction) {
+            $connection->beginTransaction();
+        }
+
+        try {
+            portal_query(
+                'DELETE FROM pickup_customer_activity_logs WHERE customer_id = ?',
+                [$customerId]
+            );
+
+            $customerDeletion = portal_query(
+                'DELETE FROM pickup_customers WHERE id = ?',
+                [$customerId]
+            );
+
+            if ($customerDeletion->rowCount() === 0) {
+                throw new Exception('Account non trovato.');
+            }
+
+            if ($startedTransaction && $connection->inTransaction()) {
+                $connection->commit();
+            }
+
+            portal_info_log('Portal customer account deleted', [
+                'customer_id' => $customerId,
+            ]);
+        } catch (Exception $exception) {
+            if ($startedTransaction && $connection->inTransaction()) {
+                $connection->rollBack();
+            }
+
+            portal_error_log('Unable to delete portal customer account', [
+                'customer_id' => $customerId,
+                'error' => $exception->getMessage(),
+            ]);
+
+            throw new Exception('Impossibile completare la richiesta di eliminazione account. Riprovare più tardi.');
+        }
+    }
     
     /**
      * Collega una segnalazione a un pacco del sistema pickup

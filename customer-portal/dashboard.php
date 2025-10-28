@@ -377,15 +377,15 @@ $pageTitle = 'Dashboard';
                                     <span class="dashboard-support-icon"><i class="fa-solid fa-headset"></i></span>
                                     <div>
                                         <strong>Helpdesk Pickup</strong>
-                                        <a href="mailto:support@coresuite.it">support@coresuite.it</a>
+                                        <a href="mailto:assistenza@coresuite.it">assistenza@coresuite.it</a>
                                         <small>Risposta entro 4 ore lavorative</small>
                                     </div>
                                 </li>
                                 <li class="dashboard-support-item">
                                     <span class="dashboard-support-icon"><i class="fa-solid fa-phone"></i></span>
                                     <div>
-                                        <strong>Linea operativa</strong>
-                                        <a href="tel:+3903311589468">+39 0331 158 9468</a>
+                                        <strong>Assistenza telefonica</strong>
+                                        <a href="tel:+390810584542">+39 081 058 4542</a>
                                         <small>Lun-Ven · 09:00-18:00</small>
                                     </div>
                                 </li>

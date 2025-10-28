@@ -62,6 +62,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 $alerts[] = 'Notifica eliminata con successo.';
+            } elseif ($action === 'delete_all') {
+                $totalDeleted = $pickupService->deleteAllNotifications((int) $customer['id']);
+                $alerts[] = $totalDeleted > 0
+                    ? sprintf('Sono state eliminate %d notifiche.', $totalDeleted)
+                    : 'Non ci sono notifiche da eliminare.';
             }
         } catch (Exception $exception) {
             $errors[] = $exception->getMessage();
@@ -103,12 +108,26 @@ $pageTitle = 'Notifiche';
                 <h1 class="h3 mb-1 d-flex align-items-center gap-2"><i class="fa-solid fa-bell text-primary"></i>Centro notifiche</h1>
                 <p class="text-muted-soft mb-0">Rivedi tutti gli aggiornamenti dal team Coresuite e monitora le azioni completate.</p>
             </div>
-            <form class="d-flex gap-2" method="POST" action="notifications.php">
-                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(get_csrf_token()) ?>">
-                <input type="hidden" name="filter" value="<?= htmlspecialchars($filter) ?>">
-                <input type="hidden" name="action" value="mark_all">
-                <button class="btn btn-outline-primary" type="submit"><i class="fa-solid fa-envelope-open-text me-2"></i>Segna tutte come lette</button>
-            </form>
+            <div class="d-flex flex-wrap gap-2">
+                <form class="d-flex" method="POST" action="notifications.php">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(get_csrf_token()) ?>">
+                    <input type="hidden" name="filter" value="<?= htmlspecialchars($filter) ?>">
+                    <input type="hidden" name="action" value="mark_all">
+                    <button class="btn topbar-btn" type="submit">
+                        <i class="fa-solid fa-envelope-open-text"></i>
+                        <span class="topbar-btn-label">Segna tutte come lette</span>
+                    </button>
+                </form>
+                <form class="d-flex" method="POST" action="notifications.php" onsubmit="return confirm('Vuoi davvero eliminare tutte le notifiche? Questa operazione non può essere annullata.');">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(get_csrf_token()) ?>">
+                    <input type="hidden" name="filter" value="<?= htmlspecialchars($filter) ?>">
+                    <input type="hidden" name="action" value="delete_all">
+                    <button class="btn topbar-btn" type="submit">
+                        <i class="fa-solid fa-trash"></i>
+                        <span class="topbar-btn-label">Elimina tutte</span>
+                    </button>
+                </form>
+            </div>
         </div>
 
         <div class="d-flex flex-wrap gap-2 mb-4">

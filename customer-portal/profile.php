@@ -60,7 +60,10 @@ $pageTitle = 'Profilo';
                 <h1 class="h3 mb-1 d-flex align-items-center gap-2"><i class="fa-solid fa-id-badge text-primary"></i>Profilo account</h1>
                 <p class="text-muted-soft mb-0">Gestisci i dati di contatto utilizzati per gli accessi e le comunicazioni del portale clienti.</p>
             </div>
-            <a class="btn btn-outline-secondary" href="settings.php"><i class="fa-solid fa-sliders me-2"></i>Preferenze notifiche</a>
+            <a class="btn topbar-btn" href="settings.php">
+                <i class="fa-solid fa-sliders"></i>
+                <span class="topbar-btn-label">Preferenze notifiche</span>
+            </a>
         </div>
 
         <?php foreach ($errors as $message): ?>

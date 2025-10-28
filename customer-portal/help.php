@@ -167,7 +167,10 @@ $pageTitle = 'Supporto';
                 <h1 class="h3 mb-1 d-flex align-items-center gap-2"><i class="fa-solid fa-life-ring text-primary"></i>Supporto e assistenza</h1>
                 <p class="text-muted-soft mb-0">Consulta la documentazione rapida oppure contatta il nostro team dedicato al servizio pickup.</p>
             </div>
-            <a class="btn btn-outline-secondary" href="dashboard.php"><i class="fa-solid fa-arrow-left me-2"></i>Torna alla dashboard</a>
+            <a class="btn topbar-btn" href="dashboard.php">
+                <i class="fa-solid fa-arrow-left"></i>
+                <span class="topbar-btn-label">Torna alla dashboard</span>
+            </a>
         </div>
 
         <?php foreach ($errors as $message): ?>

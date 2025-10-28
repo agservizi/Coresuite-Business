@@ -78,7 +78,22 @@ class PortalDatabase {
                 self::$connection->exec('SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci');
                 $timezone = self::resolveMysqlTimezone(self::envValue('DB_TIMEZONE', '+00:00'));
                 if ($timezone !== null) {
-                    self::$connection->exec(sprintf("SET time_zone = '%s'", addslashes($timezone)));
+                    try {
+                        self::$connection->exec(sprintf("SET time_zone = '%s'", addslashes($timezone)));
+                    } catch (PDOException $timezoneException) {
+                        portal_error_log('Failed to apply configured MySQL timezone, falling back to UTC', [
+                            'configured_timezone' => $timezone,
+                            'error' => $timezoneException->getMessage(),
+                        ]);
+
+                        try {
+                            self::$connection->exec("SET time_zone = '+00:00'");
+                        } catch (PDOException $fallbackException) {
+                            portal_error_log('Unable to apply fallback UTC timezone for MySQL connection', [
+                                'error' => $fallbackException->getMessage(),
+                            ]);
+                        }
+                    }
                 }
                 
                 portal_debug_log('Database connection established for portal', [

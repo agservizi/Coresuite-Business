@@ -1898,29 +1898,4 @@ body.login-body {
     overflow: hidden;
 }
 
-@media (prefers-color-scheme: dark) {
-    body {
-        background-color: #131722;
-        color: rgba(255, 255, 255, 0.92);
-    }
 
-    .sidebar {
-        background-color: #0a1a33 !important;
-    }
-
-    .card,
-    .portal-stat-card,
-    .alert {
-        background: rgba(11, 23, 39, 0.9);
-        color: rgba(255, 255, 255, 0.92);
-    }
-
-    .card-header {
-        background: rgba(255, 255, 255, 0.04) !important;
-        border-color: rgba(255, 255, 255, 0.08);
-    }
-
-    .portal-stat-card::after {
-        border-color: rgba(255, 255, 255, 0.12);
-    }
-}

@@ -95,9 +95,15 @@ $pageTitle = 'I miei pacchi';
                 <h1 class="h3 mb-1 d-flex align-items-center gap-2"><i class="fa-solid fa-box-open text-primary"></i>I miei pacchi</h1>
                 <p class="text-muted-soft mb-0">Monitora lo stato dei tuoi pacchi, accedi ai dettagli e scarica le informazioni utili per il ritiro.</p>
             </div>
-            <div class="btn-group">
-                <a class="btn btn-outline-primary" href="report.php"><i class="fa-solid fa-plus me-2"></i>Segnala pacco</a>
-                <a class="btn btn-outline-secondary" href="notifications.php"><i class="fa-solid fa-bell me-2"></i>Notifiche</a>
+            <div class="d-flex flex-wrap gap-2 justify-content-end">
+                <a class="btn topbar-btn" href="report.php">
+                    <i class="fa-solid fa-plus"></i>
+                    <span class="topbar-btn-label">Segnala pacco</span>
+                </a>
+                <a class="btn topbar-btn" href="notifications.php">
+                    <i class="fa-solid fa-bell"></i>
+                    <span class="topbar-btn-label">Notifiche</span>
+                </a>
             </div>
         </div>
 

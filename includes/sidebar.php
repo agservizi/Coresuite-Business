@@ -57,6 +57,13 @@ $serviziItems = [
         'href' => base_url('modules/servizi/logistici/index.php'),
         'color' => 'orange',
     ],
+    [
+        'needle' => 'modules/servizi/energia',
+        'label' => 'Contratti Energia',
+        'icon' => 'fa-solid fa-bolt',
+        'href' => base_url('modules/servizi/energia/index.php'),
+        'color' => 'crimson',
+    ],
 ];
 
 $serviziMenuOpen = false;
