@@ -214,8 +214,8 @@ function anpr_fetch_pratiche(PDO $pdo, array $filters = []): array
 
 function anpr_fetch_pratica(PDO $pdo, int $id): ?array
 {
-    $stmt = $pdo->prepare('SELECT ap.*, c.nome, c.cognome, c.ragione_sociale, c.email AS cliente_email,
-            c.telefono AS cliente_telefono, u.username AS operatore_username, us.username AS spid_operatore_username
+    $stmt = $pdo->prepare('SELECT ap.*, c.nome, c.cognome, c.ragione_sociale, c.cf_piva AS cliente_cf_piva, c.email AS cliente_email,
+        c.telefono AS cliente_telefono, u.username AS operatore_username, us.username AS spid_operatore_username
         FROM anpr_pratiche ap
         LEFT JOIN clienti c ON ap.cliente_id = c.id
         LEFT JOIN users u ON ap.operatore_id = u.id
@@ -572,6 +572,7 @@ function anpr_normalize_delega_data(array $pratica): array
         'cliente_display' => $clienteDisplay,
         'cliente_nome' => $clienteNome,
         'cliente_cognome' => $clienteCognome,
+        'cliente_cf_piva' => trim((string) ($pratica['cliente_cf_piva'] ?? '')),
         'cliente_email' => trim((string) ($pratica['cliente_email'] ?? '')),
         'cliente_telefono' => trim((string) ($pratica['cliente_telefono'] ?? '')),
         'pratica_code' => $praticaCode,
@@ -621,6 +622,7 @@ function anpr_generate_delega_pdf(array $pratica): array
     $mpdf->SetAuthor($data['company_name']);
 
     $clienteDisplay = anpr_delega_html_escape($data['cliente_display']);
+    $clienteCodiceFiscale = anpr_delega_html_escape($data['cliente_cf_piva'] ?? '');
     $companyName = anpr_delega_html_escape($data['company_name']);
     $companyAddress = anpr_delega_html_escape($data['company_address']);
     $tipoPratica = anpr_delega_html_escape($data['tipo_pratica'] !== '' ? $data['tipo_pratica'] : 'Documento anagrafico');
@@ -664,9 +666,19 @@ function anpr_generate_delega_pdf(array $pratica): array
         .footer-note { font-size: 9pt; color: #6c7d93; margin-top: 32pt; text-align: center; }
     </style>';
 
+    $deleganteInfo = trim($clienteDisplay);
+    if ($clienteCodiceFiscale !== '') {
+        $deleganteInfo = trim($deleganteInfo . ($deleganteInfo !== '' ? ', ' : '') . 'C.F. ' . $clienteCodiceFiscale);
+    }
+
+    $deleganteIntro = 'Il/La sottoscritto/a ';
+    if ($deleganteInfo !== '') {
+        $deleganteIntro .= '(<strong>' . $deleganteInfo . '</strong>) ';
+    }
+
     $html .= '<h1>Delega per richiesta documenti ANPR</h1>';
     $html .= '<div class="section">'
-        . '<p>Il/La sottoscritto/a <strong>' . $clienteDisplay . '</strong> autorizza <strong>' . $companyName . '</strong> '
+        . '<p>' . $deleganteIntro . 'autorizza l&#39;agenzia <strong>AG Servizi Via Plinio 72</strong> '
         . 'a operare in qualità di delegato per le richieste presso l&#39;Anagrafe Nazionale della Popolazione Residente (ANPR).</p>'
         . '<p>La delega è valida ai fini dell&#39;ottenimento del seguente documento:</p>'
         . '<p><strong>' . $tipoPratica . '</strong></p>'
