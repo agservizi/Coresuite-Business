@@ -32,50 +32,14 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 ?>
 <div class="flex-grow-1 d-flex flex-column min-vh-100">
     <?php require_once __DIR__ . '/../../../includes/topbar.php'; ?>
-    <main class="content-wrapper">
-        <div class="page-toolbar mb-4">
+        <div class="alert alert-warning d-flex align-items-center justify-content-between flex-wrap gap-2" role="status">
             <div>
-                <h1 class="h3 mb-0">Prenotazione CIE</h1>
-                <p class="text-muted mb-0">Centralizza le richieste della carta d'identità elettronica e gestisci direttamente la prenotazione dal portale integrato.</p>
+                Per completare la prenotazione accedi al portale ministeriale. Una volta ottenuto il protocollo aggiorna la richiesta dal gestionale.
             </div>
-            <div class="toolbar-actions">
-                <a class="btn btn-warning text-dark" href="create.php"><i class="fa-solid fa-circle-plus me-2"></i>Nuova richiesta</a>
-            </div>
+            <a class="btn btn-outline-warning" href="<?php echo sanitize_output($portalUrl); ?>" target="_blank" rel="noopener">
+                <i class="fa-solid fa-arrow-up-right-from-square me-2"></i>Apri portale CIE
+            </a>
         </div>
-
-        <?php if ($flashes): ?>
-            <?php foreach ($flashes as $flash): ?>
-                <div class="alert alert-<?php echo $flash['type'] === 'success' ? 'success' : 'warning'; ?>">
-                    <?php echo sanitize_output($flash['message']); ?>
-                </div>
-            <?php endforeach; ?>
-        <?php endif; ?>
-
-        <div class="row g-3 mb-4">
-            <div class="col-sm-6 col-lg-3">
-                <div class="card ag-card h-100">
-                    <div class="card-body">
-                        <div class="text-muted text-uppercase small">Richieste totali</div>
-                        <div class="fs-3 fw-semibold"><?php echo number_format($totalRequests, 0, ',', '.'); ?></div>
-                    </div>
-                </div>
-            </div>
-            <?php foreach (cittadino_cie_status_map() as $statusKey => $statusConfig): ?>
-                <div class="col-sm-6 col-lg-3">
-                    <div class="card ag-card h-100">
-                        <div class="card-body">
-                            <div class="text-muted text-uppercase small"><?php echo sanitize_output($statusConfig['label']); ?></div>
-                            <div class="fs-4 fw-semibold"><?php echo number_format($stats[$statusKey] ?? 0, 0, ',', '.'); ?></div>
-                        </div>
-                    </div>
-                </div>
-            <?php endforeach; ?>
-        </div>
-
-        <div class="card ag-card mb-4">
-            <div class="card-body">
-                <form class="row g-3 align-items-end" method="get" action="">
-                    <div class="col-md-6 col-lg-4">
                         <label class="form-label" for="search">Ricerca</label>
                         <input class="form-control" id="search" name="search" placeholder="Cerca per codice, cittadino o comune" value="<?php echo sanitize_output($filters['search']); ?>">
                     </div>

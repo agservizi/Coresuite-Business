@@ -76,48 +76,14 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 ?>
 <div class="flex-grow-1 d-flex flex-column min-vh-100">
     <?php require_once __DIR__ . '/../../../includes/topbar.php'; ?>
-    <main class="content-wrapper">
-        <div class="mb-4 d-flex flex-wrap gap-2 justify-content-between align-items-center">
-            <div>
-                <a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-arrow-left"></i> Torna all'elenco</a>
-            </div>
-            <div class="d-flex gap-2 flex-wrap">
-                <a class="btn btn-outline-light" href="edit.php?id=<?php echo (int) $id; ?>"><i class="fa-solid fa-pen"></i> Modifica</a>
-                <a class="btn btn-outline-danger" href="delete.php?id=<?php echo (int) $id; ?>"><i class="fa-solid fa-trash"></i> Elimina</a>
-            </div>
-        </div>
-
-        <?php if ($flashes): ?>
-            <?php foreach ($flashes as $flash): ?>
-                <div class="alert alert-<?php echo $flash['type'] === 'success' ? 'success' : 'warning'; ?>">
-                    <?php echo sanitize_output($flash['message']); ?>
-                </div>
-            <?php endforeach; ?>
-        <?php endif; ?>
-
-        <div class="row g-3 mb-4">
-            <div class="col-12 col-lg-7">
-                <div class="card ag-card h-100">
-                    <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
-                        <div>
-                            <h1 class="h4 mb-0"><?php echo sanitize_output($request['request_code']); ?></h1>
-                            <p class="text-muted mb-0">Richiesta di prenotazione CIE per <?php echo sanitize_output($citizenFullName); ?></p>
-                        </div>
-                        <span class="<?php echo sanitize_output(cittadino_cie_status_badge((string) $request['stato'])); ?>">
-                            <?php echo sanitize_output(cittadino_cie_status_label((string) $request['stato'])); ?>
-                        </span>
+                <div class="alert alert-warning d-flex align-items-center justify-content-between flex-wrap gap-2" role="status">
+                    <div>
+                        Per finalizzare la prenotazione utilizza il portale ministeriale esterno, quindi aggiorna questi dettagli con il protocollo ricevuto.
                     </div>
-                    <div class="card-body">
-                        <dl class="row mb-0">
-                            <dt class="col-sm-4">Cittadino</dt>
-                            <dd class="col-sm-8">
-                                <strong><?php echo sanitize_output($citizenFullName); ?></strong><br>
-                                <?php if (!empty($request['cittadino_cf'])): ?>
-                                    <span class="text-muted">CF: <?php echo sanitize_output($request['cittadino_cf']); ?></span><br>
-                                <?php endif; ?>
-                                <?php if (!empty($request['cittadino_email'])): ?>
-                                    <span class="text-muted"><i class="fa-solid fa-envelope me-1"></i><?php echo sanitize_output($request['cittadino_email']); ?></span><br>
-                                <?php endif; ?>
+                    <a class="btn btn-outline-warning" href="<?php echo sanitize_output($portalUrl); ?>" target="_blank" rel="noopener">
+                        <i class="fa-solid fa-arrow-up-right-from-square me-2"></i>Apri portale CIE
+                    </a>
+                </div>
                                 <?php if (!empty($request['cittadino_telefono'])): ?>
                                     <span class="text-muted"><i class="fa-solid fa-phone me-1"></i><?php echo sanitize_output($request['cittadino_telefono']); ?></span>
                                 <?php endif; ?>
