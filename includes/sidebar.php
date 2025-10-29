@@ -78,6 +78,13 @@ $serviziItems = [
         'href' => base_url('modules/servizi/anpr/index.php'),
         'color' => 'amber',
     ],
+    [
+        'needle' => 'modules/servizi/cie',
+        'label' => 'Prenotazione CIE',
+    'icon' => 'fa-solid fa-address-card',
+    'href' => base_url('modules/servizi/cie/index.php'),
+    'color' => 'violet',
+    ],
 ];
 
 $serviziMenuOpen = false;
