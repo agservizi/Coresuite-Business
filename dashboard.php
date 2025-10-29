@@ -23,8 +23,17 @@ $charts = [
         'values' => [],
     ],
     'services' => [
-        'labels' => ['Entrate/Uscite', 'Appuntamenti', 'Programma Fedeltà', 'Curriculum', 'Pickup'],
-        'values' => [0, 0, 0, 0, 0],
+        'labels' => [
+            'Entrate/Uscite',
+            'Appuntamenti',
+            'Contratti energia',
+            'Pratiche ANPR',
+            'Progetti web',
+            'Programma Fedeltà',
+            'Curriculum',
+            'Pickup logistica',
+        ],
+        'values' => [0, 0, 0, 0, 0, 0, 0, 0],
     ],
 ];
 
@@ -86,14 +95,22 @@ try {
     $serviceTotals = [
         'entrate_uscite' => 0,
         'servizi_appuntamenti' => 0,
+        'energia_contratti' => 0,
+        'anpr_pratiche' => 0,
+        'servizi_web_progetti' => 0,
         'fedelta_movimenti' => 0,
         'curriculum' => 0,
         'spedizioni' => 0,
     ];
 
     foreach ($serviceTotals as $table => &$value) {
-        $stmt = $pdo->query("SELECT COUNT(*) FROM {$table}");
-        $value = (int) $stmt->fetchColumn();
+        try {
+            $stmt = $pdo->query("SELECT COUNT(*) FROM {$table}");
+            $value = (int) $stmt->fetchColumn();
+        } catch (PDOException $serviceException) {
+            error_log('Dashboard service count failed for ' . $table . ': ' . $serviceException->getMessage());
+            $value = 0;
+        }
     }
     unset($value);
 
@@ -363,11 +380,14 @@ require_once __DIR__ . '/includes/sidebar.php';
             label: 'Totale pratiche',
             data: <?php echo json_encode($charts['services']['values'], JSON_THROW_ON_ERROR); ?>,
             backgroundColor: [
+                'rgba(11, 47, 107, 0.36)',
                 'rgba(11, 47, 107, 0.32)',
-                'rgba(11, 47, 107, 0.26)',
+                'rgba(11, 47, 107, 0.28)',
+                'rgba(11, 47, 107, 0.24)',
                 'rgba(11, 47, 107, 0.2)',
                 'rgba(11, 47, 107, 0.16)',
-                'rgba(11, 47, 107, 0.12)'
+                'rgba(11, 47, 107, 0.12)',
+                'rgba(11, 47, 107, 0.08)'
             ],
             borderColor: '#0b2f6b'
         }]

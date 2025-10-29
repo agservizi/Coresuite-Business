@@ -24,8 +24,17 @@ $response = [
             'values' => [],
         ],
         'services' => [
-            'labels' => ['Entrate/Uscite', 'Appuntamenti', 'Programma Fedeltà', 'Curriculum', 'Pickup'],
-            'values' => [0, 0, 0, 0, 0],
+            'labels' => [
+                'Entrate/Uscite',
+                'Appuntamenti',
+                'Contratti energia',
+                'Pratiche ANPR',
+                'Progetti web',
+                'Programma Fedeltà',
+                'Curriculum',
+                'Pickup logistica',
+            ],
+            'values' => [0, 0, 0, 0, 0, 0, 0, 0],
         ],
     ],
     'tickets' => [],
@@ -96,14 +105,22 @@ try {
     $serviceTotals = [
         'entrate_uscite' => 0,
         'servizi_appuntamenti' => 0,
+        'energia_contratti' => 0,
+        'anpr_pratiche' => 0,
+        'servizi_web_progetti' => 0,
         'fedelta_movimenti' => 0,
         'curriculum' => 0,
         'spedizioni' => 0,
     ];
 
     foreach ($serviceTotals as $table => &$value) {
-        $stmt = $pdo->query("SELECT COUNT(*) FROM {$table}");
-        $value = (int) $stmt->fetchColumn();
+        try {
+            $stmt = $pdo->query("SELECT COUNT(*) FROM {$table}");
+            $value = (int) $stmt->fetchColumn();
+        } catch (PDOException $serviceException) {
+            error_log('Dashboard API service count failed for ' . $table . ': ' . $serviceException->getMessage());
+            $value = 0;
+        }
     }
     unset($value);
     $response['charts']['services']['values'] = array_values($serviceTotals);
