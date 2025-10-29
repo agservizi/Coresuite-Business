@@ -60,9 +60,9 @@ function cie_create_service(PDO $pdo, array $data): int
 }
 
 /**
- * Aggiorna lo stato di una richiesta CIE
+ * Aggiorna lo stato di una richiesta CIE nel contesto servizi
  */
-function cie_update_status(PDO $pdo, int $serviceId, string $newStatus, ?string $note = null): bool
+function cie_service_update_status(PDO $pdo, int $serviceId, string $newStatus, ?string $note = null): bool
 {
     try {
         $validStatuses = array_keys(cie_status_map());
