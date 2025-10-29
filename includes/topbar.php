@@ -21,17 +21,17 @@ $role = $_SESSION['role'] ?? '';
             <div class="topbar-actions">
                 <?php if ($role !== 'Cliente'): ?>
                     <div class="topbar-quick-actions d-none d-md-flex">
-                        <a class="btn topbar-btn topbar-btn-action" href="<?php echo base_url('modules/clienti/create.php'); ?>" aria-label="Crea un nuovo cliente" title="Crea un nuovo cliente" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-trigger="hover focus" data-bs-title="Crea un nuovo cliente">
-                            <i class="fa-solid fa-user-plus topbar-btn-icon-lead" aria-hidden="true"></i>
-                            <span class="topbar-btn-label d-none d-xxl-inline">Nuovo cliente</span>
+                        <a class="btn topbar-btn topbar-btn-action" href="<?php echo base_url('modules/servizi/entrate-uscite/create.php'); ?>" aria-label="Registra una nuova entrata o uscita" title="Registra una nuova entrata o uscita" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-trigger="hover focus" data-bs-title="Registra una nuova entrata o uscita">
+                            <i class="fa-solid fa-coins topbar-btn-icon-lead" aria-hidden="true"></i>
+                            <span class="topbar-btn-label d-none d-xxl-inline">Nuova entrata/uscita</span>
                         </a>
-                        <a class="btn topbar-btn topbar-btn-action" href="<?php echo base_url('modules/ticket/create.php'); ?>" aria-label="Apri un nuovo ticket" title="Apri un nuovo ticket" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-trigger="hover focus" data-bs-title="Apri un nuovo ticket">
-                            <i class="fa-solid fa-ticket topbar-btn-icon-lead" aria-hidden="true"></i>
-                            <span class="topbar-btn-label d-none d-xxl-inline">Nuovo ticket</span>
+                        <a class="btn topbar-btn topbar-btn-action" href="<?php echo base_url('modules/servizi/energia/create.php'); ?>" aria-label="Crea un nuovo contratto energia" title="Crea un nuovo contratto energia" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-trigger="hover focus" data-bs-title="Crea un nuovo contratto energia">
+                            <i class="fa-solid fa-bolt topbar-btn-icon-lead" aria-hidden="true"></i>
+                            <span class="topbar-btn-label d-none d-xxl-inline">Nuovo contratto energia</span>
                         </a>
-                        <a class="btn topbar-btn topbar-btn-action" href="<?php echo base_url('modules/documenti/create.php'); ?>" aria-label="Carica un nuovo documento" title="Carica un nuovo documento" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-trigger="hover focus" data-bs-title="Carica un nuovo documento">
-                            <i class="fa-solid fa-upload topbar-btn-icon-lead" aria-hidden="true"></i>
-                            <span class="topbar-btn-label d-none d-xxl-inline">Carica documento</span>
+                        <a class="btn topbar-btn topbar-btn-action" href="<?php echo base_url('modules/servizi/ricariche/create.php'); ?>" aria-label="Pianifica un nuovo appuntamento" title="Pianifica un nuovo appuntamento" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-trigger="hover focus" data-bs-title="Pianifica un nuovo appuntamento">
+                            <i class="fa-solid fa-calendar-plus topbar-btn-icon-lead" aria-hidden="true"></i>
+                            <span class="topbar-btn-label d-none d-xxl-inline">Nuovo appuntamento</span>
                         </a>
                     </div>
                     <div class="dropdown d-md-none">
@@ -39,9 +39,9 @@ $role = $_SESSION['role'] ?? '';
                             <i class="fa-solid fa-plus" aria-hidden="true"></i>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="<?php echo base_url('modules/clienti/create.php'); ?>"><i class="fa-solid fa-user-plus me-2"></i>Nuovo cliente</a></li>
-                            <li><a class="dropdown-item" href="<?php echo base_url('modules/ticket/create.php'); ?>"><i class="fa-solid fa-ticket me-2"></i>Nuovo ticket</a></li>
-                            <li><a class="dropdown-item" href="<?php echo base_url('modules/documenti/create.php'); ?>"><i class="fa-solid fa-upload me-2"></i>Carica documento</a></li>
+                            <li><a class="dropdown-item" href="<?php echo base_url('modules/servizi/entrate-uscite/create.php'); ?>"><i class="fa-solid fa-coins me-2"></i>Nuova entrata/uscita</a></li>
+                            <li><a class="dropdown-item" href="<?php echo base_url('modules/servizi/energia/create.php'); ?>"><i class="fa-solid fa-bolt me-2"></i>Nuovo contratto energia</a></li>
+                            <li><a class="dropdown-item" href="<?php echo base_url('modules/servizi/ricariche/create.php'); ?>"><i class="fa-solid fa-calendar-plus me-2"></i>Nuovo appuntamento</a></li>
                         </ul>
                     </div>
                 <?php endif; ?>
