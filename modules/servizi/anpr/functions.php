@@ -716,27 +716,17 @@ function anpr_generate_delega_pdf(array $pratica): array
         . '<p>Data delega: <strong>' . $dataOggi . '</strong></p></div>';
 
     $firmaInfo = '';
-    if ($firmaStatus === 'firmata') {
+    if ($firmaStatus === 'firmata' && $firmaVerifiedAt !== '') {
         $parts = [];
-        if ($firmaVerifiedAt !== '') {
-            $parts[] = 'Firmato digitalmente il ' . $firmaVerifiedAt;
-        }
+        $parts[] = 'Firmato digitalmente il ' . $firmaVerifiedAt;
         if ($firmaChannel !== '') {
             $parts[] = 'Metodo: ' . strtoupper($firmaChannel);
         }
         if ($firmaRecipient !== '') {
-            $parts[] = 'OTP inviato a: ' . $firmaRecipient;
+            $parts[] = 'OTP: ' . $firmaRecipient;
         }
-        if ($parts) {
-            $firmaInfo = implode(' • ', $parts);
-        }
+        $firmaInfo = implode(' • ', $parts);
     }
-
-    $delegatoInfo = 'Delegato: ' . $companyName;
-    if ($companyAddress !== '') {
-        $delegatoInfo .= ' • Sede: ' . $companyAddress;
-    }
-    $delegatoInfo .= ' • Documento generato il ' . $dataOggi;
 
     $html .= '<div class="signatures">'
         . '<div class="signature-block">'
@@ -744,7 +734,6 @@ function anpr_generate_delega_pdf(array $pratica): array
         . '<div class="signature-line">Firma delegante</div>'
         . '</div>'
     . '<div class="signature-block">'
-    . '<div class="meta mb-2">' . $delegatoInfo . '</div>'
         . '<div class="signature-line">Firma delegato</div>'
         . '</div>'
         . '</div>';
