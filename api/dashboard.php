@@ -13,6 +13,10 @@ $response = [
         'servicesInProgress' => 0,
         'dailyRevenue' => 0.0,
         'openTickets' => 0,
+        'financePending' => 0,
+        'energyPending' => 0,
+        'appointmentsToday' => 0,
+        'anprInProgress' => 0,
     ],
     'charts' => [
         'revenue' => [
@@ -49,6 +53,16 @@ try {
     ) AS revenues");
     $dailyRevenueStmt->execute();
     $response['stats']['dailyRevenue'] = (float) $dailyRevenueStmt->fetchColumn();
+
+    $response['stats']['financePending'] = (int) $pdo->query("SELECT COUNT(*) FROM entrate_uscite WHERE stato IN ('In lavorazione', 'In attesa')")->fetchColumn();
+
+    $response['stats']['energyPending'] = (int) $pdo->query('SELECT COUNT(*) FROM energia_contratti WHERE email_sent_at IS NULL')->fetchColumn();
+
+    $appointmentsTodayStmt = $pdo->prepare("SELECT COUNT(*) FROM servizi_appuntamenti WHERE DATE(data_inizio) = CURRENT_DATE AND stato IN ('Programmato', 'In corso')");
+    $appointmentsTodayStmt->execute();
+    $response['stats']['appointmentsToday'] = (int) $appointmentsTodayStmt->fetchColumn();
+
+    $response['stats']['anprInProgress'] = (int) $pdo->query("SELECT COUNT(*) FROM anpr_pratiche WHERE stato = 'In lavorazione'")->fetchColumn();
 
     $ticketStmt = $pdo->prepare('SELECT id, titolo, stato, created_at FROM ticket ORDER BY created_at DESC LIMIT 5');
     $ticketStmt->execute();

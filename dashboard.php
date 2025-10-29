@@ -11,6 +11,10 @@ $stats = [
     'servicesInProgress' => 0,
     'dailyRevenue' => 0.0,
     'openTickets' => [],
+    'financePending' => 0,
+    'energyPending' => 0,
+    'appointmentsToday' => 0,
+    'anprInProgress' => 0,
 ];
 
 $charts = [
@@ -48,6 +52,16 @@ try {
     ) AS revenues");
     $dailyRevenueStmt->execute();
     $stats['dailyRevenue'] = (float) $dailyRevenueStmt->fetchColumn();
+
+    $stats['financePending'] = (int) $pdo->query("SELECT COUNT(*) FROM entrate_uscite WHERE stato IN ('In lavorazione', 'In attesa')")->fetchColumn();
+
+    $stats['energyPending'] = (int) $pdo->query('SELECT COUNT(*) FROM energia_contratti WHERE email_sent_at IS NULL')->fetchColumn();
+
+    $appointmentsTodayStmt = $pdo->prepare("SELECT COUNT(*) FROM servizi_appuntamenti WHERE DATE(data_inizio) = CURRENT_DATE AND stato IN ('Programmato', 'In corso')");
+    $appointmentsTodayStmt->execute();
+    $stats['appointmentsToday'] = (int) $appointmentsTodayStmt->fetchColumn();
+
+    $stats['anprInProgress'] = (int) $pdo->query("SELECT COUNT(*) FROM anpr_pratiche WHERE stato = 'In lavorazione'")->fetchColumn();
 
     $ticketStmt = $pdo->prepare("SELECT id, titolo, stato, created_at FROM ticket ORDER BY created_at DESC LIMIT 5");
     $ticketStmt->execute();
@@ -193,35 +207,35 @@ require_once __DIR__ . '/includes/sidebar.php';
                 <div class="card-body">
                     <div class="dashboard-summary-grid">
                         <div class="summary-tile">
-                            <div class="summary-icon summary-icon-clients"><i class="fa-solid fa-users"></i></div>
+                            <div class="summary-icon summary-icon-revenue"><i class="fa-solid fa-coins"></i></div>
                             <div class="summary-content">
-                                <p class="summary-label mb-1">Clienti attivi</p>
-                                <div class="summary-value" data-dashboard-stat="totalClients" data-format="number"><?php echo number_format($stats['totalClients']); ?></div>
-                                <small class="text-muted">Anagrafica aggiornata</small>
+                                <p class="summary-label mb-1">Entrate/Uscite aperte</p>
+                                <div class="summary-value" data-dashboard-stat="financePending" data-format="number"><?php echo number_format($stats['financePending']); ?></div>
+                                <small class="text-muted">Movimenti da chiudere</small>
                             </div>
                         </div>
                         <div class="summary-tile">
-                            <div class="summary-icon summary-icon-services"><i class="fa-solid fa-diagram-project"></i></div>
+                            <div class="summary-icon summary-icon-services"><i class="fa-solid fa-bolt"></i></div>
                             <div class="summary-content">
-                                <p class="summary-label mb-1">Servizi in corso</p>
-                                <div class="summary-value" data-dashboard-stat="servicesInProgress" data-format="number"><?php echo number_format($stats['servicesInProgress']); ?></div>
-                                <small class="text-muted">Workflow attivi</small>
+                                <p class="summary-label mb-1">Contratti energia</p>
+                                <div class="summary-value" data-dashboard-stat="energyPending" data-format="number"><?php echo number_format($stats['energyPending']); ?></div>
+                                <small class="text-muted">Da inviare o gestire</small>
                             </div>
                         </div>
                         <div class="summary-tile">
-                            <div class="summary-icon summary-icon-revenue"><i class="fa-solid fa-euro-sign"></i></div>
+                            <div class="summary-icon summary-icon-clients"><i class="fa-solid fa-calendar-check"></i></div>
                             <div class="summary-content">
-                                <p class="summary-label mb-1">Saldo odierno</p>
-                                <div class="summary-value" data-dashboard-stat="dailyRevenue" data-format="currency"><?php echo sanitize_output(format_currency($stats['dailyRevenue'])); ?></div>
-                                <small class="text-muted">Entrate - Uscite del giorno</small>
+                                <p class="summary-label mb-1">Appuntamenti oggi</p>
+                                <div class="summary-value" data-dashboard-stat="appointmentsToday" data-format="number"><?php echo number_format($stats['appointmentsToday']); ?></div>
+                                <small class="text-muted">Programmato / in corso</small>
                             </div>
                         </div>
                         <div class="summary-tile">
-                            <div class="summary-icon summary-icon-tickets"><i class="fa-solid fa-life-ring"></i></div>
+                            <div class="summary-icon summary-icon-tickets"><i class="fa-solid fa-file-signature"></i></div>
                             <div class="summary-content">
-                                <p class="summary-label mb-1">Ticket recenti</p>
-                                <div class="summary-value" data-dashboard-stat="openTickets" data-format="number"><?php echo count($stats['openTickets']); ?></div>
-                                <small class="text-muted">Ultimi 5 registrati</small>
+                                <p class="summary-label mb-1">Pratiche ANPR</p>
+                                <div class="summary-value" data-dashboard-stat="anprInProgress" data-format="number"><?php echo number_format($stats['anprInProgress']); ?></div>
+                                <small class="text-muted">In lavorazione</small>
                             </div>
                         </div>
                     </div>
