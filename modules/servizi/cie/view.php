@@ -98,10 +98,12 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             </dd>
 
                             <dt class="col-sm-4">Esito</dt>
-                            <dd class="col-sm-8"><?php echo $booking['esito'] ? nl2br(sanitize_output((string) $booking['esito'])) : '<span class="text-muted">—</span>'; ?></dd>
+                            <?php $esito = $booking['esito'] ?? null; ?>
+                            <dd class="col-sm-8"><?php echo $esito ? nl2br(sanitize_output((string) $esito)) : '<span class="text-muted">—</span>'; ?></dd>
 
                             <dt class="col-sm-4">Note interne</dt>
-                            <dd class="col-sm-8"><?php echo $booking['note'] ? nl2br(sanitize_output((string) $booking['note'])) : '<span class="text-muted">Nessuna nota</span>'; ?></dd>
+                            <?php $note = $booking['note'] ?? null; ?>
+                            <dd class="col-sm-8"><?php echo $note ? nl2br(sanitize_output((string) $note)) : '<span class="text-muted">Nessuna nota</span>'; ?></dd>
                         </dl>
                     </div>
                 </div>
@@ -116,19 +118,24 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <dd class="col-sm-8"><?php echo sanitize_output(trim((string) ($booking['cittadino_cognome'] ?? '') . ' ' . ($booking['cittadino_nome'] ?? ''))); ?></dd>
 
                             <dt class="col-sm-4">Codice fiscale</dt>
-                            <dd class="col-sm-8"><?php echo $booking['cittadino_cf'] ? sanitize_output((string) $booking['cittadino_cf']) : '<span class="text-muted">—</span>'; ?></dd>
+                            <?php $cf = $booking['cittadino_cf'] ?? null; ?>
+                            <dd class="col-sm-8"><?php echo $cf ? sanitize_output((string) $cf) : '<span class="text-muted">—</span>'; ?></dd>
 
                             <dt class="col-sm-4">Email</dt>
-                            <dd class="col-sm-8"><?php echo $booking['cittadino_email'] ? sanitize_output((string) $booking['cittadino_email']) : '<span class="text-muted">—</span>'; ?></dd>
+                            <?php $email = $booking['cittadino_email'] ?? null; ?>
+                            <dd class="col-sm-8"><?php echo $email ? sanitize_output((string) $email) : '<span class="text-muted">—</span>'; ?></dd>
 
                             <dt class="col-sm-4">Telefono</dt>
-                            <dd class="col-sm-8"><?php echo $booking['cittadino_telefono'] ? sanitize_output((string) $booking['cittadino_telefono']) : '<span class="text-muted">—</span>'; ?></dd>
+                            <?php $telefono = $booking['cittadino_telefono'] ?? null; ?>
+                            <dd class="col-sm-8"><?php echo $telefono ? sanitize_output((string) $telefono) : '<span class="text-muted">—</span>'; ?></dd>
 
                             <dt class="col-sm-4">Data di nascita</dt>
-                            <dd class="col-sm-8"><?php echo $booking['data_nascita'] ? sanitize_output(format_date_locale((string) $booking['data_nascita'])) : '<span class="text-muted">—</span>'; ?></dd>
+                            <?php $dataNascita = $booking['data_nascita'] ?? null; ?>
+                            <dd class="col-sm-8"><?php echo $dataNascita ? sanitize_output(format_date_locale((string) $dataNascita)) : '<span class="text-muted">—</span>'; ?></dd>
 
                             <dt class="col-sm-4">Luogo di nascita</dt>
-                            <dd class="col-sm-8"><?php echo $booking['luogo_nascita'] ? sanitize_output((string) $booking['luogo_nascita']) : '<span class="text-muted">—</span>'; ?></dd>
+                            <?php $luogoNascita = $booking['luogo_nascita'] ?? null; ?>
+                            <dd class="col-sm-8"><?php echo $luogoNascita ? sanitize_output((string) $luogoNascita) : '<span class="text-muted">—</span>'; ?></dd>
 
                             <dt class="col-sm-4">Residenza</dt>
                             <dd class="col-sm-8">
@@ -157,22 +164,28 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     <div class="card-body">
                         <dl class="row mb-0">
                             <dt class="col-sm-4">Comune richiesta</dt>
-                            <dd class="col-sm-8"><?php echo sanitize_output((string) ($booking['comune_richiesta'] ?? '')); ?></dd>
+                            <?php $comuneRichiesta = $booking['comune_richiesta'] ?? ''; ?>
+                            <dd class="col-sm-8"><?php echo sanitize_output((string) $comuneRichiesta); ?></dd>
 
                             <dt class="col-sm-4">Preferenza data</dt>
-                            <dd class="col-sm-8"><?php echo $booking['disponibilita_data'] ? sanitize_output(format_date_locale((string) $booking['disponibilita_data'])) : '<span class="text-muted">—</span>'; ?></dd>
+                            <?php $disponibilitaData = $booking['disponibilita_data'] ?? null; ?>
+                            <dd class="col-sm-8"><?php echo $disponibilitaData ? sanitize_output(format_date_locale((string) $disponibilitaData)) : '<span class="text-muted">—</span>'; ?></dd>
 
                             <dt class="col-sm-4">Fascia oraria</dt>
-                            <dd class="col-sm-8"><?php echo $booking['disponibilita_fascia'] ? sanitize_output((string) $booking['disponibilita_fascia']) : '<span class="text-muted">—</span>'; ?></dd>
+                            <?php $disponibilitaFascia = $booking['disponibilita_fascia'] ?? null; ?>
+                            <dd class="col-sm-8"><?php echo $disponibilitaFascia ? sanitize_output((string) $disponibilitaFascia) : '<span class="text-muted">—</span>'; ?></dd>
 
                             <dt class="col-sm-4">Data appuntamento</dt>
-                            <dd class="col-sm-8"><?php echo $booking['appuntamento_data'] ? sanitize_output(format_date_locale((string) $booking['appuntamento_data'])) : '<span class="text-muted">In attesa</span>'; ?></dd>
+                            <?php $appuntamentoData = $booking['appuntamento_data'] ?? null; ?>
+                            <dd class="col-sm-8"><?php echo $appuntamentoData ? sanitize_output(format_date_locale((string) $appuntamentoData)) : '<span class="text-muted">In attesa</span>'; ?></dd>
 
                             <dt class="col-sm-4">Orario appuntamento</dt>
-                            <dd class="col-sm-8"><?php echo $booking['appuntamento_orario'] ? sanitize_output((string) $booking['appuntamento_orario']) : '<span class="text-muted">—</span>'; ?></dd>
+                            <?php $appuntamentoOrario = $booking['appuntamento_orario'] ?? null; ?>
+                            <dd class="col-sm-8"><?php echo $appuntamentoOrario ? sanitize_output((string) $appuntamentoOrario) : '<span class="text-muted">—</span>'; ?></dd>
 
                             <dt class="col-sm-4">Numero prenotazione</dt>
-                            <dd class="col-sm-8"><?php echo $booking['appuntamento_numero'] ? sanitize_output((string) $booking['appuntamento_numero']) : '<span class="text-muted">—</span>'; ?></dd>
+                            <?php $appuntamentoNumero = $booking['appuntamento_numero'] ?? null; ?>
+                            <dd class="col-sm-8"><?php echo $appuntamentoNumero ? sanitize_output((string) $appuntamentoNumero) : '<span class="text-muted">—</span>'; ?></dd>
                         </dl>
                     </div>
                 </div>
