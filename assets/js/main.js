@@ -610,3 +610,178 @@ const FlashModal = (() => {
 })();
 
 window.CSFlashModal = FlashModal;
+
+const ConfirmModal = (() => {
+    const defaults = {
+        title: 'Conferma operazione',
+        confirmLabel: 'Conferma',
+        cancelLabel: 'Annulla',
+        confirmClass: 'btn btn-warning text-dark',
+        cancelClass: 'btn btn-outline-secondary',
+        allowHtml: false
+    };
+
+    const ensureModal = () => {
+        let modal = document.getElementById('csConfirmModal');
+        if (modal) {
+            return modal;
+        }
+
+        modal = document.createElement('div');
+        modal.id = 'csConfirmModal';
+        modal.className = 'modal fade';
+        modal.tabIndex = -1;
+        modal.setAttribute('aria-hidden', 'true');
+        modal.innerHTML = `
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h1 class="modal-title fs-5">Conferma</h1>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Chiudi"></button>
+                    </div>
+                    <div class="modal-body"></div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-confirm-cancel> Annulla </button>
+                        <button type="button" class="btn btn-warning text-dark" data-confirm-accept> Conferma </button>
+                    </div>
+                </div>
+            </div>`;
+        document.body.appendChild(modal);
+        return modal;
+    };
+
+    const applyOptions = (modal, options) => {
+        const config = { ...defaults, ...options };
+        const titleEl = modal.querySelector('.modal-title');
+        const bodyEl = modal.querySelector('.modal-body');
+        const confirmBtn = modal.querySelector('[data-confirm-accept]');
+        const cancelBtn = modal.querySelector('[data-confirm-cancel]');
+
+        if (titleEl) {
+            titleEl.textContent = config.title;
+        }
+
+        if (bodyEl) {
+            if (config.allowHtml) {
+                bodyEl.innerHTML = config.message;
+            } else {
+                bodyEl.textContent = config.message;
+            }
+        }
+
+        if (confirmBtn) {
+            confirmBtn.textContent = config.confirmLabel;
+            confirmBtn.className = config.confirmClass;
+        }
+
+        if (cancelBtn) {
+            cancelBtn.textContent = config.cancelLabel;
+            cancelBtn.className = config.cancelClass;
+        }
+    };
+
+    const confirm = (message, options = {}) => new Promise((resolve) => {
+        const modal = ensureModal();
+        const confirmBtn = modal.querySelector('[data-confirm-accept]');
+        const cancelBtn = modal.querySelector('[data-confirm-cancel]');
+
+        const config = { ...options, message };
+        applyOptions(modal, config);
+
+        // eslint-disable-next-line no-undef
+        const modalInstance = bootstrap.Modal.getOrCreateInstance(modal);
+
+        let settled = false;
+
+        const cleanup = (result) => {
+            if (settled) {
+                return;
+            }
+            settled = true;
+            resolve(result);
+            if (confirmBtn) {
+                confirmBtn.removeEventListener('click', onConfirm);
+            }
+            if (cancelBtn) {
+                cancelBtn.removeEventListener('click', onCancel);
+            }
+        };
+
+        const onConfirm = () => {
+            cleanup(true);
+            modalInstance.hide();
+        };
+
+        const onCancel = () => {
+            cleanup(false);
+            modalInstance.hide();
+        };
+
+        const onHidden = () => {
+            cleanup(false);
+            modal.removeEventListener('hidden.bs.modal', onHidden);
+        };
+
+        if (confirmBtn) {
+            confirmBtn.addEventListener('click', onConfirm, { once: true });
+        }
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', onCancel, { once: true });
+        }
+
+        modal.addEventListener('hidden.bs.modal', onHidden, { once: true });
+
+        modalInstance.show();
+    });
+
+    return { confirm };
+})();
+
+window.CSConfirm = ConfirmModal;
+
+document.addEventListener('submit', (event) => {
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement)) {
+        return;
+    }
+
+    if (form.dataset.csConfirmBypass === '1') {
+        delete form.dataset.csConfirmBypass;
+        return;
+    }
+
+    const message = form.dataset.confirm;
+    if (!message) {
+        return;
+    }
+
+    event.preventDefault();
+
+    const options = {};
+    if (form.dataset.confirmTitle) {
+        options.title = form.dataset.confirmTitle;
+    }
+    if (form.dataset.confirmConfirmLabel) {
+        options.confirmLabel = form.dataset.confirmConfirmLabel;
+    }
+    if (form.dataset.confirmCancelLabel) {
+        options.cancelLabel = form.dataset.confirmCancelLabel;
+    }
+    if (form.dataset.confirmClass) {
+        options.confirmClass = form.dataset.confirmClass;
+    }
+    if (form.dataset.confirmCancelClass) {
+        options.cancelClass = form.dataset.confirmCancelClass;
+    }
+    if (form.dataset.confirmAllowHtml === 'true') {
+        options.allowHtml = true;
+    }
+
+    window.CSConfirm.confirm(message, options).then((accepted) => {
+        if (!accepted) {
+            return;
+        }
+        form.dataset.csConfirmBypass = '1';
+        form.submit();
+    });
+});

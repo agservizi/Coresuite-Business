@@ -109,7 +109,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
                         <h2 class="h5 mb-0">Certificato</h2>
                         <?php if (!empty($pratica['certificato_path'])): ?>
-                            <form method="post" action="upload_certificate.php?id=<?php echo $praticaId; ?>" onsubmit="return confirm('Rimuovere il certificato archiviato?');">
+                            <form method="post" action="upload_certificate.php?id=<?php echo $praticaId; ?>" data-confirm="Rimuovere il certificato archiviato?">
                                 <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                 <input type="hidden" name="id" value="<?php echo $praticaId; ?>">
                                 <input type="hidden" name="action" value="remove">
@@ -166,7 +166,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <?php if ($signatureStatus === 'firmata'): ?>
                                     <p class="mb-1 small">Firmata il: <strong><?php echo sanitize_output(format_datetime_locale($pratica['delega_firma_verificata_il'] ?? '')); ?></strong></p>
                                     <p class="mb-2 small">Destinatario OTP: <?php echo sanitize_output($pratica['delega_firma_recipient'] ?? ''); ?></p>
-                                    <form method="post" action="delega_signature.php" class="d-inline" onsubmit="return confirm('Annullare lo stato di firma e richiedere una nuova sottoscrizione?');">
+                                    <form method="post" action="delega_signature.php" class="d-inline" data-confirm="Annullare lo stato di firma e richiedere una nuova sottoscrizione?">
                                         <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                         <input type="hidden" name="pratica_id" value="<?php echo $praticaId; ?>">
                                         <input type="hidden" name="action" value="reset">
@@ -208,14 +208,14 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                             </div>
                                         </form>
                                         <div class="d-flex flex-wrap gap-2 justify-content-end">
-                                            <form method="post" action="delega_signature.php" onsubmit="return confirm('Inviare nuovamente l\'OTP al cliente?');">
+                                            <form method="post" action="delega_signature.php" data-confirm="Inviare nuovamente l'OTP al cliente?">
                                                 <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                                 <input type="hidden" name="pratica_id" value="<?php echo $praticaId; ?>">
                                                 <input type="hidden" name="action" value="send">
                                                 <input type="hidden" name="recipient" value="<?php echo sanitize_output($pratica['delega_firma_recipient'] ?? $customerEmail); ?>">
                                                 <button class="btn btn-outline-warning" type="submit"><i class="fa-solid fa-paper-plane me-2"></i>Reinvia OTP</button>
                                             </form>
-                                            <form method="post" action="delega_signature.php" onsubmit="return confirm('Annullare l\'OTP attivo?');">
+                                            <form method="post" action="delega_signature.php" data-confirm="Annullare l'OTP attivo?">
                                                 <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                                 <input type="hidden" name="pratica_id" value="<?php echo $praticaId; ?>">
                                                 <input type="hidden" name="action" value="reset">
@@ -255,7 +255,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <?php if (!empty($pratica['spid_verificato_at'])): ?>
                                 <p class="mb-1 small">Ultima verifica: <strong><?php echo sanitize_output(format_datetime_locale($pratica['spid_verificato_at'])); ?></strong></p>
                                 <p class="mb-3 small">Operatore: <?php echo !empty($pratica['spid_operatore_username']) ? sanitize_output($pratica['spid_operatore_username']) : '<span class="text-muted">N/D</span>'; ?></p>
-                                <form method="post" action="spid_verification.php" class="d-flex gap-2" onsubmit="return confirm('Annullare la verifica SPID?');">
+                                <form method="post" action="spid_verification.php" class="d-flex gap-2" data-confirm="Annullare la verifica SPID?">
                                     <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                     <input type="hidden" name="pratica_id" value="<?php echo $praticaId; ?>">
                                     <input type="hidden" name="action" value="reset">
@@ -334,7 +334,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                     <i class="fa-solid fa-file-lines me-2"></i>Scarica delega
                                 </a>
                                 <?php if ($canAutoGenerateDelega): ?>
-                                    <form method="post" action="generate_delega.php" class="d-inline-block" onsubmit="return confirm('Rigenerare la delega automaticamente? Eventuali stati di firma verranno reimpostati.');">
+                                    <form method="post" action="generate_delega.php" class="d-inline-block" data-confirm="Rigenerare la delega automaticamente? Eventuali stati di firma verranno reimpostati.">
                                         <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                         <input type="hidden" name="pratica_id" value="<?php echo $praticaId; ?>">
                                         <input type="hidden" name="action" value="generate">
@@ -344,7 +344,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <?php else: ?>
                                 <p class="text-muted mb-0">Nessuna delega caricata.</p>
                                 <?php if ($canAutoGenerateDelega): ?>
-                                    <form method="post" action="generate_delega.php" class="mt-3 d-inline-block" onsubmit="return confirm('Generare automaticamente la delega per questa pratica?');">
+                                    <form method="post" action="generate_delega.php" class="mt-3 d-inline-block" data-confirm="Generare automaticamente la delega per questa pratica?">
                                         <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                         <input type="hidden" name="pratica_id" value="<?php echo $praticaId; ?>">
                                         <input type="hidden" name="action" value="generate">

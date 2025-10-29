@@ -157,7 +157,11 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                                 <a class="btn btn-sm btn-outline-warning" href="view_request.php?id=<?php echo (int) $pratica['id']; ?>" title="Dettagli"><i class="fa-solid fa-eye"></i></a>
                                                 <a class="btn btn-sm btn-outline-warning" href="edit_request.php?id=<?php echo (int) $pratica['id']; ?>" title="Modifica"><i class="fa-solid fa-pen"></i></a>
                                                 <a class="btn btn-sm btn-outline-warning" href="upload_certificate.php?id=<?php echo (int) $pratica['id']; ?>" title="Carica certificato"><i class="fa-solid fa-file-arrow-up"></i></a>
-                                                <form method="post" action="delete_request.php" class="d-inline" onsubmit="return confirm('Confermi eliminazione della pratica?');">
+                                <form method="post" action="delete_request.php" class="d-inline"
+                                    data-confirm="Confermi eliminazione della pratica?"
+                                    data-confirm-title="Elimina pratica"
+                                    data-confirm-confirm-label="Elimina"
+                                    data-confirm-class="btn btn-danger">
                                                     <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                                     <input type="hidden" name="id" value="<?php echo (int) $pratica['id']; ?>">
                                                     <button class="btn btn-sm btn-outline-warning" type="submit" title="Elimina"><i class="fa-solid fa-trash"></i></button>

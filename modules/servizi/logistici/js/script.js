@@ -4,6 +4,34 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
+    const showToast = (message, type = 'info') => {
+        if (window.CSToast && typeof window.CSToast.show === 'function') {
+            window.CSToast.show(message, type);
+            return;
+        }
+        if (typeof window.alert === 'function') {
+            window.alert(message);
+        }
+    };
+
+    const showModal = (message, type = 'warning') => {
+        if (window.CSFlashModal && typeof window.CSFlashModal.show === 'function') {
+            window.CSFlashModal.show(message, type);
+            return;
+        }
+        showToast(message, type);
+    };
+
+    const confirmAction = async (message, options = {}) => {
+        if (window.CSConfirm && typeof window.CSConfirm.confirm === 'function') {
+            return window.CSConfirm.confirm(message, options);
+        }
+        if (typeof window.confirm === 'function') {
+            return window.confirm(message);
+        }
+        return false;
+    };
+
     const statusForms = root.querySelectorAll('[data-pickup-status-form]');
     statusForms.forEach(form => {
         const select = form.querySelector('select[name="status"]');
@@ -59,7 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error(error);
                 form.classList.add('shake');
                 setTimeout(() => form.classList.remove('shake'), 700);
-                alert(error.message);
+                showToast(error.message || 'Aggiornamento stato non riuscito', 'danger');
             } finally {
                 select.disabled = false;
                 if (submitButton) {
@@ -108,14 +136,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (payload.fallbackUrl) {
                     const opened = window.open(payload.fallbackUrl, '_blank');
                     if (!opened) {
-                        alert((payload.message || 'Apri WhatsApp per completare l\'invio') + '\n\nLink: ' + payload.fallbackUrl);
+                        showModal((payload.message || 'Apri WhatsApp per completare l\'invio') + '\n\nLink: ' + payload.fallbackUrl, 'warning');
                         return;
                     }
                 }
-                alert(payload.message || 'Notifica inviata');
+                showToast(payload.message || 'Notifica inviata', 'success');
             } catch (error) {
                 console.error(error);
-                alert(error.message);
+                showToast(error.message || 'Invio notifica non riuscito', 'danger');
             } finally {
                 if (submit) {
                     submit.disabled = false;
@@ -191,7 +219,12 @@ document.addEventListener('DOMContentLoaded', () => {
         archiveButton.addEventListener('click', async event => {
             event.preventDefault();
             const days = archiveButton.dataset.days || '30';
-            if (!confirm(`Archiviare i pacchi ritirati da più di ${days} giorni?`)) {
+            const confirmed = await confirmAction(`Archiviare i pacchi ritirati da più di ${days} giorni?`, {
+                confirmClass: 'btn btn-danger',
+                title: 'Archiviazione pacchi',
+                confirmLabel: 'Archivia'
+            });
+            if (!confirmed) {
                 return;
             }
             archiveButton.disabled = true;
@@ -219,11 +252,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!response.ok || !payload?.success) {
                     throw new Error(payload?.message || 'Archiviazione non riuscita');
                 }
-                alert(payload.message || 'Archiviazione completata');
+                showToast(payload.message || 'Archiviazione completata', 'success');
                 window.location.reload();
             } catch (error) {
                 console.error(error);
-                alert(error.message);
+                showToast(error.message || 'Errore durante l\'archiviazione', 'danger');
             } finally {
                 archiveButton.disabled = false;
             }

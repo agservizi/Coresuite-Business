@@ -118,7 +118,11 @@ $pageTitle = 'Notifiche';
                         <span class="topbar-btn-label">Segna tutte come lette</span>
                     </button>
                 </form>
-                <form class="d-flex" method="POST" action="notifications.php" onsubmit="return confirm('Vuoi davvero eliminare tutte le notifiche? Questa operazione non può essere annullata.');">
+            <form class="d-flex" method="POST" action="notifications.php"
+                data-confirm="Vuoi davvero eliminare tutte le notifiche? Questa operazione non può essere annullata."
+                data-confirm-title="Elimina tutte le notifiche"
+                data-confirm-confirm-label="Elimina"
+                data-confirm-class="btn btn-danger">
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(get_csrf_token()) ?>">
                     <input type="hidden" name="filter" value="<?= htmlspecialchars($filter) ?>">
                     <input type="hidden" name="action" value="delete_all">
@@ -206,7 +210,11 @@ $pageTitle = 'Notifiche';
                                             <button class="btn btn-outline-primary btn-sm" type="submit"><i class="fa-solid fa-circle-check me-2"></i>Segna come letta</button>
                                         </form>
                                     <?php endif; ?>
-                                    <form method="POST" action="notifications.php" onsubmit="return confirm('Eliminare definitivamente questa notifica?');">
+                        <form method="POST" action="notifications.php"
+                            data-confirm="Eliminare definitivamente questa notifica?"
+                            data-confirm-title="Elimina notifica"
+                            data-confirm-confirm-label="Elimina"
+                            data-confirm-class="btn btn-danger">
                                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(get_csrf_token()) ?>">
                                         <input type="hidden" name="filter" value="<?= htmlspecialchars($filter) ?>">
                                         <input type="hidden" name="action" value="delete_one">

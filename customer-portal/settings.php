@@ -212,7 +212,11 @@ $pageTitle = 'Impostazioni';
                     </div>
                     <div class="card-body">
                         <p class="small text-muted">L'operazione rimuove immediatamente dati anagrafici, preferenze, segnalazioni di pacchi, notifiche e log di accesso. L'azione è irreversibile e richiederà una nuova registrazione per eventuali accessi futuri.</p>
-                        <form method="POST" action="settings.php" class="d-flex flex-column flex-sm-row gap-2" onsubmit="return confirm('Confermi di voler eliminare definitivamente il tuo account e tutti i dati associati? L\'operazione non può essere annullata.');">
+                <form method="POST" action="settings.php" class="d-flex flex-column flex-sm-row gap-2"
+                    data-confirm="Confermi di voler eliminare definitivamente il tuo account e tutti i dati associati? L'operazione non può essere annullata."
+                    data-confirm-title="Elimina account"
+                    data-confirm-confirm-label="Elimina"
+                    data-confirm-class="btn btn-danger">
                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(get_csrf_token()) ?>">
                             <input type="hidden" name="action" value="delete-account">
                             <button class="btn btn-danger flex-grow-1" type="submit"><i class="fa-solid fa-user-slash me-2"></i>Elimina account</button>
