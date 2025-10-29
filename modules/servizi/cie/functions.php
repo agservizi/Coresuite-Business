@@ -12,7 +12,7 @@ const CIE_UPLOAD_RULES = [
             'image/jpeg',
             'image/png',
         ],
-        'max_size' => 10_485_760, // 10 MB
+    'max_size' => 10 * 1024 * 1024, // 10 MB
     ],
     'foto_cittadino' => [
         'dir' => 'uploads/cie/foto',
@@ -20,33 +20,45 @@ const CIE_UPLOAD_RULES = [
             'image/jpeg',
             'image/png',
         ],
-        'max_size' => 5_242_880, // 5 MB
+    'max_size' => 5 * 1024 * 1024, // 5 MB
     ],
     'ricevuta' => [
         'dir' => 'uploads/cie/ricevute',
         'allowed_mimes' => [
             'application/pdf',
         ],
-        'max_size' => 15_728_640, // 15 MB
+    'max_size' => 15 * 1024 * 1024, // 15 MB
     ],
 ];
 
-function cie_prenotazioni_has_column(PDO $pdo, string $column): bool
+function cie_prenotazioni_columns(PDO $pdo): array
 {
-    static $cache = [];
-    if (array_key_exists($column, $cache)) {
-        return $cache[$column];
+    // Cache the table columns so we can adapt queries to evolving schemas at runtime.
+    static $cache = null;
+
+    if (is_array($cache)) {
+        return $cache;
     }
 
     try {
-        $stmt = $pdo->prepare('SHOW COLUMNS FROM cie_prenotazioni LIKE :column');
-        $stmt->execute([':column' => $column]);
-        $cache[$column] = $stmt->fetch(PDO::FETCH_ASSOC) !== false;
-    } catch (PDOException) {
-        $cache[$column] = false;
+        $stmt = $pdo->query('SHOW COLUMNS FROM cie_prenotazioni');
+        $columns = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            if (!empty($row['Field'])) {
+                $columns[] = (string) $row['Field'];
+            }
+        }
+    } catch (Throwable) {
+        $columns = [];
     }
 
-    return $cache[$column];
+    $cache = $columns;
+    return $columns;
+}
+
+function cie_prenotazioni_has_column(PDO $pdo, string $column): bool
+{
+    return in_array($column, cie_prenotazioni_columns($pdo), true);
 }
 
 function cie_supports_prenotazione_code(PDO $pdo): bool
@@ -149,7 +161,7 @@ function cie_generate_code(PDO $pdo): string
     do {
         $code = 'CIE-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(3)));
         $stmt = $pdo->prepare('SELECT COUNT(*) FROM cie_prenotazioni WHERE prenotazione_code = :code');
-        $stmt->execute([':code' => $code]);
+        $stmt->execute(['code' => $code]);
     } while ((int) $stmt->fetchColumn() > 0);
 
     return $code;
@@ -292,135 +304,66 @@ function cie_create(PDO $pdo, array $data, array $files): int
         $code = cie_generate_code($pdo);
         $uploads = cie_process_uploads($files, []);
 
-        $hasBookingCodeColumn = $code !== '';
+        $availableColumns = array_flip(cie_prenotazioni_columns($pdo));
+        $insertColumns = [];
+        $insertValues = [];
+        $params = [];
+        $userId = cie_current_user_id();
 
-        $columns = [
-            'cliente_id',
-            'cittadino_nome',
-            'cittadino_cognome',
-            'cittadino_cf',
-            'cittadino_email',
-            'cittadino_telefono',
-            'data_nascita',
-            'luogo_nascita',
-            'residenza_indirizzo',
-            'residenza_cap',
-            'residenza_citta',
-            'residenza_provincia',
-            'comune_richiesta',
-            'disponibilita_data',
-            'disponibilita_fascia',
-            'appuntamento_data',
-            'appuntamento_orario',
-            'appuntamento_numero',
-            'stato',
-            'documento_identita_path',
-            'documento_identita_nome',
-            'documento_identita_mime',
-            'foto_cittadino_path',
-            'foto_cittadino_nome',
-            'foto_cittadino_mime',
-            'ricevuta_path',
-            'ricevuta_nome',
-            'ricevuta_mime',
-            'note',
-            'esito',
-            'created_by',
-            'updated_by',
-            'created_at',
-            'updated_at',
-        ];
+        $addColumn = static function (string $column, string $paramName, $value) use (&$insertColumns, &$insertValues, &$params, $availableColumns): void {
+            if (!isset($availableColumns[$column])) {
+                return;
+            }
+            $insertColumns[] = $column;
+            $insertValues[] = ':' . $paramName;
+            $params[$paramName] = $value;
+        };
 
-        $placeholders = [
-            ':cliente_id',
-            ':cittadino_nome',
-            ':cittadino_cognome',
-            ':cittadino_cf',
-            ':cittadino_email',
-            ':cittadino_telefono',
-            ':data_nascita',
-            ':luogo_nascita',
-            ':residenza_indirizzo',
-            ':residenza_cap',
-            ':residenza_citta',
-            ':residenza_provincia',
-            ':comune_richiesta',
-            ':disponibilita_data',
-            ':disponibilita_fascia',
-            ':appuntamento_data',
-            ':appuntamento_orario',
-            ':appuntamento_numero',
-            ':stato',
-            ':documento_identita_path',
-            ':documento_identita_nome',
-            ':documento_identita_mime',
-            ':foto_cittadino_path',
-            ':foto_cittadino_nome',
-            ':foto_cittadino_mime',
-            ':ricevuta_path',
-            ':ricevuta_nome',
-            ':ricevuta_mime',
-            ':note',
-            ':esito',
-            ':created_by',
-            ':updated_by',
-            'NOW()',
-            'NOW()',
-        ];
+        $addColumn('prenotazione_code', 'prenotazione_code', $code);
+        $addColumn('cliente_id', 'cliente_id', $data['cliente_id'] ?? null);
+        $addColumn('cittadino_nome', 'cittadino_nome', $data['cittadino_nome']);
+        $addColumn('cittadino_cognome', 'cittadino_cognome', $data['cittadino_cognome']);
+        $addColumn('cittadino_cf', 'cittadino_cf', $data['cittadino_cf'] ?? null);
+        $addColumn('cittadino_email', 'cittadino_email', $data['cittadino_email'] ?? null);
+        $addColumn('cittadino_telefono', 'cittadino_telefono', $data['cittadino_telefono'] ?? null);
+        $addColumn('data_nascita', 'data_nascita', $data['data_nascita'] ?? null);
+        $addColumn('luogo_nascita', 'luogo_nascita', $data['luogo_nascita'] ?? null);
+        $addColumn('residenza_indirizzo', 'residenza_indirizzo', $data['residenza_indirizzo'] ?? null);
+        $addColumn('residenza_cap', 'residenza_cap', $data['residenza_cap'] ?? null);
+        $addColumn('residenza_citta', 'residenza_citta', $data['residenza_citta'] ?? null);
+        $addColumn('residenza_provincia', 'residenza_provincia', $data['residenza_provincia'] ?? null);
+        $addColumn('comune_richiesta', 'comune_richiesta', $data['comune_richiesta']);
+        $addColumn('disponibilita_data', 'disponibilita_data', $data['disponibilita_data'] ?? null);
+        $addColumn('disponibilita_fascia', 'disponibilita_fascia', $data['disponibilita_fascia'] ?? null);
+        $addColumn('appuntamento_data', 'appuntamento_data', $data['appuntamento_data'] ?? null);
+        $addColumn('appuntamento_orario', 'appuntamento_orario', $data['appuntamento_orario'] ?? null);
+        $addColumn('appuntamento_numero', 'appuntamento_numero', $data['appuntamento_numero'] ?? null);
+        $addColumn('stato', 'stato', $data['stato'] ?? 'nuova');
+        $addColumn('documento_identita_path', 'documento_identita_path', $uploads['documento_identita']['path'] ?? null);
+        $addColumn('documento_identita_nome', 'documento_identita_nome', $uploads['documento_identita']['name'] ?? null);
+        $addColumn('documento_identita_mime', 'documento_identita_mime', $uploads['documento_identita']['mime'] ?? null);
+        $addColumn('foto_cittadino_path', 'foto_cittadino_path', $uploads['foto_cittadino']['path'] ?? null);
+        $addColumn('foto_cittadino_nome', 'foto_cittadino_nome', $uploads['foto_cittadino']['name'] ?? null);
+        $addColumn('foto_cittadino_mime', 'foto_cittadino_mime', $uploads['foto_cittadino']['mime'] ?? null);
+        $addColumn('ricevuta_path', 'ricevuta_path', $uploads['ricevuta']['path'] ?? null);
+        $addColumn('ricevuta_nome', 'ricevuta_nome', $uploads['ricevuta']['name'] ?? null);
+        $addColumn('ricevuta_mime', 'ricevuta_mime', $uploads['ricevuta']['mime'] ?? null);
+        $addColumn('note', 'note', $data['note'] ?? null);
+        $addColumn('esito', 'esito', $data['esito'] ?? null);
+        $addColumn('created_by', 'created_by', $userId ?: null);
+        $addColumn('updated_by', 'updated_by', $userId ?: null);
 
-        if ($hasBookingCodeColumn) {
-            array_unshift($columns, 'prenotazione_code');
-            array_unshift($placeholders, ':prenotazione_code');
+        if (!$insertColumns) {
+            throw new RuntimeException('Nessuna colonna disponibile per creare la prenotazione CIE.');
         }
 
         $sql = sprintf(
             'INSERT INTO cie_prenotazioni (%s) VALUES (%s)',
-            implode(', ', $columns),
-            implode(', ', $placeholders)
+            implode(', ', $insertColumns),
+            implode(', ', $insertValues)
         );
 
         $stmt = $pdo->prepare($sql);
-
-        $userId = cie_current_user_id();
-        $params = [
-            ':cliente_id' => $data['cliente_id'] ?? null,
-            ':cittadino_nome' => $data['cittadino_nome'],
-            ':cittadino_cognome' => $data['cittadino_cognome'],
-            ':cittadino_cf' => $data['cittadino_cf'] ?? null,
-            ':cittadino_email' => $data['cittadino_email'] ?? null,
-            ':cittadino_telefono' => $data['cittadino_telefono'] ?? null,
-            ':data_nascita' => $data['data_nascita'] ?? null,
-            ':luogo_nascita' => $data['luogo_nascita'] ?? null,
-            ':residenza_indirizzo' => $data['residenza_indirizzo'] ?? null,
-            ':residenza_cap' => $data['residenza_cap'] ?? null,
-            ':residenza_citta' => $data['residenza_citta'] ?? null,
-            ':residenza_provincia' => $data['residenza_provincia'] ?? null,
-            ':comune_richiesta' => $data['comune_richiesta'],
-            ':disponibilita_data' => $data['disponibilita_data'] ?? null,
-            ':disponibilita_fascia' => $data['disponibilita_fascia'] ?? null,
-            ':appuntamento_data' => $data['appuntamento_data'] ?? null,
-            ':appuntamento_orario' => $data['appuntamento_orario'] ?? null,
-            ':appuntamento_numero' => $data['appuntamento_numero'] ?? null,
-            ':stato' => $data['stato'] ?? 'nuova',
-            ':documento_identita_path' => $uploads['documento_identita']['path'] ?? null,
-            ':documento_identita_nome' => $uploads['documento_identita']['name'] ?? null,
-            ':documento_identita_mime' => $uploads['documento_identita']['mime'] ?? null,
-            ':foto_cittadino_path' => $uploads['foto_cittadino']['path'] ?? null,
-            ':foto_cittadino_nome' => $uploads['foto_cittadino']['name'] ?? null,
-            ':foto_cittadino_mime' => $uploads['foto_cittadino']['mime'] ?? null,
-            ':ricevuta_path' => $uploads['ricevuta']['path'] ?? null,
-            ':ricevuta_nome' => $uploads['ricevuta']['name'] ?? null,
-            ':ricevuta_mime' => $uploads['ricevuta']['mime'] ?? null,
-            ':note' => $data['note'] ?? null,
-            ':esito' => $data['esito'] ?? null,
-            ':created_by' => $userId,
-            ':updated_by' => $userId,
-        ];
-
-        if ($hasBookingCodeColumn) {
-            $params[':prenotazione_code'] = $code;
-        }
-
         $stmt->execute($params);
 
         $id = (int) $pdo->lastInsertId();
@@ -447,77 +390,62 @@ function cie_update(PDO $pdo, int $id, array $data, array $files, array $options
 
     try {
         $uploads = cie_process_uploads($files, $existing, $options);
-
-        $stmt = $pdo->prepare('UPDATE cie_prenotazioni SET
-                cliente_id = :cliente_id,
-                cittadino_nome = :cittadino_nome,
-                cittadino_cognome = :cittadino_cognome,
-                cittadino_cf = :cittadino_cf,
-                cittadino_email = :cittadino_email,
-                cittadino_telefono = :cittadino_telefono,
-                data_nascita = :data_nascita,
-                luogo_nascita = :luogo_nascita,
-                residenza_indirizzo = :residenza_indirizzo,
-                residenza_cap = :residenza_cap,
-                residenza_citta = :residenza_citta,
-                residenza_provincia = :residenza_provincia,
-                comune_richiesta = :comune_richiesta,
-                disponibilita_data = :disponibilita_data,
-                disponibilita_fascia = :disponibilita_fascia,
-                appuntamento_data = :appuntamento_data,
-                appuntamento_orario = :appuntamento_orario,
-                appuntamento_numero = :appuntamento_numero,
-                stato = :stato,
-                documento_identita_path = :documento_identita_path,
-                documento_identita_nome = :documento_identita_nome,
-                documento_identita_mime = :documento_identita_mime,
-                foto_cittadino_path = :foto_cittadino_path,
-                foto_cittadino_nome = :foto_cittadino_nome,
-                foto_cittadino_mime = :foto_cittadino_mime,
-                ricevuta_path = :ricevuta_path,
-                ricevuta_nome = :ricevuta_nome,
-                ricevuta_mime = :ricevuta_mime,
-                note = :note,
-                esito = :esito,
-                updated_by = :updated_by,
-                updated_at = NOW()
-            WHERE id = :id');
-
+        $availableColumns = array_flip(cie_prenotazioni_columns($pdo));
+        $setParts = [];
+        $params = ['id' => $id];
         $userId = cie_current_user_id();
-        $stmt->execute([
-            ':cliente_id' => $data['cliente_id'] ?? null,
-            ':cittadino_nome' => $data['cittadino_nome'],
-            ':cittadino_cognome' => $data['cittadino_cognome'],
-            ':cittadino_cf' => $data['cittadino_cf'] ?? null,
-            ':cittadino_email' => $data['cittadino_email'] ?? null,
-            ':cittadino_telefono' => $data['cittadino_telefono'] ?? null,
-            ':data_nascita' => $data['data_nascita'] ?? null,
-            ':luogo_nascita' => $data['luogo_nascita'] ?? null,
-            ':residenza_indirizzo' => $data['residenza_indirizzo'] ?? null,
-            ':residenza_cap' => $data['residenza_cap'] ?? null,
-            ':residenza_citta' => $data['residenza_citta'] ?? null,
-            ':residenza_provincia' => $data['residenza_provincia'] ?? null,
-            ':comune_richiesta' => $data['comune_richiesta'],
-            ':disponibilita_data' => $data['disponibilita_data'] ?? null,
-            ':disponibilita_fascia' => $data['disponibilita_fascia'] ?? null,
-            ':appuntamento_data' => $data['appuntamento_data'] ?? null,
-            ':appuntamento_orario' => $data['appuntamento_orario'] ?? null,
-            ':appuntamento_numero' => $data['appuntamento_numero'] ?? null,
-            ':stato' => $data['stato'] ?? $existing['stato'],
-            ':documento_identita_path' => $uploads['documento_identita']['path'] ?? null,
-            ':documento_identita_nome' => $uploads['documento_identita']['name'] ?? null,
-            ':documento_identita_mime' => $uploads['documento_identita']['mime'] ?? null,
-            ':foto_cittadino_path' => $uploads['foto_cittadino']['path'] ?? null,
-            ':foto_cittadino_nome' => $uploads['foto_cittadino']['name'] ?? null,
-            ':foto_cittadino_mime' => $uploads['foto_cittadino']['mime'] ?? null,
-            ':ricevuta_path' => $uploads['ricevuta']['path'] ?? null,
-            ':ricevuta_nome' => $uploads['ricevuta']['name'] ?? null,
-            ':ricevuta_mime' => $uploads['ricevuta']['mime'] ?? null,
-            ':note' => $data['note'] ?? null,
-            ':esito' => $data['esito'] ?? null,
-            ':updated_by' => $userId,
-            ':id' => $id,
-        ]);
+
+        $addColumn = static function (string $column, string $paramName, $value) use (&$setParts, &$params, $availableColumns): void {
+            if (!isset($availableColumns[$column])) {
+                return;
+            }
+            $setParts[] = sprintf('%s = :%s', $column, $paramName);
+            $params[$paramName] = $value;
+        };
+
+        $addColumn('cliente_id', 'cliente_id', $data['cliente_id'] ?? null);
+        $addColumn('cittadino_nome', 'cittadino_nome', $data['cittadino_nome']);
+        $addColumn('cittadino_cognome', 'cittadino_cognome', $data['cittadino_cognome']);
+        $addColumn('cittadino_cf', 'cittadino_cf', $data['cittadino_cf'] ?? null);
+        $addColumn('cittadino_email', 'cittadino_email', $data['cittadino_email'] ?? null);
+        $addColumn('cittadino_telefono', 'cittadino_telefono', $data['cittadino_telefono'] ?? null);
+        $addColumn('data_nascita', 'data_nascita', $data['data_nascita'] ?? null);
+        $addColumn('luogo_nascita', 'luogo_nascita', $data['luogo_nascita'] ?? null);
+        $addColumn('residenza_indirizzo', 'residenza_indirizzo', $data['residenza_indirizzo'] ?? null);
+        $addColumn('residenza_cap', 'residenza_cap', $data['residenza_cap'] ?? null);
+        $addColumn('residenza_citta', 'residenza_citta', $data['residenza_citta'] ?? null);
+        $addColumn('residenza_provincia', 'residenza_provincia', $data['residenza_provincia'] ?? null);
+        $addColumn('comune_richiesta', 'comune_richiesta', $data['comune_richiesta']);
+        $addColumn('disponibilita_data', 'disponibilita_data', $data['disponibilita_data'] ?? null);
+        $addColumn('disponibilita_fascia', 'disponibilita_fascia', $data['disponibilita_fascia'] ?? null);
+        $addColumn('appuntamento_data', 'appuntamento_data', $data['appuntamento_data'] ?? null);
+        $addColumn('appuntamento_orario', 'appuntamento_orario', $data['appuntamento_orario'] ?? null);
+        $addColumn('appuntamento_numero', 'appuntamento_numero', $data['appuntamento_numero'] ?? null);
+        $addColumn('stato', 'stato', $data['stato'] ?? $existing['stato']);
+        $addColumn('documento_identita_path', 'documento_identita_path', $uploads['documento_identita']['path'] ?? null);
+        $addColumn('documento_identita_nome', 'documento_identita_nome', $uploads['documento_identita']['name'] ?? null);
+        $addColumn('documento_identita_mime', 'documento_identita_mime', $uploads['documento_identita']['mime'] ?? null);
+        $addColumn('foto_cittadino_path', 'foto_cittadino_path', $uploads['foto_cittadino']['path'] ?? null);
+        $addColumn('foto_cittadino_nome', 'foto_cittadino_nome', $uploads['foto_cittadino']['name'] ?? null);
+        $addColumn('foto_cittadino_mime', 'foto_cittadino_mime', $uploads['foto_cittadino']['mime'] ?? null);
+        $addColumn('ricevuta_path', 'ricevuta_path', $uploads['ricevuta']['path'] ?? null);
+        $addColumn('ricevuta_nome', 'ricevuta_nome', $uploads['ricevuta']['name'] ?? null);
+        $addColumn('ricevuta_mime', 'ricevuta_mime', $uploads['ricevuta']['mime'] ?? null);
+        $addColumn('note', 'note', $data['note'] ?? null);
+        $addColumn('esito', 'esito', $data['esito'] ?? null);
+        $addColumn('updated_by', 'updated_by', $userId ?: null);
+
+        if (isset($availableColumns['updated_at'])) {
+            $setParts[] = 'updated_at = NOW()';
+        }
+
+        if (!$setParts) {
+            throw new RuntimeException('Nessuna colonna disponibile per aggiornare la prenotazione CIE.');
+        }
+
+        $sql = sprintf('UPDATE cie_prenotazioni SET %s WHERE id = :id', implode(', ', $setParts));
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
 
         cie_log_action($pdo, 'Aggiornamento prenotazione', 'Prenotazione CIE #' . $id . ' aggiornata');
         $pdo->commit();
@@ -535,12 +463,24 @@ function cie_update_status(PDO $pdo, int $id, string $status): bool
         return false;
     }
 
-    $stmt = $pdo->prepare('UPDATE cie_prenotazioni SET stato = :stato, updated_at = NOW(), updated_by = :updated_by WHERE id = :id');
-    $stmt->execute([
-        ':stato' => $status,
-        ':updated_by' => cie_current_user_id(),
-        ':id' => $id,
-    ]);
+    $setParts = ['stato = :stato'];
+    $params = [
+        'stato' => $status,
+        'id' => $id,
+    ];
+
+    if (cie_prenotazioni_has_column($pdo, 'updated_at')) {
+        $setParts[] = 'updated_at = NOW()';
+    }
+
+    if (cie_prenotazioni_has_column($pdo, 'updated_by')) {
+        $setParts[] = 'updated_by = :updated_by';
+        $params['updated_by'] = cie_current_user_id();
+    }
+
+    $sql = sprintf('UPDATE cie_prenotazioni SET %s WHERE id = :id', implode(', ', $setParts));
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
 
     cie_log_action($pdo, 'Cambio stato prenotazione', 'Prenotazione CIE #' . $id . ' impostata a ' . $status);
     return $stmt->rowCount() > 0;
