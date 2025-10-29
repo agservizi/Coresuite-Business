@@ -12,9 +12,9 @@ $response = [
         'totalClients' => 0,
         'servicesInProgress' => 0,
         'dailyRevenue' => 0.0,
-        'openTickets' => 0,
-        'financePending' => 0,
-        'energyPending' => 0,
+    'openTickets' => 0,
+    'financePending' => 0,
+    'energyContracts' => 0,
         'appointmentsToday' => 0,
         'anprInProgress' => 0,
     ],
@@ -56,7 +56,7 @@ try {
 
     $response['stats']['financePending'] = (int) $pdo->query("SELECT COUNT(*) FROM entrate_uscite WHERE stato IN ('In lavorazione', 'In attesa')")->fetchColumn();
 
-    $response['stats']['energyPending'] = (int) $pdo->query('SELECT COUNT(*) FROM energia_contratti WHERE email_sent_at IS NULL')->fetchColumn();
+    $response['stats']['energyContracts'] = (int) $pdo->query('SELECT COUNT(*) FROM energia_contratti')->fetchColumn();
 
     $appointmentsTodayStmt = $pdo->prepare("SELECT COUNT(*) FROM servizi_appuntamenti WHERE DATE(data_inizio) = CURRENT_DATE AND stato IN ('Programmato', 'In corso')");
     $appointmentsTodayStmt->execute();
