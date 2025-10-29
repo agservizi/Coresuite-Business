@@ -35,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!empty($contract['email_sent_at'])) {
             add_flash('warning', 'Email già inviata per questo contratto.');
         } else {
-            $sent = energia_send_contract_mail($pdo, $contract, false);
+            $sent = energia_send_contract_mail($pdo, $contract, false, 'manual');
             if ($sent) {
                 $latest = energia_fetch_contract($pdo, $contractId);
                 if ($latest && !empty($latest['contract_code'])) {
@@ -51,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (empty($contract['email_sent_at'])) {
             add_flash('warning', 'Invia prima l\'email di presa in carico.');
         } else {
-            $sent = energia_send_contract_mail($pdo, $contract, true);
+            $sent = energia_send_contract_mail($pdo, $contract, true, 'manual');
             add_flash($sent ? 'success' : 'warning', $sent ? 'Reminder inviato correttamente.' : 'Impossibile inviare il reminder.');
         }
     } else {

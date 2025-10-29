@@ -144,6 +144,79 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     </div>
                 </div>
             </div>
+            <div class="col-12">
+                <div class="card ag-card">
+                    <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+                        <h2 class="h5 mb-0">Storico email</h2>
+                        <span class="badge bg-secondary text-uppercase">Log</span>
+                    </div>
+                    <div class="card-body">
+                        <?php $emailHistory = $contract['email_history'] ?? []; ?>
+                        <?php if ($emailHistory): ?>
+                            <?php
+                                $eventLabels = [
+                                    'initial' => 'Invio iniziale',
+                                    'reminder' => 'Reminder',
+                                ];
+                                $channelLabels = [
+                                    'manual' => 'Manuale',
+                                    'scheduler' => 'Scheduler',
+                                ];
+                            ?>
+                            <div class="table-responsive">
+                                <table class="table table-dark table-hover align-middle mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Data invio</th>
+                                            <th>Evento</th>
+                                            <th>Canale</th>
+                                            <th>Destinatario</th>
+                                            <th>Soggetto</th>
+                                            <th>Esito</th>
+                                            <th>Operatore</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($emailHistory as $entry): ?>
+                                            <tr>
+                                                <td><?php echo sanitize_output(format_datetime_locale($entry['sent_at'] ?? '')); ?></td>
+                                                <td><?php echo sanitize_output($eventLabels[$entry['event_type']] ?? ucfirst((string) ($entry['event_type'] ?? ''))); ?></td>
+                                                <td><?php echo sanitize_output($channelLabels[$entry['send_channel']] ?? ucfirst((string) ($entry['send_channel'] ?? ''))); ?></td>
+                                                <td>
+                                                    <span class="d-block"><?php echo sanitize_output($entry['recipient'] ?? ''); ?></span>
+                                                    <?php if (!empty($entry['error_message']) && ($entry['status'] ?? '') === 'failed'): ?>
+                                                        <span class="small text-muted">Errore: <?php echo sanitize_output($entry['error_message']); ?></span>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td><?php echo sanitize_output($entry['subject'] ?? ''); ?></td>
+                                                <td>
+                                                    <?php if (($entry['status'] ?? '') === 'sent'): ?>
+                                                        <span class="badge bg-success">Inviata</span>
+                                                    <?php else: ?>
+                                                        <span class="badge bg-danger">Fallita</span>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td>
+                                                    <?php if (!empty($entry['sent_by_username'])): ?>
+                                                        <span><?php echo sanitize_output($entry['sent_by_username']); ?></span>
+                                                    <?php else: ?>
+                                                        <span class="text-muted">Sistema</span>
+                                                    <?php endif; ?>
+                                                    <?php if (($entry['send_channel'] ?? '') === 'scheduler'): ?>
+                                                        <div class="small text-muted">Automazione</div>
+                                                    <?php endif; ?>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php else: ?>
+                            <p class="text-muted mb-0">Nessuna email registrata finora.</p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
         </div>
     </main>
 </div>

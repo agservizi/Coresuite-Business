@@ -43,10 +43,24 @@ function energia_fetch_contract(PDO $pdo, int $id): ?array
     $attachmentsStmt->execute([':id' => $id]);
     $contract['attachments'] = $attachmentsStmt->fetchAll() ?: [];
 
+    try {
+        $historyStmt = $pdo->prepare('SELECT h.id, h.event_type, h.send_channel, h.recipient, h.subject, h.status,
+                h.error_message, h.sent_at, h.created_at, h.sent_by, u.username AS sent_by_username
+            FROM energia_email_history h
+            LEFT JOIN users u ON h.sent_by = u.id
+            WHERE h.contratto_id = :id
+            ORDER BY h.sent_at DESC, h.id DESC');
+        $historyStmt->execute([':id' => $id]);
+        $contract['email_history'] = $historyStmt->fetchAll() ?: [];
+    } catch (Throwable $exception) {
+        error_log('Energia email history fetch failed: ' . $exception->getMessage());
+        $contract['email_history'] = [];
+    }
+
     return $contract;
 }
 
-function energia_send_contract_mail(PDO $pdo, array $contract, bool $isReminder = false): bool
+function energia_send_contract_mail(PDO $pdo, array $contract, bool $isReminder = false, string $channel = 'manual'): bool
 {
     $contractId = (int) ($contract['id'] ?? 0);
     if ($contractId <= 0) {
@@ -76,6 +90,8 @@ function energia_send_contract_mail(PDO $pdo, array $contract, bool $isReminder 
     }
 
     $subject = $isReminder ? 'Reminder - ' . $subjectBase : $subjectBase;
+    $eventType = $isReminder ? 'reminder' : 'initial';
+    $channel = trim($channel) !== '' ? trim($channel) : 'manual';
 
     $detailsRows = [
         'Codice contratto' => $contractCode,
@@ -120,6 +136,7 @@ function energia_send_contract_mail(PDO $pdo, array $contract, bool $isReminder 
     $sent = send_system_mail($recipient, $subject, $htmlBody);
 
     if (!$sent) {
+        energia_record_email_history($pdo, $contractId, $eventType, 'failed', $subject, $recipient, $channel, 'Invio email non riuscito');
         return false;
     }
 
@@ -149,7 +166,38 @@ function energia_send_contract_mail(PDO $pdo, array $contract, bool $isReminder 
         energia_log_action($pdo, 'Email inviata', 'Email inviata per contratto #' . $contractId);
     }
 
+    energia_record_email_history($pdo, $contractId, $eventType, 'sent', $subject, $recipient, $channel, null);
+
     return true;
+}
+
+function energia_record_email_history(PDO $pdo, int $contractId, string $eventType, string $status, string $subject, string $recipient, string $channel, ?string $errorMessage = null): void
+{
+    try {
+        $sentBy = null;
+        if (isset($_SESSION['user_id'])) {
+            $candidate = (int) $_SESSION['user_id'];
+            if ($candidate > 0) {
+                $sentBy = $candidate;
+            }
+        }
+
+        $stmt = $pdo->prepare('INSERT INTO energia_email_history
+            (contratto_id, event_type, send_channel, recipient, subject, status, error_message, sent_by, sent_at, created_at)
+            VALUES (:contratto_id, :event_type, :send_channel, :recipient, :subject, :status, :error_message, :sent_by, NOW(), NOW())');
+        $stmt->execute([
+            ':contratto_id' => $contractId,
+            ':event_type' => $eventType,
+            ':send_channel' => $channel,
+            ':recipient' => $recipient,
+            ':subject' => $subject,
+            ':status' => $status,
+            ':error_message' => $errorMessage,
+            ':sent_by' => $sentBy,
+        ]);
+    } catch (Throwable $exception) {
+        error_log('Energia email history log failed: ' . $exception->getMessage());
+    }
 }
 
 function energia_log_action(PDO $pdo, string $action, string $details): void

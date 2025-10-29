@@ -204,7 +204,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($data['send_now'] === '1') {
                 $contract = energia_fetch_contract($pdo, $contractId);
-                $mailSent = $contract ? energia_send_contract_mail($pdo, $contract, false) : false;
+                $mailSent = $contract ? energia_send_contract_mail($pdo, $contract, false, 'manual') : false;
                 if ($mailSent) {
                     $message = 'Contratto registrato ed email inviata correttamente.';
                     $updatedContract = energia_fetch_contract($pdo, $contractId);

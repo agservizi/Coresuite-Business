@@ -4,16 +4,6 @@ declare(strict_types=1);
 use Mpdf\Mpdf;
 use Mpdf\MpdfException;
 use Mpdf\Output\Destination;
-
-$composerAutoload = dirname(__DIR__, 3) . '/vendor/autoload.php';
-if (file_exists($composerAutoload)) {
-    require_once $composerAutoload;
-}
-
-if (!class_exists(Mpdf::class)) {
-    require_once __DIR__ . '/mpdf_stub.php';
-}
-
 const ANPR_MODULE_LOG = 'Servizi/ANPR';
 const ANPR_ALLOWED_STATUSES = [
     'In lavorazione',

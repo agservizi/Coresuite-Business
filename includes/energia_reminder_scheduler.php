@@ -96,7 +96,7 @@ function maybe_send_energia_reminders(PDO $pdo): void
                 continue;
             }
 
-            $sent = energia_send_contract_mail($pdo, $contract, true);
+            $sent = energia_send_contract_mail($pdo, $contract, true, 'scheduler');
             if ($sent) {
                 $processed++;
             }
