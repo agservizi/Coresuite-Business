@@ -282,18 +282,7 @@ function cie_can_delete(array $service): bool
     return in_array($service['stato'], $deletableStatuses, true);
 }
 
-/**
- * Genera un codice univoco per la richiesta CIE
- */
-function cie_generate_code(PDO $pdo): string
-{
-    $prefix = 'CIE-' . date('Y');
-    $stmt = $pdo->prepare('SELECT COUNT(*) FROM servizi_cie WHERE YEAR(created_at) = :year');
-    $stmt->execute([':year' => date('Y')]);
-    $count = (int) $stmt->fetchColumn();
 
-    return sprintf('%s-%04d', $prefix, $count + 1);
-}
 
 /**
  * Validazione dati per creazione/modifica richiesta CIE
