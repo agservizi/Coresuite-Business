@@ -644,6 +644,10 @@ function anpr_generate_delega_pdf(array $pratica): array
     $clienteTelefono = anpr_delega_html_escape($data['cliente_telefono']);
     $createdAt = anpr_delega_html_escape($data['created_at']);
     $dataOggi = anpr_delega_html_escape($data['data_oggi']);
+    $firmaStatus = anpr_delega_html_escape($data['delega_firma_status'] ?? '');
+    $firmaChannel = anpr_delega_html_escape($data['delega_firma_channel'] ?? '');
+    $firmaRecipient = anpr_delega_html_escape($data['delega_firma_recipient'] ?? '');
+    $firmaVerifiedAt = anpr_delega_html_escape($data['delega_firma_verificata_il'] ?? '');
 
     $contatti = '';
     if ($clienteEmail !== '') {
@@ -711,11 +715,36 @@ function anpr_generate_delega_pdf(array $pratica): array
     $html .= '<div class="section meta"><p>Data richiesta: <strong>' . $createdAt . '</strong></p>'
         . '<p>Data delega: <strong>' . $dataOggi . '</strong></p></div>';
 
+    $firmaInfo = '';
+    if ($firmaStatus === 'firmata') {
+        $parts = [];
+        if ($firmaVerifiedAt !== '') {
+            $parts[] = 'Firmato digitalmente il ' . $firmaVerifiedAt;
+        }
+        if ($firmaChannel !== '') {
+            $parts[] = 'Metodo: ' . strtoupper($firmaChannel);
+        }
+        if ($firmaRecipient !== '') {
+            $parts[] = 'OTP inviato a: ' . $firmaRecipient;
+        }
+        if ($parts) {
+            $firmaInfo = implode(' • ', $parts);
+        }
+    }
+
+    $delegatoInfo = 'Delegato: ' . $companyName;
+    if ($companyAddress !== '') {
+        $delegatoInfo .= ' • Sede: ' . $companyAddress;
+    }
+    $delegatoInfo .= ' • Documento generato il ' . $dataOggi;
+
     $html .= '<div class="signatures">'
         . '<div class="signature-block">'
+        . ($firmaInfo !== '' ? '<div class="meta mb-2">' . $firmaInfo . '</div>' : '')
         . '<div class="signature-line">Firma delegante</div>'
         . '</div>'
-        . '<div class="signature-block">'
+    . '<div class="signature-block">'
+    . '<div class="meta mb-2">' . $delegatoInfo . '</div>'
         . '<div class="signature-line">Firma delegato</div>'
         . '</div>'
         . '</div>';
