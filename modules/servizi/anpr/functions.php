@@ -133,7 +133,9 @@ function anpr_service_catalog(): array
 
 function anpr_fetch_pratiche(PDO $pdo, array $filters = []): array
 {
-    $sql = 'SELECT ap.*, c.nome, c.cognome, c.ragione_sociale, c.email AS cliente_email, u.username AS operatore_username, us.username AS spid_operatore_username
+    $sql = 'SELECT ap.*, c.nome, c.cognome, c.ragione_sociale, c.email AS cliente_email,
+            u.username AS operatore_username, u.nome AS operatore_nome, u.cognome AS operatore_cognome,
+            us.username AS spid_operatore_username
         FROM anpr_pratiche ap
         LEFT JOIN clienti c ON ap.cliente_id = c.id
         LEFT JOIN users u ON ap.operatore_id = u.id
@@ -215,7 +217,9 @@ function anpr_fetch_pratiche(PDO $pdo, array $filters = []): array
 function anpr_fetch_pratica(PDO $pdo, int $id): ?array
 {
     $stmt = $pdo->prepare('SELECT ap.*, c.nome, c.cognome, c.ragione_sociale, c.cf_piva AS cliente_cf_piva, c.email AS cliente_email,
-        c.telefono AS cliente_telefono, u.username AS operatore_username, us.username AS spid_operatore_username
+        c.telefono AS cliente_telefono,
+        u.username AS operatore_username, u.nome AS operatore_nome, u.cognome AS operatore_cognome,
+        us.username AS spid_operatore_username
         FROM anpr_pratiche ap
         LEFT JOIN clienti c ON ap.cliente_id = c.id
         LEFT JOIN users u ON ap.operatore_id = u.id
@@ -552,6 +556,14 @@ function anpr_normalize_delega_data(array $pratica): array
     $praticaCode = (string) ($pratica['pratica_code'] ?? '');
     $tipoPratica = (string) ($pratica['tipo_pratica'] ?? '');
     $operatore = trim((string) ($pratica['operatore_username'] ?? ''));
+    $operatoreNome = trim((string) ($pratica['operatore_nome'] ?? ''));
+    $operatoreCognome = trim((string) ($pratica['operatore_cognome'] ?? ''));
+
+    $operatoreDisplay = $operatore;
+    $operatorFull = trim($operatoreNome . ' ' . $operatoreCognome);
+    if ($operatorFull !== '') {
+        $operatoreDisplay = $operatorFull;
+    }
 
     if (!function_exists('env')) {
         require_once __DIR__ . '/../../../includes/env.php';
@@ -577,7 +589,7 @@ function anpr_normalize_delega_data(array $pratica): array
         'cliente_telefono' => trim((string) ($pratica['cliente_telefono'] ?? '')),
         'pratica_code' => $praticaCode,
         'tipo_pratica' => $tipoPratica,
-        'operatore_username' => $operatore,
+        'operatore_username' => $operatoreDisplay,
         'company_name' => $companyName,
         'company_address' => $companyAddress,
         'created_at' => $createdAtFormatted,
