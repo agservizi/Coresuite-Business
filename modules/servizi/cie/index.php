@@ -43,7 +43,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Gestisci le richieste dei cittadini, monitora gli appuntamenti e conserva la documentazione allegata.</p>
             </div>
             <div class="toolbar-actions d-flex gap-2">
-                <a class="btn btn-outline-warning" href="services.php" target="_blank"><i class="fa-solid fa-list me-2"></i>Catalogo servizi</a>
+                <a class="btn btn-outline-warning" href="services.php"><i class="fa-solid fa-list me-2"></i>Catalogo servizi</a>
                 <a class="btn btn-warning text-dark" href="create.php"><i class="fa-solid fa-circle-plus me-2"></i>Nuova richiesta</a>
             </div>
         </div>
