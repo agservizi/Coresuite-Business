@@ -78,13 +78,6 @@ $serviziItems = [
         'href' => base_url('modules/servizi/anpr/index.php'),
         'color' => 'amber',
     ],
-    [
-        'needle' => 'modules/servizi/cittadino',
-        'label' => 'Servizi al Cittadino',
-        'icon' => 'fa-solid fa-people-roof',
-        'href' => base_url('modules/servizi/cittadino/index.php'),
-        'color' => 'teal',
-    ],
 ];
 
 $serviziMenuOpen = false;
