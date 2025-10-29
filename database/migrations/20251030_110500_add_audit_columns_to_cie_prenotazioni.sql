@@ -9,8 +9,8 @@ SET @missing_created_by := (
 );
 
 SET @sql := IF(@missing_created_by,
-    'ALTER TABLE cie_prenotazioni ADD COLUMN created_by INT UNSIGNED NULL',
-    'SELECT 1'
+  'ALTER TABLE cie_prenotazioni ADD COLUMN created_by INT UNSIGNED NULL',
+  'DO 1'
 );
 PREPARE stmt FROM @sql;
 EXECUTE stmt;
@@ -25,8 +25,8 @@ SET @missing_updated_by := (
 );
 
 SET @sql := IF(@missing_updated_by,
-    'ALTER TABLE cie_prenotazioni ADD COLUMN updated_by INT UNSIGNED NULL',
-    'SELECT 1'
+  'ALTER TABLE cie_prenotazioni ADD COLUMN updated_by INT UNSIGNED NULL',
+  'DO 1'
 );
 PREPARE stmt FROM @sql;
 EXECUTE stmt;
@@ -42,9 +42,9 @@ SET @missing_fk_created := (
 );
 
 SET @sql := IF(@missing_fk_created,
-    'ALTER TABLE cie_prenotazioni
-        ADD CONSTRAINT cie_prenotazioni_created_by_fk FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL',
-    'SELECT 1'
+  'ALTER TABLE cie_prenotazioni
+    ADD CONSTRAINT cie_prenotazioni_created_by_fk FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL',
+  'DO 1'
 );
 PREPARE stmt FROM @sql;
 EXECUTE stmt;
@@ -60,9 +60,9 @@ SET @missing_fk_updated := (
 );
 
 SET @sql := IF(@missing_fk_updated,
-    'ALTER TABLE cie_prenotazioni
-        ADD CONSTRAINT cie_prenotazioni_updated_by_fk FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL',
-    'SELECT 1'
+  'ALTER TABLE cie_prenotazioni
+    ADD CONSTRAINT cie_prenotazioni_updated_by_fk FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL',
+  'DO 1'
 );
 PREPARE stmt FROM @sql;
 EXECUTE stmt;

@@ -146,7 +146,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <?php foreach ($bookings as $booking): ?>
                                     <tr>
                                         <td>
-                                            <strong><?php echo sanitize_output((string) $booking['prenotazione_code']); ?></strong><br>
+                                            <strong><?php echo sanitize_output((string) ($booking['booking_code'] ?? cie_booking_code($booking))); ?></strong><br>
                                             <small class="text-muted">Creato il <?php echo sanitize_output(format_datetime_locale((string) ($booking['created_at'] ?? ''))); ?></small>
                                         </td>
                                         <td>

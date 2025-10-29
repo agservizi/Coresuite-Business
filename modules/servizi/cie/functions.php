@@ -31,6 +31,72 @@ const CIE_UPLOAD_RULES = [
     ],
 ];
 
+function cie_prenotazioni_has_column(PDO $pdo, string $column): bool
+{
+    static $cache = [];
+    if (array_key_exists($column, $cache)) {
+        return $cache[$column];
+    }
+
+    try {
+        $stmt = $pdo->prepare('SHOW COLUMNS FROM cie_prenotazioni LIKE :column');
+        $stmt->execute([':column' => $column]);
+        $cache[$column] = $stmt->fetch(PDO::FETCH_ASSOC) !== false;
+    } catch (PDOException) {
+        $cache[$column] = false;
+    }
+
+    return $cache[$column];
+}
+
+function cie_supports_prenotazione_code(PDO $pdo): bool
+{
+    return cie_prenotazioni_has_column($pdo, 'prenotazione_code');
+}
+
+function cie_fallback_booking_code(int $id, ?string $createdAt): string
+{
+    $datePart = '00000000';
+    if ($createdAt) {
+        $patterns = ['Y-m-d H:i:s', 'Y-m-d'];
+        foreach ($patterns as $pattern) {
+            $dt = DateTime::createFromFormat($pattern, $createdAt);
+            if ($dt instanceof DateTime) {
+                $datePart = $dt->format('Ymd');
+                break;
+            }
+        }
+    }
+
+    if ($datePart === '00000000') {
+        $datePart = date('Ymd');
+    }
+
+    if ($id > 0) {
+        return sprintf('CIE-%s-%04d', $datePart, $id);
+    }
+
+    return sprintf('CIE-%s-%s', $datePart, strtoupper(bin2hex(random_bytes(3))));
+}
+
+function cie_booking_code(array $booking): string
+{
+    $code = (string) ($booking['booking_code'] ?? '');
+    if ($code !== '') {
+        return $code;
+    }
+
+    $code = (string) ($booking['prenotazione_code'] ?? '');
+    if ($code !== '') {
+        return $code;
+    }
+
+    $id = (int) ($booking['id'] ?? 0);
+    $createdAt = $booking['created_at'] ?? null;
+
+    return cie_fallback_booking_code($id, is_string($createdAt) ? $createdAt : null);
+}
+
 function cie_status_map(): array
 {
     return [
@@ -76,6 +142,10 @@ function cie_status_badge(string $status): string
 
 function cie_generate_code(PDO $pdo): string
 {
+    if (!cie_supports_prenotazione_code($pdo)) {
+        return '';
+    }
+
     do {
         $code = 'CIE-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(3)));
         $stmt = $pdo->prepare('SELECT COUNT(*) FROM cie_prenotazioni WHERE prenotazione_code = :code');
@@ -102,6 +172,7 @@ function cie_fetch_bookings(PDO $pdo, array $filters = []): array
 
     $where = [];
     $params = [];
+    $hasBookingCodeColumn = cie_supports_prenotazione_code($pdo);
 
     if (!empty($filters['stato']) && in_array($filters['stato'], cie_allowed_statuses(), true)) {
         $where[] = 'cp.stato = :stato';
@@ -114,7 +185,20 @@ function cie_fetch_bookings(PDO $pdo, array $filters = []): array
     }
 
     if (!empty($filters['search'])) {
-        $where[] = '(cp.prenotazione_code LIKE :search OR cp.cittadino_nome LIKE :search OR cp.cittadino_cognome LIKE :search OR cp.cittadino_cf LIKE :search OR cp.comune_richiesta LIKE :search)';
+        $searchable = [
+            'cp.cittadino_nome',
+            'cp.cittadino_cognome',
+            'cp.cittadino_cf',
+            'cp.comune_richiesta',
+        ];
+
+        if ($hasBookingCodeColumn) {
+            array_unshift($searchable, 'cp.prenotazione_code');
+        } else {
+            $searchable[] = 'CAST(cp.id AS CHAR)';
+        }
+
+        $where[] = '(' . implode(' OR ', array_map(static fn (string $column): string => $column . ' LIKE :search', $searchable)) . ')';
         $params[':search'] = '%' . $filters['search'] . '%';
     }
 
@@ -137,7 +221,13 @@ function cie_fetch_bookings(PDO $pdo, array $filters = []): array
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
 
-    return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    $results = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    foreach ($results as &$row) {
+        $row['booking_code'] = cie_booking_code($row);
+    }
+    unset($row);
+
+    return $results;
 }
 
 function cie_fetch_stats(PDO $pdo): array
@@ -177,6 +267,8 @@ function cie_fetch_booking(PDO $pdo, int $id): ?array
         return null;
     }
 
+    $booking['booking_code'] = cie_booking_code($booking);
+
     $historyStmt = $pdo->prepare('SELECT id, channel, message_subject, sent_at, notes
         FROM cie_prenotazioni_notifiche
         WHERE prenotazione_id = :id
@@ -200,27 +292,97 @@ function cie_create(PDO $pdo, array $data, array $files): int
         $code = cie_generate_code($pdo);
         $uploads = cie_process_uploads($files, []);
 
-        $stmt = $pdo->prepare('INSERT INTO cie_prenotazioni (
-                prenotazione_code, cliente_id, cittadino_nome, cittadino_cognome, cittadino_cf, cittadino_email,
-                cittadino_telefono, data_nascita, luogo_nascita, residenza_indirizzo, residenza_cap, residenza_citta,
-                residenza_provincia, comune_richiesta, disponibilita_data, disponibilita_fascia, appuntamento_data,
-                appuntamento_orario, appuntamento_numero, stato, documento_identita_path, documento_identita_nome,
-                documento_identita_mime, foto_cittadino_path, foto_cittadino_nome, foto_cittadino_mime,
-                ricevuta_path, ricevuta_nome, ricevuta_mime, note, esito, created_by, updated_by, created_at,
-                updated_at
-            ) VALUES (
-                :prenotazione_code, :cliente_id, :cittadino_nome, :cittadino_cognome, :cittadino_cf, :cittadino_email,
-                :cittadino_telefono, :data_nascita, :luogo_nascita, :residenza_indirizzo, :residenza_cap,
-                :residenza_citta, :residenza_provincia, :comune_richiesta, :disponibilita_data,
-                :disponibilita_fascia, :appuntamento_data, :appuntamento_orario, :appuntamento_numero, :stato,
-                :documento_identita_path, :documento_identita_nome, :documento_identita_mime, :foto_cittadino_path,
-                :foto_cittadino_nome, :foto_cittadino_mime, :ricevuta_path, :ricevuta_nome, :ricevuta_mime, :note,
-                :esito, :created_by, :updated_by, NOW(), NOW()
-            )');
+        $hasBookingCodeColumn = $code !== '';
+
+        $columns = [
+            'cliente_id',
+            'cittadino_nome',
+            'cittadino_cognome',
+            'cittadino_cf',
+            'cittadino_email',
+            'cittadino_telefono',
+            'data_nascita',
+            'luogo_nascita',
+            'residenza_indirizzo',
+            'residenza_cap',
+            'residenza_citta',
+            'residenza_provincia',
+            'comune_richiesta',
+            'disponibilita_data',
+            'disponibilita_fascia',
+            'appuntamento_data',
+            'appuntamento_orario',
+            'appuntamento_numero',
+            'stato',
+            'documento_identita_path',
+            'documento_identita_nome',
+            'documento_identita_mime',
+            'foto_cittadino_path',
+            'foto_cittadino_nome',
+            'foto_cittadino_mime',
+            'ricevuta_path',
+            'ricevuta_nome',
+            'ricevuta_mime',
+            'note',
+            'esito',
+            'created_by',
+            'updated_by',
+            'created_at',
+            'updated_at',
+        ];
+
+        $placeholders = [
+            ':cliente_id',
+            ':cittadino_nome',
+            ':cittadino_cognome',
+            ':cittadino_cf',
+            ':cittadino_email',
+            ':cittadino_telefono',
+            ':data_nascita',
+            ':luogo_nascita',
+            ':residenza_indirizzo',
+            ':residenza_cap',
+            ':residenza_citta',
+            ':residenza_provincia',
+            ':comune_richiesta',
+            ':disponibilita_data',
+            ':disponibilita_fascia',
+            ':appuntamento_data',
+            ':appuntamento_orario',
+            ':appuntamento_numero',
+            ':stato',
+            ':documento_identita_path',
+            ':documento_identita_nome',
+            ':documento_identita_mime',
+            ':foto_cittadino_path',
+            ':foto_cittadino_nome',
+            ':foto_cittadino_mime',
+            ':ricevuta_path',
+            ':ricevuta_nome',
+            ':ricevuta_mime',
+            ':note',
+            ':esito',
+            ':created_by',
+            ':updated_by',
+            'NOW()',
+            'NOW()',
+        ];
+
+        if ($hasBookingCodeColumn) {
+            array_unshift($columns, 'prenotazione_code');
+            array_unshift($placeholders, ':prenotazione_code');
+        }
+
+        $sql = sprintf(
+            'INSERT INTO cie_prenotazioni (%s) VALUES (%s)',
+            implode(', ', $columns),
+            implode(', ', $placeholders)
+        );
+
+        $stmt = $pdo->prepare($sql);
 
         $userId = cie_current_user_id();
-        $stmt->execute([
-            ':prenotazione_code' => $code,
+        $params = [
             ':cliente_id' => $data['cliente_id'] ?? null,
             ':cittadino_nome' => $data['cittadino_nome'],
             ':cittadino_cognome' => $data['cittadino_cognome'],
@@ -253,7 +415,13 @@ function cie_create(PDO $pdo, array $data, array $files): int
             ':esito' => $data['esito'] ?? null,
             ':created_by' => $userId,
             ':updated_by' => $userId,
-        ]);
+        ];
+
+        if ($hasBookingCodeColumn) {
+            $params[':prenotazione_code'] = $code;
+        }
+
+        $stmt->execute($params);
 
         $id = (int) $pdo->lastInsertId();
         cie_log_action($pdo, 'Creazione prenotazione', 'Prenotazione CIE #' . $id . ' creata');
@@ -565,12 +733,14 @@ function cie_send_email_notification(PDO $pdo, array $booking, string $type): bo
         return false;
     }
 
+    $bookingCode = cie_booking_code($booking);
+
     $subject = $type === 'reminder'
-        ? 'Reminder appuntamento CIE - ' . ($booking['prenotazione_code'] ?? '')
-        : 'Conferma prenotazione CIE - ' . ($booking['prenotazione_code'] ?? '');
+        ? 'Reminder appuntamento CIE - ' . $bookingCode
+        : 'Conferma prenotazione CIE - ' . $bookingCode;
 
     $details = [
-        'Codice prenotazione' => (string) ($booking['prenotazione_code'] ?? ''),
+        'Codice prenotazione' => $bookingCode,
         'Cittadino' => trim((string) ($booking['cittadino_cognome'] ?? '') . ' ' . ($booking['cittadino_nome'] ?? '')),
         'Codice fiscale' => (string) ($booking['cittadino_cf'] ?? ''),
         'Comune richiesta' => (string) ($booking['comune_richiesta'] ?? ''),
@@ -651,7 +821,7 @@ function cie_build_whatsapp_link(array $booking): string
     if (!empty($booking['comune_richiesta'])) {
         $messageLines[] = 'Comune: ' . $booking['comune_richiesta'];
     }
-    $messageLines[] = 'Codice pratica: ' . ($booking['prenotazione_code'] ?? '');
+    $messageLines[] = 'Codice pratica: ' . cie_booking_code($booking);
 
     $text = urlencode(implode("\n", array_filter($messageLines)));
     $number = $phone !== '' ? $phone : '';
