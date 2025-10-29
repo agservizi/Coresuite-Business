@@ -145,7 +145,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     <div class="card ag-card h-100">
                         <div class="card-body d-flex flex-column">
                             <div class="d-flex align-items-center justify-content-between mb-3">
-                                <span class="badge bg-warning text-dark">Codice <?php echo sanitize_output($package['code']); ?></span>
+                                <span class="badge bg-warning text-white">Codice <?php echo sanitize_output($package['code']); ?></span>
                                 <i class="fa-solid <?php echo sanitize_output($package['icon']); ?> fa-2x text-warning"></i>
                             </div>
                             <h3 class="h5 fw-semibold mb-2"><?php echo sanitize_output($package['name']); ?></h3>
@@ -182,7 +182,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <div class="col-12 col-sm-6">
                                     <div class="border rounded-3 p-3 h-100">
                                         <div class="d-flex align-items-center gap-3 mb-2">
-                                            <span class="badge bg-warning text-dark"><i class="fa-solid <?php echo sanitize_output($step['icon']); ?>"></i></span>
+                                            <span class="badge bg-warning text-white"><i class="fa-solid <?php echo sanitize_output($step['icon']); ?>"></i></span>
                                             <h3 class="h6 mb-0 fw-semibold"><?php echo sanitize_output($step['title']); ?></h3>
                                         </div>
                                         <p class="text-muted small mb-0"><?php echo sanitize_output($step['description']); ?></p>
