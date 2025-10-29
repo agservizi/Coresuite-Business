@@ -4,326 +4,218 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../../includes/auth.php';
 require_once __DIR__ . '/../../../includes/db_connect.php';
+require_once __DIR__ . '/../../../includes/helpers.php';
 require_once __DIR__ . '/functions.php';
 
-// Verifica autenticazione
-if (!isset($_SESSION['user_id'])) {
-    header('Location: /login.php');
-    exit;
-}
+require_role('Admin', 'Operatore', 'Manager');
+$pageTitle = 'Catalogo Servizi CIE';
 
-// Funzioni per la gestione dei servizi CIE
+$stats = cie_fetch_stats($pdo);
+$statuses = cie_status_map();
 
-/**
- * Crea una nuova richiesta CIE
- */
-function cie_create_service(PDO $pdo, array $data): int
-{
-    try {
-        $stmt = $pdo->prepare("
-            INSERT INTO servizi_cie (
-                cliente_id, nome, cognome, data_nascita, luogo_nascita,
-                codice_fiscale, indirizzo, citta, cap, telefono, email,
-                documento_tipo, documento_numero, documento_rilascio,
-                stato, note, created_at, updated_at
-            ) VALUES (
-                :cliente_id, :nome, :cognome, :data_nascita, :luogo_nascita,
-                :codice_fiscale, :indirizzo, :citta, :cap, :telefono, :email,
-                :documento_tipo, :documento_numero, :documento_rilascio,
-                'nuova', :note, NOW(), NOW()
-            )
-        ");
-        
-        $stmt->execute([
-            ':cliente_id' => $data['cliente_id'],
-            ':nome' => $data['nome'],
-            ':cognome' => $data['cognome'],
-            ':data_nascita' => $data['data_nascita'],
-            ':luogo_nascita' => $data['luogo_nascita'],
-            ':codice_fiscale' => $data['codice_fiscale'],
-            ':indirizzo' => $data['indirizzo'],
-            ':citta' => $data['citta'],
-            ':cap' => $data['cap'],
-            ':telefono' => $data['telefono'],
-            ':email' => $data['email'],
-            ':documento_tipo' => $data['documento_tipo'],
-            ':documento_numero' => $data['documento_numero'],
-            ':documento_rilascio' => $data['documento_rilascio'],
-            ':note' => $data['note'] ?? null,
-        ]);
-        
-        return (int) $pdo->lastInsertId();
-    } catch (PDOException $e) {
-        error_log(CIE_MODULE_LOG . " - Errore creazione servizio CIE: " . $e->getMessage());
-        throw new RuntimeException('Errore durante la creazione del servizio CIE');
-    }
-}
+$servicePackages = [
+    [
+        'name' => 'Richiesta CIE Standard',
+        'code' => 'CIE-S1',
+        'icon' => 'fa-id-card',
+        'description' => 'Gestione completa della richiesta di Carta d\'Identità Elettronica con appuntamento nel comune di appartenenza.',
+        'target' => 'Cittadini con documenti in scadenza o deteriorati.',
+        'includes' => [
+            'Verifica documentazione e requisiti',
+            'Prenotazione appuntamento presso l\'ufficio anagrafe',
+            'Monitoraggio avanzamento pratica',
+            'Assistenza post-appuntamento fino alla consegna',
+        ],
+        'sla' => 'Completamento entro 30 giorni lavorativi dalla richiesta',
+    ],
+    [
+        'name' => 'Richiesta CIE Urgente',
+        'code' => 'CIE-U2',
+        'icon' => 'fa-bolt',
+        'description' => 'Corsia preferenziale per casi di reale urgenza con prenotazione in disponibilità straordinaria o fuori comune.',
+        'target' => 'Cittadini con comprovate esigenze urgenti (viaggi, motivi di salute, lavoro).',
+        'includes' => [
+            'Analisi prioritaria della pratica',
+            'Ricerca disponibilità in comuni limitrofi',
+            'Affiancamento nella gestione dei documenti giustificativi',
+            'Aggiornamenti al cliente in tempo reale',
+        ],
+        'sla' => 'Completamento entro 10 giorni lavorativi dalla richiesta',
+    ],
+    [
+        'name' => 'Supporto Post-Appuntamento',
+        'code' => 'CIE-A3',
+        'icon' => 'fa-life-ring',
+        'description' => 'Assistenza dedicata successiva all\'appuntamento per eventuali integrazioni o problematiche.',
+        'target' => 'Pratiche con appuntamento assegnato che richiedono ulteriore supporto.',
+        'includes' => [
+            'Verifica esito e documentazione prodotta',
+            'Gestione eventuali integrazioni richieste dal comune',
+            'Supporto nel ritiro del documento',
+            'Report conclusivo per il cliente',
+        ],
+        'sla' => 'Supporto attivo fino alla consegna della carta',
+    ],
+];
 
-/**
- * Aggiorna lo stato di una richiesta CIE nel contesto servizi
- */
-function cie_service_update_status(PDO $pdo, int $serviceId, string $newStatus, ?string $note = null): bool
-{
-    try {
-        $validStatuses = array_keys(cie_status_map());
-        if (!in_array($newStatus, $validStatuses, true)) {
-            throw new InvalidArgumentException('Stato non valido: ' . $newStatus);
-        }
-        
-        $stmt = $pdo->prepare("
-            UPDATE servizi_cie 
-            SET stato = :stato, updated_at = NOW()
-            WHERE id = :id
-        ");
-        
-        $result = $stmt->execute([
-            ':stato' => $newStatus,
-            ':id' => $serviceId,
-        ]);
-        
-        // Aggiungi nota se presente
-        if ($note && $result) {
-            cie_add_note($pdo, $serviceId, $note);
-        }
-        
-        return $result;
-    } catch (PDOException $e) {
-        error_log(CIE_MODULE_LOG . " - Errore aggiornamento stato CIE: " . $e->getMessage());
-        return false;
-    }
-}
+$operationalSteps = [
+    [
+        'title' => 'Raccolta dati',
+        'description' => 'Compilazione scheda cittadino e caricamento dei documenti previsti dalle regole CIE.',
+        'icon' => 'fa-clipboard-list',
+    ],
+    [
+        'title' => 'Prenotazione',
+        'description' => 'Ricerca disponibilità presso il comune selezionato e invio conferma al cittadino.',
+        'icon' => 'fa-calendar-check',
+    ],
+    [
+        'title' => 'Appuntamento',
+        'description' => 'Preparazione del cittadino e verifica dei documenti prima della presentazione allo sportello.',
+        'icon' => 'fa-user-check',
+    ],
+    [
+        'title' => 'Follow-up',
+        'description' => 'Monitoraggio stato pratica e gestione delle comunicazioni fino al rilascio del documento.',
+        'icon' => 'fa-envelope-open-text',
+    ],
+];
 
-/**
- * Aggiunge una nota a una richiesta CIE
- */
-function cie_add_note(PDO $pdo, int $serviceId, string $note): bool
-{
-    try {
-        $stmt = $pdo->prepare("
-            INSERT INTO cie_note (servizio_id, nota, user_id, created_at)
-            VALUES (:servizio_id, :nota, :user_id, NOW())
-        ");
-        
-        return $stmt->execute([
-            ':servizio_id' => $serviceId,
-            ':nota' => $note,
-            ':user_id' => $_SESSION['user_id'],
-        ]);
-    } catch (PDOException $e) {
-        error_log(CIE_MODULE_LOG . " - Errore aggiunta nota CIE: " . $e->getMessage());
-        return false;
-    }
-}
+$faqs = [
+    [
+        'question' => 'Quali documenti servono per avviare la pratica?',
+        'answer' => 'Documento di identità valido o scaduto da non oltre 6 mesi, codice fiscale, stato civile aggiornato e due fotografie fronte/mezzo busto formato tessera.',
+    ],
+    [
+        'question' => 'Quanto tempo serve per ottenere l\'appuntamento?',
+        'answer' => 'Dipende dal carico del comune. In media 15-20 giorni per la richiesta standard e 3-5 giorni per la richiesta urgente con disponibilità straordinaria.',
+    ],
+    [
+        'question' => 'È possibile richiedere il servizio per un minorenne?',
+        'answer' => 'Sì, con presenza dei genitori o di chi esercita la responsabilità genitoriale e con firma del modulo di assenso.',
+    ],
+    [
+        'question' => 'Come viene notificato il cliente?',
+        'answer' => 'Ogni fase genera una notifica via email e SMS. Le comunicazioni sono tracciate nello storico della prenotazione.',
+    ],
+];
 
-/**
- * Recupera una richiesta CIE per ID
- */
-function cie_get_service(PDO $pdo, int $serviceId): ?array
-{
-    try {
-        $stmt = $pdo->prepare("
-            SELECT sc.*, c.ragione_sociale, c.nome as cliente_nome, c.cognome as cliente_cognome
-            FROM servizi_cie sc
-            LEFT JOIN clienti c ON sc.cliente_id = c.id
-            WHERE sc.id = :id
-        ");
-        
-        $stmt->execute([':id' => $serviceId]);
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        return $result ?: null;
-    } catch (PDOException $e) {
-        error_log(CIE_MODULE_LOG . " - Errore recupero servizio CIE: " . $e->getMessage());
-        return null;
-    }
-}
+require_once __DIR__ . '/../../../includes/header.php';
+require_once __DIR__ . '/../../../includes/sidebar.php';
+?>
+<div class="flex-grow-1 d-flex flex-column min-vh-100">
+    <?php require_once __DIR__ . '/../../../includes/topbar.php'; ?>
+    <main class="content-wrapper">
+        <div class="page-toolbar mb-4 d-flex justify-content-between align-items-start flex-wrap gap-3">
+            <div>
+                <h1 class="h3 mb-1">Catalogo Servizi CIE</h1>
+                <p class="text-muted mb-0">Panoramica delle soluzioni disponibili per la gestione delle carte d'identità elettroniche.</p>
+            </div>
+            <div class="toolbar-actions d-flex gap-2">
+                <a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-rotate me-2"></i>Torna alla gestione pratiche</a>
+                <a class="btn btn-warning text-dark" href="create.php"><i class="fa-solid fa-circle-plus me-2"></i>Nuova richiesta</a>
+            </div>
+        </div>
 
-/**
- * Recupera tutte le richieste CIE con filtri
- */
-function cie_get_services(PDO $pdo, array $filters = []): array
-{
-    try {
-        $where = [];
-        $params = [];
-        
-        if (!empty($filters['cliente_id'])) {
-            $where[] = 'sc.cliente_id = :cliente_id';
-            $params[':cliente_id'] = $filters['cliente_id'];
-        }
-        
-        if (!empty($filters['stato'])) {
-            $where[] = 'sc.stato = :stato';
-            $params[':stato'] = $filters['stato'];
-        }
-        
-        if (!empty($filters['search'])) {
-            $where[] = '(sc.nome LIKE :search OR sc.cognome LIKE :search OR sc.codice_fiscale LIKE :search)';
-            $params[':search'] = '%' . $filters['search'] . '%';
-        }
-        
-        $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
-        
-        $stmt = $pdo->prepare("
-            SELECT sc.*, c.ragione_sociale, c.nome as cliente_nome, c.cognome as cliente_cognome
-            FROM servizi_cie sc
-            LEFT JOIN clienti c ON sc.cliente_id = c.id
-            {$whereClause}
-            ORDER BY sc.created_at DESC
-        ");
-        
-        $stmt->execute($params);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (PDOException $e) {
-        error_log(CIE_MODULE_LOG . " - Errore recupero servizi CIE: " . $e->getMessage());
-        return [];
-    }
-}
+        <section class="row g-3 mb-4">
+            <div class="col-12 col-lg-3">
+                <div class="card ag-card h-100">
+                    <div class="card-body">
+                        <p class="text-muted mb-1">Richieste totali</p>
+                        <h3 class="fw-bold mb-0"><?php echo (int) ($stats['total'] ?? 0); ?></h3>
+                        <p class="small text-muted mb-0">Somma delle pratiche gestite nel portale CIE.</p>
+                    </div>
+                </div>
+            </div>
+            <?php foreach ($statuses as $key => $config): ?>
+                <div class="col-6 col-lg-2">
+                    <div class="card ag-card h-100">
+                        <div class="card-body">
+                            <p class="text-muted mb-1"><?php echo sanitize_output($config['label']); ?></p>
+                            <h4 class="fw-bold mb-0"><?php echo (int) ($stats['by_status'][$key] ?? 0); ?></h4>
+                        </div>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </section>
 
-/**
- * Recupera le note per una richiesta CIE
- */
-function cie_get_notes(PDO $pdo, int $serviceId): array
-{
-    try {
-        $stmt = $pdo->prepare("
-            SELECT cn.*, u.nome, u.cognome
-            FROM cie_note cn
-            LEFT JOIN users u ON cn.user_id = u.id
-            WHERE cn.servizio_id = :servizio_id
-            ORDER BY cn.created_at DESC
-        ");
-        
-        $stmt->execute([':servizio_id' => $serviceId]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (PDOException $e) {
-        error_log(CIE_MODULE_LOG . " - Errore recupero note CIE: " . $e->getMessage());
-        return [];
-    }
-}
+        <section class="row g-4 mb-5">
+            <?php foreach ($servicePackages as $package): ?>
+                <div class="col-12 col-lg-4">
+                    <div class="card ag-card h-100">
+                        <div class="card-body d-flex flex-column">
+                            <div class="d-flex align-items-center justify-content-between mb-3">
+                                <span class="badge bg-warning text-dark">Codice <?php echo sanitize_output($package['code']); ?></span>
+                                <i class="fa-solid <?php echo sanitize_output($package['icon']); ?> fa-2x text-warning"></i>
+                            </div>
+                            <h3 class="h5 fw-semibold mb-2"><?php echo sanitize_output($package['name']); ?></h3>
+                            <p class="text-muted mb-3 flex-grow-1"><?php echo sanitize_output($package['description']); ?></p>
+                            <p class="small text-muted mb-2"><strong>Ideale per:</strong> <?php echo sanitize_output($package['target']); ?></p>
+                            <ul class="list-unstyled mb-3">
+                                <?php foreach ($package['includes'] as $item): ?>
+                                    <li class="d-flex align-items-start gap-2 mb-2">
+                                        <i class="fa-solid fa-check text-warning mt-1"></i>
+                                        <span><?php echo sanitize_output($item); ?></span>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
+                            <div class="mt-auto">
+                                <div class="small text-muted mb-3"><i class="fa-solid fa-hourglass-half me-2"></i><?php echo sanitize_output($package['sla']); ?></div>
+                                <a class="btn btn-warning text-dark w-100" href="create.php?package=<?php echo urlencode($package['code']); ?>">Avvia pratica</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </section>
 
-/**
- * Elimina una richiesta CIE
- */
-function cie_delete_service(PDO $pdo, int $serviceId): bool
-{
-    try {
-        $pdo->beginTransaction();
-        
-        // Elimina le note associate
-        $stmt = $pdo->prepare("DELETE FROM cie_note WHERE servizio_id = :servizio_id");
-        $stmt->execute([':servizio_id' => $serviceId]);
-        
-        // Elimina il servizio
-        $stmt = $pdo->prepare("DELETE FROM servizi_cie WHERE id = :id");
-        $result = $stmt->execute([':id' => $serviceId]);
-        
-        $pdo->commit();
-        return $result;
-    } catch (PDOException $e) {
-        $pdo->rollBack();
-        error_log(CIE_MODULE_LOG . " - Errore eliminazione servizio CIE: " . $e->getMessage());
-        return false;
-    }
-}
+        <section class="card ag-card mb-5">
+            <div class="card-body">
+                <div class="row g-4 align-items-center">
+                    <div class="col-12 col-lg-4">
+                        <h2 class="h4 fw-semibold mb-3">Workflow operativo</h2>
+                        <p class="text-muted mb-0">Ogni pratica segue un flusso controllato con log attività e notifiche automatiche al cittadino.</p>
+                    </div>
+                    <div class="col-12 col-lg-8">
+                        <div class="row g-3">
+                            <?php foreach ($operationalSteps as $step): ?>
+                                <div class="col-12 col-sm-6">
+                                    <div class="border rounded-3 p-3 h-100">
+                                        <div class="d-flex align-items-center gap-3 mb-2">
+                                            <span class="badge bg-warning text-dark"><i class="fa-solid <?php echo sanitize_output($step['icon']); ?>"></i></span>
+                                            <h3 class="h6 mb-0 fw-semibold"><?php echo sanitize_output($step['title']); ?></h3>
+                                        </div>
+                                        <p class="text-muted small mb-0"><?php echo sanitize_output($step['description']); ?></p>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-/**
- * Ottieni statistiche dei servizi CIE
- */
-function cie_get_statistics(PDO $pdo): array
-{
-    try {
-        $stats = [];
-        
-        // Totale richieste
-        $stmt = $pdo->query("SELECT COUNT(*) FROM servizi_cie");
-        $stats['totale'] = (int) $stmt->fetchColumn();
-        
-        // Richieste per stato
-        $stmt = $pdo->query("
-            SELECT stato, COUNT(*) as count 
-            FROM servizi_cie 
-            GROUP BY stato
-        ");
-        $stats['per_stato'] = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-        
-        // Richieste del mese corrente
-        $stmt = $pdo->prepare("
-            SELECT COUNT(*) 
-            FROM servizi_cie 
-            WHERE MONTH(created_at) = MONTH(CURDATE()) 
-            AND YEAR(created_at) = YEAR(CURDATE())
-        ");
-        $stmt->execute();
-        $stats['mese_corrente'] = (int) $stmt->fetchColumn();
-        
-        return $stats;
-    } catch (PDOException $e) {
-        error_log(CIE_MODULE_LOG . " - Errore recupero statistiche CIE: " . $e->getMessage());
-        return [];
-    }
-}
-
-/**
- * Verifica se una richiesta CIE può essere modificata
- */
-function cie_can_edit(array $service): bool
-{
-    $editableStatuses = ['nuova', 'dati_inviati'];
-    return in_array($service['stato'], $editableStatuses, true);
-}
-
-/**
- * Verifica se una richiesta CIE può essere eliminata
- */
-function cie_can_delete(array $service): bool
-{
-    $deletableStatuses = ['nuova', 'annullata'];
-    return in_array($service['stato'], $deletableStatuses, true);
-}
-
-
-
-/**
- * Validazione dati per creazione/modifica richiesta CIE
- */
-function cie_validate_data(array $data): array
-{
-    $errors = [];
-    
-    if (empty($data['nome'])) {
-        $errors['nome'] = 'Il nome è obbligatorio';
-    }
-    
-    if (empty($data['cognome'])) {
-        $errors['cognome'] = 'Il cognome è obbligatorio';
-    }
-    
-    if (empty($data['codice_fiscale'])) {
-        $errors['codice_fiscale'] = 'Il codice fiscale è obbligatorio';
-    } elseif (!preg_match('/^[A-Z]{6}[0-9]{2}[A-Z][0-9]{2}[A-Z][0-9]{3}[A-Z]$/', $data['codice_fiscale'])) {
-        $errors['codice_fiscale'] = 'Il codice fiscale non è valido';
-    }
-    
-    if (empty($data['data_nascita'])) {
-        $errors['data_nascita'] = 'La data di nascita è obbligatoria';
-    }
-    
-    if (empty($data['luogo_nascita'])) {
-        $errors['luogo_nascita'] = 'Il luogo di nascita è obbligatorio';
-    }
-    
-    if (empty($data['documento_tipo'])) {
-        $errors['documento_tipo'] = 'Il tipo di documento è obbligatorio';
-    }
-    
-    if (empty($data['documento_numero'])) {
-        $errors['documento_numero'] = 'Il numero di documento è obbligatorio';
-    }
-    
-    if (!empty($data['email']) && !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
-        $errors['email'] = 'L\'email non è valida';
-    }
-    
-    return $errors;
-}
+        <section class="card ag-card">
+            <div class="card-body">
+                <h2 class="h4 fw-semibold mb-4">Domande frequenti</h2>
+                <div class="accordion" id="cieFaq">
+                    <?php foreach ($faqs as $index => $faq): ?>
+                        <div class="accordion-item bg-transparent border border-secondary rounded-3 mb-2">
+                            <h3 class="accordion-header" id="heading<?php echo $index; ?>">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse<?php echo $index; ?>" aria-expanded="false" aria-controls="collapse<?php echo $index; ?>">
+                                    <?php echo sanitize_output($faq['question']); ?>
+                                </button>
+                            </h3>
+                            <div id="collapse<?php echo $index; ?>" class="accordion-collapse collapse" aria-labelledby="heading<?php echo $index; ?>" data-bs-parent="#cieFaq">
+                                <div class="accordion-body text-muted">
+                                    <?php echo sanitize_output($faq['answer']); ?>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+<?php require_once __DIR__ . '/../../../includes/footer.php'; ?>
