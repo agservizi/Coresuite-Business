@@ -209,6 +209,12 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <option value="<?php echo $cid; ?>" <?php echo (string) $cid === $data['cliente_id'] ? 'selected' : ''; ?>><?php echo sanitize_output(trim($cliente['ragione_sociale'] ?: (($cliente['cognome'] ?? '') . ' ' . ($cliente['nome'] ?? '')))); ?></option>
                             <?php endforeach; ?>
                         </select>
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-2">
+                            <small class="text-muted mb-0">Non trovi il cliente? Aggiungilo al volo.</small>
+                            <button class="btn btn-sm btn-outline-warning" type="button" data-bs-toggle="modal" data-bs-target="#quickAddClienteModal">
+                                <i class="fa-solid fa-user-plus me-1"></i>Nuovo cliente
+                            </button>
+                        </div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label" for="tipo_pratica">Tipologia <span class="text-warning">*</span></label>
@@ -258,4 +264,140 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         </div>
     </main>
 </div>
+<div class="modal fade" id="quickAddClienteModal" tabindex="-1" aria-labelledby="quickAddClienteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0">
+                <h2 class="modal-title h5 mb-0" id="quickAddClienteModalLabel">Nuovo cliente</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Chiudi"></button>
+            </div>
+            <div class="modal-body">
+                <form id="quickAddClienteForm" method="post" class="row g-3" novalidate autocomplete="off">
+                    <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
+                    <div id="quickAddClienteErrors" class="alert alert-warning d-none" role="alert"></div>
+                    <div class="col-12">
+                        <label class="form-label" for="quick_ragione_sociale">Ragione sociale</label>
+                        <input class="form-control" id="quick_ragione_sociale" name="ragione_sociale" maxlength="160" placeholder="Es. Azienda ABC S.r.l.">
+                        <small class="text-muted">Lascia vuoto per clienti privati.</small>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="quick_nome">Nome <span class="text-warning">*</span></label>
+                        <input class="form-control" id="quick_nome" name="nome" maxlength="80" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="quick_cognome">Cognome <span class="text-warning">*</span></label>
+                        <input class="form-control" id="quick_cognome" name="cognome" maxlength="80" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="quick_email">Email</label>
+                        <input class="form-control" id="quick_email" type="email" name="email" maxlength="160" placeholder="cliente@example.com">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="quick_telefono">Telefono</label>
+                        <input class="form-control" id="quick_telefono" name="telefono" maxlength="40" placeholder="Es. +39 347 1234567">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="quick_cf_piva">CF / P.IVA</label>
+                        <input class="form-control" id="quick_cf_piva" name="cf_piva" maxlength="16" placeholder="RSSMRA80A01H501Z">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="quick_indirizzo">Indirizzo</label>
+                        <input class="form-control" id="quick_indirizzo" name="indirizzo" maxlength="255" placeholder="Via Roma 10, Milano">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="quick_note">Note</label>
+                        <textarea class="form-control" id="quick_note" name="note" rows="3" maxlength="2000" placeholder="Note operative o preferenze del cliente"></textarea>
+                    </div>
+                    <div class="col-12 d-flex justify-content-end gap-2 mt-2">
+                        <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Annulla</button>
+                        <button class="btn btn-warning text-dark" type="submit"><i class="fa-solid fa-floppy-disk me-2"></i>Salva cliente</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 <?php require_once __DIR__ . '/../../../includes/footer.php'; ?>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var quickAddModal = document.getElementById('quickAddClienteModal');
+        var quickAddForm = document.getElementById('quickAddClienteForm');
+        var clienteSelect = document.getElementById('cliente_id');
+        if (!quickAddModal || !quickAddForm || !clienteSelect) {
+            return;
+        }
+
+        var quickAddErrors = document.getElementById('quickAddClienteErrors');
+        var submitButton = quickAddForm.querySelector('button[type="submit"]');
+        var submitLabel = submitButton.innerHTML;
+
+        var resetQuickAddForm = function () {
+            quickAddForm.reset();
+            if (quickAddErrors) {
+                quickAddErrors.textContent = '';
+                quickAddErrors.classList.add('d-none');
+            }
+            submitButton.disabled = false;
+            submitButton.innerHTML = submitLabel;
+        };
+
+        quickAddModal.addEventListener('hidden.bs.modal', function () {
+            resetQuickAddForm();
+        });
+
+        quickAddForm.addEventListener('submit', function (event) {
+            event.preventDefault();
+
+            if (quickAddErrors) {
+                quickAddErrors.textContent = '';
+                quickAddErrors.classList.add('d-none');
+            }
+
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Salvataggio...';
+
+            var formData = new FormData(quickAddForm);
+
+            fetch('<?php echo sanitize_output(base_url('modules/clienti/quick_create.php')); ?>', {
+                method: 'POST',
+                credentials: 'same-origin',
+                body: formData
+            })
+                .then(function (response) {
+                    return response.json().then(function (json) {
+                        return { status: response.status, body: json };
+                    });
+                })
+                .then(function (payload) {
+                    var data = payload.body;
+                    if (!data || data.success !== true) {
+                        throw data;
+                    }
+
+                    var option = document.createElement('option');
+                    option.value = String(data.id);
+                    option.textContent = data.label;
+                    clienteSelect.appendChild(option);
+                    clienteSelect.value = String(data.id);
+                    clienteSelect.dispatchEvent(new Event('change'));
+
+                    var modalInstance = bootstrap.Modal.getInstance(quickAddModal);
+                    if (!modalInstance) {
+                        modalInstance = new bootstrap.Modal(quickAddModal);
+                    }
+                    modalInstance.hide();
+                })
+                .catch(function (error) {
+                    var messages = (error && Array.isArray(error.errors)) ? error.errors : ['Impossibile creare il cliente.'];
+                    if (quickAddErrors) {
+                        quickAddErrors.textContent = messages.join(' ');
+                        quickAddErrors.classList.remove('d-none');
+                    }
+                })
+                .finally(function () {
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = submitLabel;
+                });
+        });
+    });
+</script>
