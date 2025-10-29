@@ -580,6 +580,15 @@ function anpr_normalize_delega_data(array $pratica): array
     $createdAtFormatted = format_datetime_locale($createdAt ?: date('Y-m-d H:i:s'));
     $today = format_date_locale(date('Y-m-d'));
 
+    $firmaStatus = trim((string) ($pratica['delega_firma_status'] ?? ''));
+    $firmaChannel = trim((string) ($pratica['delega_firma_channel'] ?? ''));
+    $firmaRecipient = trim((string) ($pratica['delega_firma_recipient'] ?? ''));
+    $firmaVerifiedAtRaw = (string) ($pratica['delega_firma_verificata_il'] ?? '');
+    $firmaVerifiedAt = '';
+    if ($firmaVerifiedAtRaw !== '') {
+        $firmaVerifiedAt = format_datetime_locale($firmaVerifiedAtRaw);
+    }
+
     return [
         'cliente_display' => $clienteDisplay,
         'cliente_nome' => $clienteNome,
@@ -594,6 +603,10 @@ function anpr_normalize_delega_data(array $pratica): array
         'company_address' => $companyAddress,
         'created_at' => $createdAtFormatted,
         'data_oggi' => $today,
+        'delega_firma_status' => $firmaStatus,
+        'delega_firma_channel' => $firmaChannel,
+        'delega_firma_recipient' => $firmaRecipient,
+        'delega_firma_verificata_il' => $firmaVerifiedAt,
     ];
 }
 
