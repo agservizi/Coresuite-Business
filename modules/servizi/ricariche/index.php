@@ -55,7 +55,7 @@ $appointments = $stmt->fetchAll();
 
 $statuses = $pdo->query('SELECT DISTINCT stato FROM servizi_appuntamenti ORDER BY stato')->fetchAll(PDO::FETCH_COLUMN);
 if (!$statuses) {
-    $statuses = ['Programmato', 'In corso', 'Completato', 'Annullato'];
+    $statuses = ['Programmato', 'Confermato', 'In corso', 'Completato', 'Annullato'];
 }
 
 $owners = $pdo->query("SELECT DISTINCT responsabile FROM servizi_appuntamenti WHERE responsabile IS NOT NULL AND responsabile <> '' ORDER BY responsabile")->fetchAll(PDO::FETCH_COLUMN);

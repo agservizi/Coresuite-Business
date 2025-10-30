@@ -10,7 +10,7 @@ $pageTitle = 'Nuovo appuntamento';
 $clients = $pdo->query('SELECT id, nome, cognome FROM clienti ORDER BY cognome, nome')->fetchAll();
 $titleOptions = ['Apertura SPID', 'Registrazione PEC', 'Richiesta Firma Digitale/CNS'];
 $serviceTypes = ['Consulenza', 'Sopralluogo', 'Supporto tecnico', 'Rinnovo servizio'];
-$statuses = ['Programmato', 'In corso', 'Completato', 'Annullato'];
+$statuses = ['Programmato', 'Confermato', 'In corso', 'Completato', 'Annullato'];
 $responsabileOptions = ['Carmine', 'Valentina'];
 
 $data = [
@@ -97,6 +97,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ':stato' => $data['stato'],
             ':note' => $data['note'] !== '' ? $data['note'] : null,
         ]);
+
+        $appointmentId = (int) $pdo->lastInsertId();
+
+        $calendarService = new \App\Services\GoogleCalendarService();
+        if ($calendarService->isEnabled() && $data['stato'] === \App\Services\GoogleCalendarService::CONFIRMED_STATUS) {
+            $appointmentStmt = $pdo->prepare('SELECT sa.*, c.email AS cliente_email, c.nome AS cliente_nome, c.cognome AS cliente_cognome, c.ragione_sociale AS cliente_ragione_sociale FROM servizi_appuntamenti sa LEFT JOIN clienti c ON c.id = sa.cliente_id WHERE sa.id = :id LIMIT 1');
+            $appointmentStmt->execute([':id' => $appointmentId]);
+            $appointment = $appointmentStmt->fetch();
+
+            if ($appointment) {
+                try {
+                    $syncResult = $calendarService->syncAppointment($appointment);
+                    $updateCalendar = $pdo->prepare('UPDATE servizi_appuntamenti SET google_event_id = :event_id, google_event_synced_at = :synced_at, google_event_sync_error = NULL WHERE id = :id');
+                    $updateCalendar->execute([
+                        ':event_id' => $syncResult['eventId'],
+                        ':synced_at' => $syncResult['syncedAt']->format('Y-m-d H:i:s'),
+                        ':id' => $appointmentId,
+                    ]);
+                } catch (\Throwable $calendarException) {
+                    $errorMessage = substr($calendarException->getMessage(), 0, 240);
+                    $errorUpdate = $pdo->prepare('UPDATE servizi_appuntamenti SET google_event_sync_error = :error WHERE id = :id');
+                    $errorUpdate->execute([
+                        ':error' => $errorMessage,
+                        ':id' => $appointmentId,
+                    ]);
+                    add_flash('warning', 'Appuntamento creato ma sincronizzazione con Google Calendar non riuscita: ' . $errorMessage);
+                }
+            }
+        }
 
         $clientStmt = $pdo->prepare('SELECT nome, cognome, email FROM clienti WHERE id = :id LIMIT 1');
         $clientStmt->execute([':id' => (int) $data['cliente_id']]);

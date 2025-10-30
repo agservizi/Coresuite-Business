@@ -23,7 +23,7 @@ if (!$record) {
 $reminderStatus = '<span class="text-muted">Non previsto</span>';
 $reminderSchedule = null;
 try {
-    $isActive = in_array($record['stato'], ['Programmato', 'In corso'], true);
+    $isActive = in_array($record['stato'], ['Programmato', 'Confermato', 'In corso'], true);
     $clientHasEmail = !empty($record['email']);
     if ($isActive && $clientHasEmail) {
         if (!empty($record['reminder_sent_at'])) {
@@ -90,6 +90,28 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <dd class="col-sm-7"><?php echo $record['data_fine'] ? sanitize_output(format_datetime_locale($record['data_fine'])) : '<span class="text-muted">—</span>'; ?></dd>
                             <dt class="col-sm-5">Stato</dt>
                             <dd class="col-sm-7"><span class="badge ag-badge text-uppercase"><?php echo sanitize_output($record['stato']); ?></span></dd>
+                            <?php
+                                $calendarStatusHtml = '<span class="text-muted">Non sincronizzato</span>';
+                                $calendarEventId = $record['google_event_id'] ?? null;
+                                $calendarSyncedAt = $record['google_event_synced_at'] ?? null;
+                                $calendarError = $record['google_event_sync_error'] ?? null;
+                                $isConfirmed = strcasecmp((string) ($record['stato'] ?? ''), \App\Services\GoogleCalendarService::CONFIRMED_STATUS) === 0;
+
+                                if ($calendarEventId) {
+                                    $calendarStatusHtml = '<span class="text-success">Evento sincronizzato</span>';
+                                    if ($calendarSyncedAt) {
+                                        $calendarStatusHtml .= '<br><small class="text-muted">Ultimo aggiornamento: ' . sanitize_output(format_datetime_locale($calendarSyncedAt)) . '</small>';
+                                    }
+                                } elseif ($isConfirmed) {
+                                    if ($calendarError) {
+                                        $calendarStatusHtml = '<span class="text-danger">Errore sincronizzazione</span><br><small class="text-muted">' . sanitize_output($calendarError) . '</small>';
+                                    } else {
+                                        $calendarStatusHtml = '<span class="text-warning">In attesa di sincronizzazione</span>';
+                                    }
+                                }
+                            ?>
+                            <dt class="col-sm-5">Google Calendar</dt>
+                            <dd class="col-sm-7"><?php echo $calendarStatusHtml; ?></dd>
                             <dt class="col-sm-5">Promemoria email</dt>
                             <dd class="col-sm-7">
                                 <?php echo $reminderStatus; ?>

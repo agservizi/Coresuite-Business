@@ -102,6 +102,9 @@ CREATE TABLE IF NOT EXISTS servizi_appuntamenti (
     data_inizio DATETIME NOT NULL,
     data_fine DATETIME NULL,
     reminder_sent_at DATETIME NULL,
+    google_event_id VARCHAR(128) NULL,
+    google_event_synced_at DATETIME NULL,
+    google_event_sync_error TEXT NULL,
     note TEXT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -110,6 +113,7 @@ CREATE TABLE IF NOT EXISTS servizi_appuntamenti (
     INDEX idx_appuntamenti_responsabile (responsabile),
     INDEX idx_appuntamenti_inizio (data_inizio),
     INDEX idx_appuntamenti_reminder_sent (reminder_sent_at),
+    INDEX idx_appuntamenti_google_event (google_event_id),
     FOREIGN KEY (cliente_id) REFERENCES clienti(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

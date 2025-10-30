@@ -106,7 +106,7 @@ SELECT sa.id,
 FROM servizi_appuntamenti sa
 INNER JOIN clienti c ON c.id = sa.cliente_id
 WHERE sa.reminder_sent_at IS NULL
-  AND sa.stato IN ('Programmato', 'In corso')
+    AND sa.stato IN ('Programmato', 'Confermato', 'In corso')
   AND c.email IS NOT NULL
   AND c.email <> ''
   AND sa.data_inizio > :now

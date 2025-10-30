@@ -26,8 +26,10 @@ $originalReminderSentAt = $record['reminder_sent_at'] ?? null;
 
 $clients = $pdo->query('SELECT id, nome, cognome FROM clienti ORDER BY cognome, nome')->fetchAll();
 $serviceTypes = ['Consulenza', 'Sopralluogo', 'Supporto tecnico', 'Rinnovo servizio'];
-$statuses = ['Programmato', 'In corso', 'Completato', 'Annullato'];
+$statuses = ['Programmato', 'Confermato', 'In corso', 'Completato', 'Annullato'];
 $responsabili = $pdo->query("SELECT username FROM users WHERE ruolo IN ('Admin', 'Manager', 'Operatore') ORDER BY username")->fetchAll(PDO::FETCH_COLUMN);
+
+$calendarService = new \App\Services\GoogleCalendarService();
 
 $toDateTimeLocal = static function (?string $value): string {
     if ($value === null || $value === '') {
@@ -90,30 +92,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (!$errors) {
+        $newStartSql = $start->format('Y-m-d H:i:s');
+        $newEndSql = $end ? $end->format('Y-m-d H:i:s') : null;
+        $newResponsabile = $data['responsabile'] !== '' ? $data['responsabile'] : null;
+        $newLuogo = $data['luogo'] !== '' ? $data['luogo'] : null;
+        $newNote = $data['note'] !== '' ? $data['note'] : null;
+
+        $calendarSyncRequired = false;
+        if ($calendarService->isEnabled()) {
+            $wasConfirmed = strcasecmp($originalStatus, \App\Services\GoogleCalendarService::CONFIRMED_STATUS) === 0;
+            $isConfirmed = strcasecmp($data['stato'], \App\Services\GoogleCalendarService::CONFIRMED_STATUS) === 0;
+
+            if ($isConfirmed) {
+                if (!$wasConfirmed || empty($record['google_event_id'])) {
+                    $calendarSyncRequired = true;
+                } else {
+                    $fieldsToCompare = [
+                        'titolo' => $data['titolo'],
+                        'tipo_servizio' => $data['tipo_servizio'],
+                        'responsabile' => $newResponsabile,
+                        'luogo' => $newLuogo,
+                        'data_inizio' => $newStartSql,
+                        'data_fine' => $newEndSql,
+                        'note' => $newNote,
+                    ];
+
+                    foreach ($fieldsToCompare as $field => $newValue) {
+                        $originalValue = $record[$field] ?? null;
+                        if ($originalValue !== $newValue) {
+                            $calendarSyncRequired = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
         $update = $pdo->prepare('UPDATE servizi_appuntamenti SET cliente_id = :cliente_id, titolo = :titolo, tipo_servizio = :tipo_servizio, responsabile = :responsabile, luogo = :luogo, data_inizio = :data_inizio, data_fine = :data_fine, stato = :stato, note = :note WHERE id = :id');
         $update->execute([
             ':cliente_id' => (int) $data['cliente_id'],
             ':titolo' => $data['titolo'],
             ':tipo_servizio' => $data['tipo_servizio'],
-            ':responsabile' => $data['responsabile'] !== '' ? $data['responsabile'] : null,
-            ':luogo' => $data['luogo'] !== '' ? $data['luogo'] : null,
-            ':data_inizio' => $start->format('Y-m-d H:i:s'),
-            ':data_fine' => $end ? $end->format('Y-m-d H:i:s') : null,
+            ':responsabile' => $newResponsabile,
+            ':luogo' => $newLuogo,
+            ':data_inizio' => $newStartSql,
+            ':data_fine' => $newEndSql,
             ':stato' => $data['stato'],
-            ':note' => $data['note'] !== '' ? $data['note'] : null,
+            ':note' => $newNote,
             ':id' => $id,
         ]);
 
         if ($originalReminderSentAt !== null) {
             $shouldResetReminder = false;
 
-            if ($originalStart !== $start->format('Y-m-d H:i:s')) {
+            if ($originalStart !== $newStartSql) {
                 $shouldResetReminder = true;
             }
 
             $now = new DateTimeImmutable('now');
-            $wasActive = in_array($originalStatus, ['Programmato', 'In corso'], true);
-            $isActive = in_array($data['stato'], ['Programmato', 'In corso'], true);
+            $wasActive = in_array($originalStatus, ['Programmato', 'Confermato', 'In corso'], true);
+            $isActive = in_array($data['stato'], ['Programmato', 'Confermato', 'In corso'], true);
 
             if (!$wasActive && $isActive) {
                 $shouldResetReminder = true;
@@ -122,6 +160,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($shouldResetReminder && $start > $now) {
                 $resetStmt = $pdo->prepare('UPDATE servizi_appuntamenti SET reminder_sent_at = NULL WHERE id = :id');
                 $resetStmt->execute([':id' => $id]);
+            }
+        }
+
+        if ($calendarSyncRequired) {
+            $appointmentStmt = $pdo->prepare('SELECT sa.*, c.email AS cliente_email, c.nome AS cliente_nome, c.cognome AS cliente_cognome, c.ragione_sociale AS cliente_ragione_sociale FROM servizi_appuntamenti sa LEFT JOIN clienti c ON c.id = sa.cliente_id WHERE sa.id = :id LIMIT 1');
+            $appointmentStmt->execute([':id' => $id]);
+            $appointment = $appointmentStmt->fetch();
+
+            if ($appointment) {
+                try {
+                    $syncResult = $calendarService->syncAppointment($appointment);
+                    $updateCalendar = $pdo->prepare('UPDATE servizi_appuntamenti SET google_event_id = :event_id, google_event_synced_at = :synced_at, google_event_sync_error = NULL WHERE id = :id');
+                    $updateCalendar->execute([
+                        ':event_id' => $syncResult['eventId'],
+                        ':synced_at' => $syncResult['syncedAt']->format('Y-m-d H:i:s'),
+                        ':id' => $id,
+                    ]);
+                } catch (\Throwable $calendarException) {
+                    $errorMessage = substr($calendarException->getMessage(), 0, 240);
+                    $errorUpdate = $pdo->prepare('UPDATE servizi_appuntamenti SET google_event_sync_error = :error WHERE id = :id');
+                    $errorUpdate->execute([
+                        ':error' => $errorMessage,
+                        ':id' => $id,
+                    ]);
+                    add_flash('warning', 'Appuntamento aggiornato ma sincronizzazione con Google Calendar non riuscita: ' . $errorMessage);
+                }
             }
         }
 

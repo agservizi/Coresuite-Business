@@ -1,0 +1,34 @@
+# Configurazione Google Calendar
+
+# Abilita l'integrazione con Google Calendar (true/false)
+GOOGLE_CALENDAR_ENABLED=false
+
+# Identificativo del calendario da aggiornare (es. indirizzo email o ID "primary")
+GOOGLE_CALENDAR_CALENDAR_ID=ag.servizi16@gmail.com
+
+# Specificare uno dei due valori seguenti per fornire le credenziali del service account:
+# 1) Percorso assoluto del file JSON di credenziali
+GOOGLE_CALENDAR_CREDENTIALS_PATH=C:\\percorso\\assoluto\\service-account.json
+# 2) Oppure incollare il contenuto JSON/base64 delle credenziali direttamente nella variabile
+# GOOGLE_CALENDAR_CREDENTIALS_JSON={"type":"service_account","project_id":"..."}
+
+# Opzionale: utente da impersonare (richiede delega di dominio)
+# GOOGLE_CALENDAR_IMPERSONATE=
+
+# Fuso orario da utilizzare per gli eventi generati
+GOOGLE_CALENDAR_TIMEZONE=Europe/Rome
+
+# Durata predefinita (in minuti) se non è indicata una data di fine
+GOOGLE_CALENDAR_DEFAULT_DURATION=60
+
+# Imposta true per aggiungere il cliente come invitato all'evento
+GOOGLE_CALENDAR_INVITE_CLIENT=false
+
+# Valori ammessi: none, externalOnly, all
+GOOGLE_CALENDAR_SEND_UPDATES=none
+
+# Colore opzionale dell'evento (ID numerico di Google Calendar)
+# GOOGLE_CALENDAR_COLOR_ID=11
+
+# Prima di abilitare l'integrazione condividere il calendario con l'email del service account
+# con permessi di scrittura, quindi impostare GOOGLE_CALENDAR_ENABLED=true.

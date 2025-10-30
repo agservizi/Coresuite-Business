@@ -47,7 +47,7 @@ try {
     $servicesInProgressStmt = $pdo->query("SELECT COUNT(*) FROM (
         SELECT id FROM entrate_uscite WHERE stato IN ('In lavorazione', 'In attesa')
         UNION ALL
-        SELECT id FROM servizi_appuntamenti WHERE stato IN ('Programmato', 'In corso')
+    SELECT id FROM servizi_appuntamenti WHERE stato IN ('Programmato', 'Confermato', 'In corso')
         UNION ALL
     SELECT id FROM curriculum WHERE status <> 'Archiviato'
         UNION ALL
@@ -67,7 +67,7 @@ try {
 
     $response['stats']['energyContracts'] = (int) $pdo->query('SELECT COUNT(*) FROM energia_contratti')->fetchColumn();
 
-    $appointmentsTodayStmt = $pdo->prepare("SELECT COUNT(*) FROM servizi_appuntamenti WHERE DATE(data_inizio) = CURRENT_DATE AND stato IN ('Programmato', 'In corso')");
+    $appointmentsTodayStmt = $pdo->prepare("SELECT COUNT(*) FROM servizi_appuntamenti WHERE DATE(data_inizio) = CURRENT_DATE AND stato IN ('Programmato', 'Confermato', 'In corso')");
     $appointmentsTodayStmt->execute();
     $response['stats']['appointmentsToday'] = (int) $appointmentsTodayStmt->fetchColumn();
 
