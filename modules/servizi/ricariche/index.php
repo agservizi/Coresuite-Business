@@ -59,6 +59,8 @@ if (!$statuses) {
 }
 
 $owners = $pdo->query("SELECT DISTINCT responsabile FROM servizi_appuntamenti WHERE responsabile IS NOT NULL AND responsabile <> '' ORDER BY responsabile")->fetchAll(PDO::FETCH_COLUMN);
+$calendarService = new \App\Services\GoogleCalendarService();
+$calendarEnabled = $calendarService->isEnabled();
 $csrfToken = csrf_token();
 
 require_once __DIR__ . '/../../../includes/header.php';
@@ -156,6 +158,15 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                         <div class="btn-group">
                                             <a class="btn btn-sm btn-outline-warning" href="view.php?id=<?php echo (int) $row['id']; ?>" title="Dettagli"><i class="fa-solid fa-eye"></i></a>
                                             <a class="btn btn-sm btn-outline-warning" href="edit.php?id=<?php echo (int) $row['id']; ?>" title="Modifica"><i class="fa-solid fa-pen"></i></a>
+                                            <?php if ($calendarEnabled && strcasecmp((string) ($row['stato'] ?? ''), \App\Services\GoogleCalendarService::CONFIRMED_STATUS) === 0): ?>
+                                                <form method="post" action="sync-calendar.php" class="d-inline">
+                                                    <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
+                                                    <input type="hidden" name="id" value="<?php echo (int) $row['id']; ?>">
+                                                    <button class="btn btn-sm btn-outline-warning" type="submit" title="Sincronizza Google Calendar">
+                                                        <i class="fa-solid fa-rotate"></i>
+                                                    </button>
+                                                </form>
+                                            <?php endif; ?>
                                             <form method="post" action="delete.php" class="d-inline" onsubmit="return confirm('Confermi eliminazione dell\'appuntamento?');">
                                                 <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                                 <input type="hidden" name="id" value="<?php echo (int) $row['id']; ?>">
