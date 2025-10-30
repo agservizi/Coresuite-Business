@@ -532,14 +532,16 @@ class GoogleCalendarService
         }
         if ($json === null && $this->credentialsJson !== null) {
             $jsonCandidate = $this->credentialsJson;
+            $decoded = null;
             if ($this->looksLikeBase64($jsonCandidate)) {
                 $decoded = base64_decode($jsonCandidate, true);
-                if ($decoded !== false) {
-                    $jsonCandidate = $decoded;
-                }
             }
-            $jsonCandidate = str_replace(['\\n'], "\n", $jsonCandidate);
-            $json = $jsonCandidate;
+
+            if ($decoded !== null && $decoded !== false) {
+                $json = $decoded;
+            } else {
+                $json = str_replace('\n', "\n", $jsonCandidate);
+            }
         }
 
         if ($json === null) {
