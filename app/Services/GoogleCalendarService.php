@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use CurlHandle;
 use DateInterval;
 use DateTimeImmutable;
 use DateTimeInterface;
@@ -56,6 +57,8 @@ class GoogleCalendarService
 
     private string $sendUpdates;
 
+    private ?string $caBundlePath;
+
     /**
      * @var array<string, mixed>|null
      */
@@ -74,6 +77,7 @@ class GoogleCalendarService
         $timeZone = $this->clean(env('GOOGLE_CALENDAR_TIMEZONE', date_default_timezone_get()));
         $this->timeZone = $timeZone ?: (date_default_timezone_get() ?: 'UTC');
         $this->impersonateUser = $this->clean(env('GOOGLE_CALENDAR_IMPERSONATE'));
+    $this->caBundlePath = $this->clean(env('GOOGLE_CALENDAR_CA_BUNDLE'));
 
         $duration = (int) env('GOOGLE_CALENDAR_DEFAULT_DURATION', 60);
         $duration = max(15, min($duration, 480));
@@ -230,10 +234,16 @@ class GoogleCalendarService
             curl_setopt($handle, CURLOPT_POSTFIELDS, $body);
         }
 
+        $this->configureCurlCaBundle($handle);
+
         $responseBody = curl_exec($handle);
         if ($responseBody === false) {
             $error = curl_error($handle);
             curl_close($handle);
+            if ($this->caBundlePath === null && str_contains($error, 'SSL certificate')) {
+                $error .= ' — configura GOOGLE_CALENDAR_CA_BUNDLE con il percorso di un file cacert.pem valido.';
+            }
+
             throw new RuntimeException('Errore di rete nella comunicazione con Google Calendar: ' . $error);
         }
         $status = (int) curl_getinfo($handle, CURLINFO_HTTP_CODE);
@@ -343,10 +353,16 @@ class GoogleCalendarService
         ]);
         curl_setopt($handle, CURLOPT_POSTFIELDS, $postFields);
 
+        $this->configureCurlCaBundle($handle);
+
         $responseBody = curl_exec($handle);
         if ($responseBody === false) {
             $error = curl_error($handle);
             curl_close($handle);
+            if ($this->caBundlePath === null && str_contains($error, 'SSL certificate')) {
+                $error .= ' — configura GOOGLE_CALENDAR_CA_BUNDLE con il percorso di un file cacert.pem valido.';
+            }
+
             throw new RuntimeException('Errore durante il recupero del token Google: ' . $error);
         }
         $status = (int) curl_getinfo($handle, CURLINFO_HTTP_CODE);
@@ -365,6 +381,20 @@ class GoogleCalendarService
         }
 
         return $decoded;
+    }
+
+    private function configureCurlCaBundle(CurlHandle $handle): void
+    {
+        if ($this->caBundlePath === null) {
+            return;
+        }
+
+        $path = $this->caBundlePath;
+        if (is_file($path)) {
+            curl_setopt($handle, CURLOPT_CAINFO, $path);
+        } elseif (is_dir($path)) {
+            curl_setopt($handle, CURLOPT_CAPATH, $path);
+        }
     }
 
     /**

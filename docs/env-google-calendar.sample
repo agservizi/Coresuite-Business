@@ -12,6 +12,9 @@ GOOGLE_CALENDAR_CREDENTIALS_PATH=C:\\percorso\\assoluto\\service-account.json
 # 2) Oppure incollare il contenuto JSON/base64 delle credenziali direttamente nella variabile
 # GOOGLE_CALENDAR_CREDENTIALS_JSON={"type":"service_account","project_id":"..."}
 
+# Facoltativo: percorso di un bundle CA (es. cacert.pem) per risolvere errori SSL in ambienti Windows
+# GOOGLE_CALENDAR_CA_BUNDLE=C:\\path\\to\\cacert.pem
+
 # Opzionale: utente da impersonare (richiede delega di dominio)
 # GOOGLE_CALENDAR_IMPERSONATE=
 
