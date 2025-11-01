@@ -79,6 +79,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ':dettagli' => sprintf('%s %s (#%d)', $data['cognome'], $data['nome'], $clientId),
         ]);
 
+        $integrationWarning = false;
+        $integration = integration_service();
+        if ($integration) {
+            try {
+                $integration->syncCustomer($clientId, [
+                    'ragione_sociale' => '',
+                    'nome' => $data['nome'],
+                    'cognome' => $data['cognome'],
+                    'email' => $data['email'],
+                    'telefono' => $data['telefono'],
+                    'cf_piva' => $data['cf_piva'],
+                    'note' => $data['note'],
+                    'indirizzo' => $data['indirizzo'],
+                ]);
+            } catch (\Throwable $exception) {
+                error_log('Customer sync failed: ' . $exception->getMessage());
+                $integrationWarning = true;
+            }
+        }
+
+        if ($integrationWarning) {
+            add_flash('warning', 'Cliente creato ma sincronizzazione ERP non riuscita. Controlla integrations.log.');
+        }
+
         add_flash('success', 'Cliente creato con successo.');
         header('Location: index.php');
         exit;
