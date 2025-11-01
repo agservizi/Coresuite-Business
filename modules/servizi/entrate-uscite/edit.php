@@ -206,26 +206,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 			':id' => $id,
 		]);
 
-		$integrationWarning = false;
-		$integration = integration_service();
-		if ($integration && $data['tipo_movimento'] === 'Entrata') {
-			try {
-				$movementStmt = $pdo->prepare('SELECT e.*, c.ragione_sociale, c.nome, c.cognome FROM entrate_uscite e LEFT JOIN clienti c ON c.id = e.cliente_id WHERE e.id = :id');
-				$movementStmt->execute([':id' => $id]);
-				$row = $movementStmt->fetch(PDO::FETCH_ASSOC);
-				if ($row) {
-					$integration->syncSale($id, $row);
-				}
-			} catch (\Throwable $exception) {
-				error_log('ERP sale sync failed: ' . $exception->getMessage());
-				$integrationWarning = true;
-			}
-		}
-
-		if ($integrationWarning) {
-			add_flash('warning', 'Movimento aggiornato ma sincronizzazione ERP non riuscita. Controlla integrations.log.');
-		}
-
 		add_flash('success', 'Movimento aggiornato correttamente.');
 		header('Location: view.php?id=' . $id);
 		exit;

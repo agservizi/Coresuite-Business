@@ -328,30 +328,3 @@ function complete_user_login(
         $userAgent
     );
 }
-
-function integration_service(): ?\App\Services\IntegrationService
-{
-    static $initialized = false;
-    static $service = null;
-
-    if ($initialized) {
-        return $service instanceof \App\Services\IntegrationService && $service->isEnabled() ? $service : null;
-    }
-
-    $initialized = true;
-
-    try {
-        $projectRoot = realpath(__DIR__ . '/..') ?: __DIR__ . '/..';
-        $candidate = \App\Services\IntegrationService::fromEnv($projectRoot);
-        if ($candidate->isEnabled()) {
-            $service = $candidate;
-        } else {
-            $service = null;
-        }
-    } catch (\Throwable $exception) {
-        error_log('Integration service init failed: ' . $exception->getMessage());
-        $service = null;
-    }
-
-    return $service;
-}

@@ -70,21 +70,6 @@ try {
         ':dettagli' => sprintf('%s (#%d)', $clientLabel, $id),
     ]);
 
-    $integrationWarning = false;
-    $integration = integration_service();
-    if ($integration) {
-        try {
-            $integration->deleteCustomer($id);
-        } catch (\Throwable $exception) {
-            error_log('Customer delete sync failed: ' . $exception->getMessage());
-            $integrationWarning = true;
-        }
-    }
-
-    if ($integrationWarning) {
-        add_flash('warning', 'Cliente eliminato ma sincronizzazione ERP non riuscita. Controlla integrations.log.');
-    }
-
     add_flash('success', 'Cliente eliminato correttamente.');
     header('Location: index.php');
 } catch (Throwable $e) {
